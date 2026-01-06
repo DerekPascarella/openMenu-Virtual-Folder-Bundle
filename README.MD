@@ -17,6 +17,7 @@ To accommodate the new openMenu, a modified version of [GD MENU Card Manager](ht
   - [Changes Since openMenu v1.3.0](#changes-since-openmenu-v130)
   - [Changes Since GD MENU Card Manager v2.0.1](#changes-since-gd-menu-card-manager-v201)
 - [Usage Tutorial](#usage-tutorial)
+- [Theme Format](#theme-format)
 
 ## Current Version
 
@@ -33,7 +34,7 @@ Many components of both openMenu and GD MENU Card Manager have been drastically 
 
 ### Changes Since openMenu v1.3.0
 
-- New folder view mode, plus custom themes:
+- New "Folders" Style mode, plus custom themes:
   * 8 subfolders max
   * Complete subfolder path maximum length is 256 characters, including backslashes (e.g., `Games\JP\RPG`).
   * L Trigger + R Trigger is now a shortcut to go back one directory
@@ -63,3 +64,7 @@ Many components of both openMenu and GD MENU Card Manager have been drastically 
 ## Usage Tutorial
 
 Usage documentation and tuturial video link goes here.
+
+## Theme Format
+
+Details on "Folders" Style theme format go here.
