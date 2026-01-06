@@ -44,6 +44,7 @@ savefile_defaults() {
     sf_scroll_art[0] = SCROLL_ART_ON;
     sf_scroll_index[0] = SCROLL_INDEX_ON;
     sf_folders_art[0] = FOLDERS_ART_ON;
+    sf_marquee_speed[0] = MARQUEE_SPEED_MEDIUM;
 }
 
 //THIS IS USED BY THE CRAYON SAVEFILE DESERIALISER WHEN LOADING A SAVE FROM AN OLDER VERSION
@@ -67,6 +68,9 @@ update_savefile(void** loaded_variables, crayon_savefile_version_t loaded_versio
     }
     if (loaded_version < SFV_FOLDERS_ART) {
         sf_folders_art[0] = FOLDERS_ART_ON;
+    }
+    if (loaded_version < SFV_MARQUEE_SPEED) {
+        sf_marquee_speed[0] = MARQUEE_SPEED_MEDIUM;
     }
     return 0;
 }
@@ -122,6 +126,8 @@ setup_savefile(crayon_savefile_details_t* details) {
     crayon_savefile_add_variable(details, &sf_scroll_index, sf_scroll_index_type, sf_scroll_index_length, SFV_SCROLL_INDEX,
                                  VAR_STILL_PRESENT);
     crayon_savefile_add_variable(details, &sf_folders_art, sf_folders_art_type, sf_folders_art_length, SFV_FOLDERS_ART,
+                                 VAR_STILL_PRESENT);
+    crayon_savefile_add_variable(details, &sf_marquee_speed, sf_marquee_speed_type, sf_marquee_speed_length, SFV_MARQUEE_SPEED,
                                  VAR_STILL_PRESENT);
 
     if (crayon_savefile_solidify(details)) {

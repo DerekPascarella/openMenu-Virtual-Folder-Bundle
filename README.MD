@@ -1,12 +1,12 @@
 # openMenu Virtual Folder Bundle
 
-This is a new version of openMenu with virtual folder/subfolder support and other updates and fixes, including a modified version of GD MENU Card Manager to support it.
+This is a new version of openMenu with virtual folder/subfolder support and other updates and fixes, including a modified version of GD MENU Card Manager to support it. It aims to be the ultimate menu software and SD card management solution for SEGA Dreamcast [GDEMU](https://gdemu.wordpress.com/about/) users.
 
-openMenu was originally written by [mrneo240](https://github.com/mrneo240/openmenu/), later forked by [megavolt85](https://github.com/megavolt85/openmenu), and then finally [sbstnc](https://github.com/sbstnc/openmenu/). With each iteration, important updates have been made to this open source menu software for the SEGA Dreamcast GDEMU ODE.
+openMenu was originally written by [mrneo240](https://github.com/mrneo240/openmenu/), later forked by [megavolt85](https://github.com/megavolt85/openmenu), and then finally [sbstnc](https://github.com/sbstnc/openmenu/). With each iteration, important updates have been made to this open source menu software for the GDEMU, a SEGA Dreamcast optical drive emulator.
 
-However due to the fragmented nature of these forks and the lack of time for each of their respective owners to contribute to the project, the author of this new openMenu build has decided to create a brand-new fork, rather than contribute to any of the existing ones. As an active member of the Dreamcast community, this author will work hard to maintain, update, and fix this new version of openMenu.
+However due to the fragmented nature of these forks and the lack of time for each of their respective owners to contribute to the them, the author of this new openMenu build has decided to create a brand-new fork, rather than contribute to any of the existing ones. As an active member of the Dreamcast community, this author will work hard to maintain, update, and fix this new version of openMenu.
 
-To accommodate the new openMenu, a modified version of [GD MENU Card Manager](https://github.com/sonik-br/GDMENUCardManager) has been developed and included in this bundle.
+To accommodate the new openMenu, a modified version of [GD MENU Card Manager](https://github.com/sonik-br/GDMENUCardManager) has also been developed and included in this bundle.
 
 ## Table of Contents
 
@@ -17,10 +17,11 @@ To accommodate the new openMenu, a modified version of [GD MENU Card Manager](ht
   - [Changes Since openMenu v1.3.0](#changes-since-openmenu-v130)
   - [Changes Since GD MENU Card Manager v2.0.1](#changes-since-gd-menu-card-manager-v201)
 - [Usage Tutorial](#usage-tutorial)
+- [Theme Format](#theme-format)
 
 ## Current Version
 
-openMenu Virtual Folder Bundle is currently at at version [1.0](xxxx).
+openMenu Virtual Folder Bundle is currently at version [1.0](xxxx).
 
 ## Changelog
 
@@ -33,10 +34,10 @@ Many components of both openMenu and GD MENU Card Manager have been drastically 
 
 ### Changes Since openMenu v1.3.0
 
-- New folder view mode, plus custom themes:
+- New "Folders" Style mode, plus custom themes:
   * 8 subfolders max
-  * Complete subfolder path maximum length is 256 characters
-  * L + R is now a shortcut to go back one directory
+  * Complete subfolder path maximum length is 256 characters, including backslashes (e.g., `Games\JP\RPG`).
+  * L Trigger + R Trigger is now a shortcut to go back one directory
 - Long entry names now supported (256 characters), along with marquee scrolling over those exceeding 49 characters.
 - Scroll mode improvements:
   * Jumping cursor fixed
@@ -44,8 +45,7 @@ Many components of both openMenu and GD MENU Card Manager have been drastically 
   * Toggle artwork display (On/Off)
 - Settings menu now has wrap-around cursor scrolling.
 - GDEMU firmware version and openMenu build version now shown in the settings menu.
-- Save file is no longer written on every openMenu startup:
-  * Now only written when saving settings or during save file migration.
+- VMU configuration save file is no longer written on every openMenu startup, now only when saving settings or during save file migration.
 - Non-game discs are mounted by GDEMU instantly, returning user to BIOS for things like playing audio CDs.
 - Game ID is not sent to VM2/VMUPro/USB4MAPLE when a non-game disc is launched (e.g., an audio CD).
 - VMU beep setting disabled (feature is not implemented yet).
@@ -64,3 +64,7 @@ Many components of both openMenu and GD MENU Card Manager have been drastically 
 ## Usage Tutorial
 
 Usage documentation and tuturial video link goes here.
+
+## Theme Format
+
+Details on "Folders" Style theme format go here.

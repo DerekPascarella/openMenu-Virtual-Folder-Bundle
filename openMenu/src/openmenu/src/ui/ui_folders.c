@@ -93,7 +93,6 @@ static char cusor_step = -5;
 #define MARQUEE_DISPLAY_WIDTH 49
 #define MARQUEE_INITIAL_PAUSE_FRAMES 60
 #define MARQUEE_END_PAUSE_FRAMES 90
-#define MARQUEE_SCROLL_SPEED_FRAMES 4
 
 typedef enum {
     MARQUEE_STATE_INITIAL_PAUSE,
@@ -107,6 +106,17 @@ static int marquee_offset = 0;
 static int marquee_timer = 0;
 static int marquee_max_offset = 0;
 static int marquee_last_selected = -1;
+
+static inline int
+get_marquee_speed_frames(void) {
+    extern uint8_t* sf_marquee_speed;
+    switch (sf_marquee_speed[0]) {
+        case 0: return 8;  /* Slow */
+        case 1: return 6;  /* Medium */
+        case 2: return 4;  /* Fast */
+        default: return 6; /* Default to Medium */
+    }
+}
 
 /* L+R trigger state for back navigation */
 static bool trig_l_held = false;
@@ -160,7 +170,7 @@ marquee_update_animation(int name_length) {
     switch (marquee_state) {
         case MARQUEE_STATE_INITIAL_PAUSE:
             marquee_state = MARQUEE_STATE_SCROLL_LEFT;
-            marquee_timer = MARQUEE_SCROLL_SPEED_FRAMES;
+            marquee_timer = get_marquee_speed_frames();
             break;
 
         case MARQUEE_STATE_SCROLL_LEFT:
@@ -170,13 +180,13 @@ marquee_update_animation(int name_length) {
                 marquee_state = MARQUEE_STATE_END_PAUSE;
                 marquee_timer = MARQUEE_END_PAUSE_FRAMES;
             } else {
-                marquee_timer = MARQUEE_SCROLL_SPEED_FRAMES;
+                marquee_timer = get_marquee_speed_frames();
             }
             break;
 
         case MARQUEE_STATE_END_PAUSE:
             marquee_state = MARQUEE_STATE_SCROLL_RIGHT;
-            marquee_timer = MARQUEE_SCROLL_SPEED_FRAMES;
+            marquee_timer = get_marquee_speed_frames();
             break;
 
         case MARQUEE_STATE_SCROLL_RIGHT:
@@ -186,7 +196,7 @@ marquee_update_animation(int name_length) {
                 marquee_state = MARQUEE_STATE_INITIAL_PAUSE;
                 marquee_timer = MARQUEE_INITIAL_PAUSE_FRAMES;
             } else {
-                marquee_timer = MARQUEE_SCROLL_SPEED_FRAMES;
+                marquee_timer = get_marquee_speed_frames();
             }
             break;
     }

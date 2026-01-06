@@ -28,7 +28,7 @@
 
 #pragma region Settings_Menu
 
-static const char* menu_choice_text[] = {"Style", "Theme", "Aspect", "Beep", "3D BIOS", "Sort", "Filter", "Multidisc", "Artwork", "Index", "Artwork"};
+static const char* menu_choice_text[] = {"Style", "Theme", "Aspect", "Beep", "3D BIOS", "Sort", "Filter", "Multidisc", "Artwork", "Index", "Artwork", "Marquee Speed"};
 static const char* theme_choice_text[] = {"LineDesc", "Grid3", "Scroll", "Folders"};
 static const char* region_choice_text[] = {"NTSC-U", "NTSC-J", "PAL"};
 static const char* region_choice_text_scroll[] = {"GDMENU"};
@@ -44,6 +44,7 @@ static const char* multidisc_choice_text[] = {"Show", "Hide"};
 static const char* scroll_art_choice_text[] = {"Off", "On"};
 static const char* scroll_index_choice_text[] = {"Off", "On"};
 static const char* folders_art_choice_text[] = {"Off", "On"};
+static const char* marquee_speed_choice_text[] = {"Slow", "Medium", "Fast"};
 static const char* save_choice_text[] = {"Save", "Apply"};
 static const char* credits_text[] = {"Credits"};
 
@@ -68,6 +69,7 @@ static int REGION_CHOICES = (sizeof(region_choice_text) / sizeof(region_choice_t
 #define SCROLL_ART_CHOICES (sizeof(scroll_art_choice_text) / sizeof(scroll_art_choice_text)[0])
 #define SCROLL_INDEX_CHOICES (sizeof(scroll_index_choice_text) / sizeof(scroll_index_choice_text)[0])
 #define FOLDERS_ART_CHOICES (sizeof(folders_art_choice_text) / sizeof(folders_art_choice_text)[0])
+#define MARQUEE_SPEED_CHOICES (sizeof(marquee_speed_choice_text) / sizeof(marquee_speed_choice_text)[0])
 
 typedef enum MENU_CHOICE {
     CHOICE_START,
@@ -82,6 +84,7 @@ typedef enum MENU_CHOICE {
     CHOICE_SCROLL_ART,
     CHOICE_SCROLL_INDEX,
     CHOICE_FOLDERS_ART,
+    CHOICE_MARQUEE_SPEED,
     CHOICE_SAVE,
     CHOICE_CREDITS,
     CHOICE_END = CHOICE_CREDITS
@@ -92,11 +95,12 @@ typedef enum MENU_CHOICE {
 static int choices[MENU_CHOICES + 1];
 static int choices_max[MENU_CHOICES + 1] = {
     THEME_CHOICES,     3, ASPECT_CHOICES, BEEP_CHOICES, BIOS_3D_CHOICES, SORT_CHOICES, FILTER_CHOICES,
-    MULTIDISC_CHOICES, SCROLL_ART_CHOICES, SCROLL_INDEX_CHOICES, FOLDERS_ART_CHOICES, 2 /* Apply/Save */};
+    MULTIDISC_CHOICES, SCROLL_ART_CHOICES, SCROLL_INDEX_CHOICES, FOLDERS_ART_CHOICES, MARQUEE_SPEED_CHOICES, 2 /* Apply/Save */};
 static const char** menu_choice_array[MENU_CHOICES] = {theme_choice_text,       region_choice_text,   aspect_choice_text,
                                                        beep_choice_text,        bios_3d_choice_text,  sort_choice_text,
                                                        filter_choice_text,      multidisc_choice_text,
-                                                       scroll_art_choice_text,  scroll_index_choice_text, folders_art_choice_text};
+                                                       scroll_art_choice_text,  scroll_index_choice_text, folders_art_choice_text,
+                                                       marquee_speed_choice_text};
 static int current_choice = CHOICE_START;
 static int* input_timeout_ptr = NULL;
 
@@ -180,6 +184,7 @@ menu_setup(enum draw_state* state, theme_color* _colors, int* timeout_ptr, uint3
     choices[CHOICE_SCROLL_ART] = sf_scroll_art[0];
     choices[CHOICE_SCROLL_INDEX] = sf_scroll_index[0];
     choices[CHOICE_FOLDERS_ART] = sf_folders_art[0];
+    choices[CHOICE_MARQUEE_SPEED] = sf_marquee_speed[0];
 
     if (choices[CHOICE_THEME] != UI_SCROLL && choices[CHOICE_THEME] != UI_FOLDERS) {
         menu_choice_array[CHOICE_REGION] = region_choice_text;
@@ -268,6 +273,7 @@ menu_accept(void) {
         sf_scroll_art[0] = choices[CHOICE_SCROLL_ART];
         sf_scroll_index[0] = choices[CHOICE_SCROLL_INDEX];
         sf_folders_art[0] = choices[CHOICE_FOLDERS_ART];
+        sf_marquee_speed[0] = choices[CHOICE_MARQUEE_SPEED];
         if (choices[CHOICE_THEME] != UI_SCROLL && choices[CHOICE_THEME] != UI_FOLDERS && sf_region[0] > REGION_END) {
             sf_custom_theme[0] = THEME_ON;
             int num_default_themes = 0;
@@ -332,6 +338,10 @@ menu_choice_prev(void) {
         if (current_choice == CHOICE_FOLDERS_ART && sf_ui[0] != UI_FOLDERS) {
             skip = 1;
         }
+        /* Skip MARQUEE_SPEED option in non-Scroll/Folders modes */
+        if (current_choice == CHOICE_MARQUEE_SPEED && sf_ui[0] != UI_SCROLL && sf_ui[0] != UI_FOLDERS) {
+            skip = 1;
+        }
         /* Skip Aspect/Sort/Filter in Folders mode */
         if (sf_ui[0] == UI_FOLDERS && (current_choice == CHOICE_ASPECT || current_choice == CHOICE_SORT || current_choice == CHOICE_FILTER)) {
             skip = 1;
@@ -376,6 +386,10 @@ menu_choice_next(void) {
         }
         /* Skip FOLDERS_ART option in non-Folders modes */
         if (current_choice == CHOICE_FOLDERS_ART && sf_ui[0] != UI_FOLDERS) {
+            skip = 1;
+        }
+        /* Skip MARQUEE_SPEED option in non-Scroll/Folders modes */
+        if (current_choice == CHOICE_MARQUEE_SPEED && sf_ui[0] != UI_SCROLL && sf_ui[0] != UI_FOLDERS) {
             skip = 1;
         }
         /* Skip Aspect/Sort/Filter in Folders mode */
@@ -611,10 +625,10 @@ draw_menu_tr(void) {
         /* Menu size and placement */
         const int line_height = 24;
         const int width = 320;
-        /* Calculate visible options - Folders mode hides Aspect/Sort/Filter/SCROLL_ART (4 items) */
+        /* Calculate visible options for height - Folders hides more items */
         int visible_options = MENU_OPTIONS - 1;  /* Hide BEEP */
         if (sf_ui[0] == UI_FOLDERS) {
-            visible_options -= 4;  /* Hide Aspect, Sort, Filter, SCROLL_ART */
+            visible_options -= 4;  /* Hide Aspect, Sort, Filter, SCROLL_ART (SCROLL_INDEX also hidden in rendering) */
         }
         const int height = (visible_options + 5) * line_height + (line_height * 11 / 12);
         const int x = (640 / 2) - (width / 2);
@@ -645,6 +659,10 @@ draw_menu_tr(void) {
             }
             /* Skip FOLDERS_ART option in non-Folders modes */
             if (i == CHOICE_FOLDERS_ART && sf_ui[0] != UI_FOLDERS) {
+                continue;
+            }
+            /* Skip MARQUEE_SPEED option in non-Scroll/Folders modes */
+            if (i == CHOICE_MARQUEE_SPEED && sf_ui[0] != UI_SCROLL && sf_ui[0] != UI_FOLDERS) {
                 continue;
             }
             /* Skip Aspect/Sort/Filter in Folders mode */
@@ -717,10 +735,10 @@ draw_menu_tr(void) {
         font_bmp_draw_main(640 / 2 - (str_pixel_width / 2), cur_y, build_str);
 
     } else {
-        /* Menu size and placement (Artwork option not shown in LineDesc/Grid3) */
+        /* Menu size and placement (Artwork/Marquee options not shown in LineDesc/Grid3) */
         const int line_height = 32;
         const int width = 400;
-        const int visible_options = MENU_OPTIONS - 2; /* Exclude Artwork and BEEP */
+        const int visible_options = MENU_OPTIONS - 5; /* Exclude SCROLL_ART, SCROLL_INDEX, FOLDERS_ART, MARQUEE_SPEED, and BEEP */
         const int height = (visible_options + 4) * line_height - line_height / 4;
         const int x = (640 / 2) - (width / 2);
         const int y = (480 / 2) - (height / 2);
@@ -749,6 +767,10 @@ draw_menu_tr(void) {
             }
             /* Skip FOLDERS_ART option in non-Folders modes */
             if (i == CHOICE_FOLDERS_ART && sf_ui[0] != UI_FOLDERS) {
+                continue;
+            }
+            /* Skip MARQUEE_SPEED option in non-Scroll/Folders modes */
+            if (i == CHOICE_MARQUEE_SPEED && sf_ui[0] != UI_SCROLL && sf_ui[0] != UI_FOLDERS) {
                 continue;
             }
             /* Skip Aspect/Sort/Filter in Folders mode */

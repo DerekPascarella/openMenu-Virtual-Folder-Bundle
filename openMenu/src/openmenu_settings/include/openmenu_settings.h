@@ -55,12 +55,17 @@ extern uint8_t* sf_folders_art;
 #define sf_folders_art_type   CRAYON_TYPE_UINT8
 #define sf_folders_art_length 1
 
+extern uint8_t* sf_marquee_speed;
+#define sf_marquee_speed_type   CRAYON_TYPE_UINT8
+#define sf_marquee_speed_length 1
+
 enum savefile_version {
     SFV_INITIAL = 1,
     SFV_BIOS_3D,
     SFV_SCROLL_ART,
     SFV_SCROLL_INDEX,
     SFV_FOLDERS_ART,
+    SFV_MARQUEE_SPEED,
     SFV_LATEST_PLUS_ONE //DON'T REMOVE
 };
 
@@ -174,6 +179,14 @@ typedef enum CFG_FOLDERS_ART {
     FOLDERS_ART_ON,
     FOLDERS_ART_END = FOLDERS_ART_ON
 } CFG_FOLDERS_ART;
+
+typedef enum CFG_MARQUEE_SPEED {
+    MARQUEE_SPEED_START = 0,
+    MARQUEE_SPEED_SLOW = MARQUEE_SPEED_START,
+    MARQUEE_SPEED_MEDIUM,
+    MARQUEE_SPEED_FAST,
+    MARQUEE_SPEED_END = MARQUEE_SPEED_FAST
+} CFG_MARQUEE_SPEED;
 
 typedef CFG_REGION region;
 

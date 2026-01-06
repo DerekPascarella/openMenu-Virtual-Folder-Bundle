@@ -13,6 +13,7 @@ uint8_t* sf_bios_3d;
 uint8_t* sf_scroll_art;
 uint8_t* sf_scroll_index;
 uint8_t* sf_folders_art;
+uint8_t* sf_marquee_speed;
 
 void
 settings_sanitize() {
@@ -70,5 +71,9 @@ settings_sanitize() {
 
     if ((sf_folders_art[0] < FOLDERS_ART_START) || (sf_folders_art[0] > FOLDERS_ART_END)) {
         sf_folders_art[0] = FOLDERS_ART_ON;
+    }
+
+    if ((sf_marquee_speed[0] < MARQUEE_SPEED_START) || (sf_marquee_speed[0] > MARQUEE_SPEED_END)) {
+        sf_marquee_speed[0] = MARQUEE_SPEED_MEDIUM;
     }
 }
