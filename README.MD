@@ -2,7 +2,7 @@
 
 This is a new version of openMenu with virtual folder/subfolder support and other updates and fixes, including a modified version of GD MENU Card Manager to support it.
 
-openMenu was originally written by [mrneo240](https://github.com/mrneo240/openmenu/), and then later forked by [megavolt85](https://github.com/megavolt85/openmenu) and finally [sbstnc](https://github.com/sbstnc/openmenu/). With each iteration, important updates have been made to this open source menu software for the SEGA Dreamcast GDEMU ODE.
+openMenu was originally written by [mrneo240](https://github.com/mrneo240/openmenu/), later forked by [megavolt85](https://github.com/megavolt85/openmenu), and then finally [sbstnc](https://github.com/sbstnc/openmenu/). With each iteration, important updates have been made to this open source menu software for the SEGA Dreamcast GDEMU ODE.
 
 However due to the fragmented nature of these forks and the lack of time for each of their respective owners to contribute to the project, the author of this new openMenu build has decided to create a brand-new fork, rather than contribute to any of the existing ones. As an active member of the Dreamcast community, this author will work hard to maintain, update, and fix this new version of openMenu.
 
