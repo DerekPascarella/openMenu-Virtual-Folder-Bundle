@@ -182,6 +182,7 @@ namespace GDMENUCardManager
             // Find columns by iterating and checking their Header
             DataGridColumn folderColumn = null;
             DataGridColumn typeColumn = null;
+            DataGridTextColumn discColumn = null;
 
             foreach (var col in dg1.Columns)
             {
@@ -189,6 +190,8 @@ namespace GDMENUCardManager
                     folderColumn = col;
                 else if (col is DataGridTemplateColumn templateCol && templateCol.Header?.ToString() == "Type")
                     typeColumn = col;
+                else if (col is DataGridTextColumn discTextCol && discTextCol.Header?.ToString() == "Disc")
+                    discColumn = discTextCol;
             }
 
             if (folderColumn != null)
@@ -214,6 +217,12 @@ namespace GDMENUCardManager
                 {
                     typeColumn.Visibility = Visibility.Collapsed;
                 }
+            }
+
+            if (discColumn != null)
+            {
+                // Make Disc column editable only in openMenu mode
+                discColumn.IsReadOnly = (MenuKindSelected != MenuKind.openMenu);
             }
         }
 

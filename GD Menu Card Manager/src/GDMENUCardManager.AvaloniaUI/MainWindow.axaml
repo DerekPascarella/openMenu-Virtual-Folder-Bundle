@@ -192,7 +192,7 @@
             <DataGridTextColumn Header="Title" Width="2*" Binding="{Binding Name}"/>
             <DataGridTextColumn Header="Folder" Width="1*" Binding="{Binding Folder}" IsVisible="False"/>
             <DataGridTextColumn Header="Serial" Width="75" Binding="{Binding ProductNumber}"/>
-            <DataGridTextColumn Header="Disc" Width="45" IsReadOnly="True" Binding="{Binding Ip.Disc, Mode=OneWay}"/>
+            <DataGridTextColumn Header="Disc" Width="45" IsReadOnly="True" Binding="{Binding Ip.Disc, Mode=TwoWay}"/>
             <DataGridTemplateColumn Header="Type" Width="80" IsVisible="False">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate>

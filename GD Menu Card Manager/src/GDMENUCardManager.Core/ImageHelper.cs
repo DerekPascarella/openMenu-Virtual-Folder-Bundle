@@ -358,6 +358,14 @@ namespace GDMENUCardManager.Core
             if (await Helper.FileExistsAsync(itemSerialPath))
                 item.ProductNumber = await Helper.ReadAllTextAsync(itemSerialPath);
 
+            var itemDiscPath = Path.Combine(item.FullFolderPath, Constants.DiscTextFile);
+            if (await Helper.FileExistsAsync(itemDiscPath))
+            {
+                var discValue = await Helper.ReadAllTextAsync(itemDiscPath);
+                if (!string.IsNullOrWhiteSpace(discValue))
+                    item.Ip.Disc = discValue.Trim();
+            }
+
             item.Name = item.Name.Trim();
             item.ProductNumber = item.ProductNumber.Trim();
 
@@ -631,6 +639,14 @@ namespace GDMENUCardManager.Core
             var itemSerialPath = Path.Combine(item.FullFolderPath, Constants.SerialTextFile);
             if (await Helper.FileExistsAsync(itemSerialPath))
                 item.ProductNumber = await Helper.ReadAllTextAsync(itemSerialPath);
+
+            var itemDiscPath = Path.Combine(item.FullFolderPath, Constants.DiscTextFile);
+            if (await Helper.FileExistsAsync(itemDiscPath))
+            {
+                var discValue = await Helper.ReadAllTextAsync(itemDiscPath);
+                if (!string.IsNullOrWhiteSpace(discValue))
+                    item.Ip.Disc = discValue.Trim();
+            }
 
             item.Name = item.Name.Trim();
             item.ProductNumber = item.ProductNumber.Trim();

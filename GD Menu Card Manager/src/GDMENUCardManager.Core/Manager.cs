@@ -551,6 +551,12 @@ namespace GDMENUCardManager.Core
                         var typeValue = item.GetDiscTypeFileValue();
                         if (!await Helper.FileExistsAsync(itemTypePath) || (await Helper.ReadAllTextAsync(itemTypePath)).Trim() != typeValue)
                             await Helper.WriteTextFileAsync(itemTypePath, typeValue);
+
+                        //write disc number into folder
+                        var itemDiscPath = Path.Combine(item.FullFolderPath, Constants.DiscTextFile);
+                        var discValue = item.Ip?.Disc ?? "1/1";
+                        if (!await Helper.FileExistsAsync(itemDiscPath) || (await Helper.ReadAllTextAsync(itemDiscPath)).Trim() != discValue)
+                            await Helper.WriteTextFileAsync(itemDiscPath, discValue);
                     }
 
                     //write info text into folder for cdi files

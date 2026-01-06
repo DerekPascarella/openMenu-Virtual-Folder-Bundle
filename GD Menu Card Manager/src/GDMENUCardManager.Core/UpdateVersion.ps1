@@ -21,6 +21,7 @@ namespace GDMENUCardManager.Core
         public const string SerialTextFile = "serial.txt";
         public const string FolderTextFile = "folder.txt";
         public const string TypeTextFile = "type.txt";
+        public const string DiscTextFile = "disc.txt";
         //private const string InfoTextFile = "info.txt";
         public const string MenuConfigTextFile = "GDEMU.ini";
         public const string GdiShrinkBlacklistFile = "gdishrink_blacklist.txt";

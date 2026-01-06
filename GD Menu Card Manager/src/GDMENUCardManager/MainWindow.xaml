@@ -196,7 +196,7 @@
                         <DataGridTextColumn x:Name="TitleColumn" Header="Title" Width="2*" Binding="{Binding Name, Mode=TwoWay}"/>
                         <DataGridTextColumn x:Name="FolderColumn" Header="Folder" Width="1*" Binding="{Binding Folder, Mode=TwoWay}" Visibility="Collapsed"/>
                         <DataGridTextColumn Header="Serial" Width="75" Binding="{Binding ProductNumber, Mode=TwoWay}"/>
-                        <DataGridTextColumn Header="Disc" Width="45" IsReadOnly="True" Binding="{Binding Ip.Disc, Mode=OneWay}"/>
+                        <DataGridTextColumn x:Name="DiscColumn" Header="Disc" Width="45" IsReadOnly="True" Binding="{Binding Ip.Disc, Mode=TwoWay}"/>
                         <DataGridTemplateColumn x:Name="TypeColumn" Header="Type" Width="80" Visibility="Collapsed">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
