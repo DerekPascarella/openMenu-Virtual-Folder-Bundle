@@ -59,6 +59,7 @@ Many components of both openMenu and GD MENU Card Manager have been drastically 
 - Non-game disc images now supported, with a new column named "Type" added where users can select from two drop-down options: `Game` and `Other`. Note that non-game disc images are automatically assigned the `Other` value, as openMenu will check this property to decide how to initialize the GDEMU.
 - Disc image names no longer limited to 39 characters, increased to 256 characters.
 - Disc numbers can now be customized by the user (e.g., `1/3`, `2/4`).
+- Maximum length for game IDs is now ten (instead of 9), but is customizable by changing the `ProductIdMaxLength` key inside `GDMENUCardManager.dll.config`.
 
 ## Usage Tutorial
 
