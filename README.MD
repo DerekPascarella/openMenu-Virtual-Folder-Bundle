@@ -6,6 +6,8 @@ openMenu was originally written by [mrneo240](https://github.com/mrneo240/openme
 
 However due to the fragmented nature of these forks and the lack of time for each of their respective owners to contribute to the them, the author of this new openMenu build has decided to create a brand-new fork, rather than contribute to any of the existing ones. As an active member of the Dreamcast community, this author will work hard to maintain, update, and fix this new version of openMenu.
 
+For those unfamiliar with the branching history of openMenu, it's important to note that openMenu Virtual Folder Bundle was built using the latest public version of openMenu, meaning it has full support for per-game virtual VMUs with [VM2](https://www.dreammods.net/store/p6/VM2.html), [VMUPro](https://stoneagegamer.com/vmu-pro-handheld-visual-memory-card-for-sega-dreamcast.html), and [USB4MAPLE](http://usb4maple.wikidot.com/).
+
 To accommodate the new openMenu, a modified version of [GD MENU Card Manager](https://github.com/sonik-br/GDMENUCardManager) has also been developed and included in this bundle.
 
 ## Table of Contents
