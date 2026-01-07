@@ -29,7 +29,7 @@ The latest version of **openMenu Virtual Folder Bundle** is [1.0](xxxx).
 
 ## Changelog
 
-- **Version 1.0 (2025-01-07)**
+- **Version 1.0 (2026-01-07)**
   * Initial release.
 
 ## Credits
