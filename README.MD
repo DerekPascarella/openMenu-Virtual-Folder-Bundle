@@ -41,6 +41,9 @@ The latest version of **openMenu Virtual Folder Bundle** is [1.0](https://github
   * NO HXRO
   * SEGA RPG FAN
   * Kanji
+  * agarpac
+  * null
+  * Ade
 - **Special Thanks**
   * mrneo240 for his original work on openMenu
   * megavolt85 for forking openMenu and adding new features
@@ -179,7 +182,7 @@ Licensed under the Modified BSD License (3-Clause BSD License)
 The original openMenu project was created by Hayden Kowalchuk (mrneo240), with subsequent forks and contributions by megavolt85 and sbstnc.
 
 **Modifications made by Derek Pascarella (ateam) in 2026:**
-- See the [Changes Since openMenu v1.3.0](#changes-since-openmenu-v130) section.
+- See the [Changes Since openMenu v1.3.0](#changes-since-openmenu-v130) and [Changelog](#changelog) sections.
 
 For the full openMenu license text, see `/openMenu/LICENSE.md`.
 
@@ -193,7 +196,7 @@ This project includes a modified version of GD MENU Card Manager by sonik-br:
 Licensed under the GNU General Public License v3.0 (GPL-3.0)
 
 **Modifications made by Derek Pascarella (ateam) in 2026:**
-- See the [Changes Since GD MENU Card Manager v2.0.1](#changes-since-gd-menu-card-manager-v201) section.
+- See the [Changes Since GD MENU Card Manager v2.0.1](#changes-since-gd-menu-card-manager-v201) and [Changelog](#changelog) sections.
 
 This modified version is also licensed under GPL-3.0. For the full license text, see `/GD Menu Card Manager/LICENSE`.
 
