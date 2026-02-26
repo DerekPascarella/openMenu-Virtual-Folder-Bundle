@@ -50,10 +50,23 @@ crayon_peripheral_vmu_display_icon(uint8_t vmu_bitmap, void* icon) {
         for (i = 1; i <= 2; i++) {
             // a1a2b1b2c1c2d1d2
             if ((vmu_bitmap >> ((2 * j) + (i - 1))) & 1) { // We want to display on this VMU
-                if (!(vmu = maple_enum_dev(j, i))) {       // Device not present
+                if (!(vmu = maple_enum_dev(j, i)) || !vmu->valid) { // Device not present or invalid
                     continue;
                 }
-                vmu_draw_lcd(vmu, icon);
+                maple_device_t* ctrl = maple_enum_dev(j, 0);
+                if (ctrl && ctrl->valid && (ctrl->info.functions & MAPLE_FUNC_LIGHTGUN)) {
+                    unsigned char rotated[192];
+                    for (int r = 0; r < 192; r++) {
+                        unsigned char b = ((const unsigned char*)icon)[191 - r];
+                        b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
+                        b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
+                        b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
+                        rotated[r] = b;
+                    }
+                    vmu_draw_lcd(vmu, rotated);
+                } else {
+                    vmu_draw_lcd(vmu, icon);
+                }
             }
         }
     }

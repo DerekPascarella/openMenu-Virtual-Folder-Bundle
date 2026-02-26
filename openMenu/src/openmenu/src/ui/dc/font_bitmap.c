@@ -69,7 +69,7 @@ font_bmp_begin_draw() {
 void
 font_bmp_set_color(uint32_t color) {
     /*@Note: Either lxdream-nitro weirdness or something is wrong in how we draw,
-   * set both to 0xFFFFFFFF */
+     * set both to 0xFFFFFFFF */
     font_color = color;
 #ifdef KOS_SPRITE
     font_header.argb = color;

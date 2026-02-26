@@ -4,27 +4,21 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="320"
         x:Class="GDMENUCardManager.MetadataScanDialog"
-        Title="Metadata Cache Required" Height="380" Width="500"
+        Title="Metadata Cache Required" SizeToContent="Height" Width="500"
         CanResize="False"
         WindowStartupLocation="CenterOwner">
   <Grid Margin="20">
     <Grid.RowDefinitions>
-      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
       <RowDefinition Height="Auto"/>
       <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
 
     <!-- Message -->
-    <StackPanel Grid.Row="0" VerticalAlignment="Center">
-      <TextBlock TextWrapping="Wrap" Margin="0 0 0 15">
-        Your SD card contains games that were added by an older version of this
-        application (or another tool). These games are missing cached metadata
-        files that are required for proper operation.
-      </TextBlock>
+    <StackPanel Grid.Row="0">
+      <TextBlock TextWrapping="Wrap" Margin="0 0 0 15" Text="Your SD card contains games that were added by an older version of this application (or another tool). These games are missing cached metadata files that are required for proper operation."/>
 
-      <TextBlock TextWrapping="Wrap" Margin="0 0 0 10">
-        A one-time scan of all disc images will now be performed to:
-      </TextBlock>
+      <TextBlock TextWrapping="Wrap" Margin="0 0 0 10" Text="A one-time scan of all disc images will now be performed to:"/>
 
       <StackPanel Margin="20 0 0 15">
         <TextBlock Text="&#x2022; Read game properties from each disc image"/>
@@ -32,10 +26,7 @@
         <TextBlock Text="&#x2022; Ensure serial IDs display correctly for artwork matching"/>
       </StackPanel>
 
-      <TextBlock TextWrapping="Wrap">
-        This process cannot be skipped. Depending on the number of games and
-        your drive speed, this may take a few minutes.
-      </TextBlock>
+      <TextBlock TextWrapping="Wrap" Text="This process cannot be skipped. Depending on the number of games and your drive speed, this may take a few minutes."/>
     </StackPanel>
 
     <!-- Game count -->

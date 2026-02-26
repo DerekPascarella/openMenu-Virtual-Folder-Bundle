@@ -392,7 +392,7 @@ crayon_savefile_solidify(crayon_savefile_details_t* details) {
 
             status = crayon_savefile_save_device_status(details, i);
             if (status == CRAYON_SF_STATUS_CURRENT_SF || status == CRAYON_SF_STATUS_OLD_SF_ROOM
-                || status == CRAYON_SF_STATUS_NO_SF_ROOM) {
+                || status == CRAYON_SF_STATUS_NO_SF_ROOM || status == CRAYON_SF_STATUS_FUTURE_SF) {
                 details->save_device_id = i;
                 break;
             }
@@ -429,7 +429,7 @@ crayon_savefile_load_savedata(crayon_savefile_details_t* details) {
     // Only proceed if we can do something here
     int8_t status = crayon_savefile_save_device_status(details, details->save_device_id);
     if (status != CRAYON_SF_STATUS_CURRENT_SF && status != CRAYON_SF_STATUS_OLD_SF_ROOM
-        && status != CRAYON_SF_STATUS_NO_SF_ROOM) {
+        && status != CRAYON_SF_STATUS_NO_SF_ROOM && status != CRAYON_SF_STATUS_FUTURE_SF) {
         return -1;
     }
 
@@ -513,7 +513,7 @@ crayon_savefile_save_savedata(crayon_savefile_details_t* details) {
     // Only proceed if we can actually save
     int8_t status = crayon_savefile_save_device_status(details, details->save_device_id);
     if (status != CRAYON_SF_STATUS_CURRENT_SF && status != CRAYON_SF_STATUS_OLD_SF_ROOM
-        && status != CRAYON_SF_STATUS_NO_SF_ROOM) {
+        && status != CRAYON_SF_STATUS_NO_SF_ROOM && status != CRAYON_SF_STATUS_FUTURE_SF) {
         return -1;
     }
 
@@ -635,7 +635,7 @@ crayon_savefile_delete_savedata(crayon_savefile_details_t* details, int8_t save_
 
     maple_device_t* vmu;
     vec2_s8_t p_and_s = crayon_peripheral_dreamcast_get_port_and_slot(save_device_id);
-    if (!(vmu = maple_enum_dev(p_and_s.x, p_and_s.y))) { // Device not present
+    if (!(vmu = maple_enum_dev(p_and_s.x, p_and_s.y)) || !vmu->valid) { // Device not present or invalid
         return -1;
     }
 
@@ -761,7 +761,7 @@ uint8_t
 crayon_savefile_is_device_ready(crayon_savefile_details_t* details, int8_t save_device_id) {
     int8_t status = crayon_savefile_save_device_status(details, save_device_id);
     if (status != CRAYON_SF_STATUS_CURRENT_SF && status != CRAYON_SF_STATUS_OLD_SF_ROOM
-        && status != CRAYON_SF_STATUS_NO_SF_ROOM) {
+        && status != CRAYON_SF_STATUS_NO_SF_ROOM && status != CRAYON_SF_STATUS_FUTURE_SF) {
         return 0;
     }
     return 1;
@@ -907,8 +907,8 @@ crayon_savefile_deserialise_savedata(crayon_savefile_details_t* details, uint8_t
     data += sizeof(crayon_savefile_version_t);
     data_length -= sizeof(crayon_savefile_version_t);
 
-    // We'll also need to check if the version number is valid
-    if (loaded_version > details->latest_version || loaded_version == 0) {
+    // Version zero is reserved for "invalid/not present"
+    if (loaded_version == 0) {
         return -1;
     }
 
@@ -999,6 +999,10 @@ crayon_savefile_deserialise_savedata(crayon_savefile_details_t* details, uint8_t
                     case CRAYON_TYPE_UINT8: array[index] = old_savedata.u8 + pointers[curr->data_type]; break;
                     case CRAYON_TYPE_SINT8: array[index] = old_savedata.s8 + pointers[curr->data_type]; break;
                     case CRAYON_TYPE_CHAR: array[index] = old_savedata.chars + pointers[curr->data_type]; break;
+                    default:
+                        curr = curr->next;
+                        index++;
+                        continue;
                 }
                 pointers[curr->data_type] += curr->data_length;
 
@@ -1081,6 +1085,14 @@ crayon_savefile_deserialise_savedata(crayon_savefile_details_t* details, uint8_t
 
         // Free the old savedata arrays too
         crayon_savefile_free_savedata(&old_savedata);
+    } else if (loaded_version > details->latest_version) {
+        // Future version - read only current version's data, ignore extra
+        uint32_t expected_size = details->savedata.size - sizeof(crayon_savefile_version_t);
+        if (data_length < expected_size) {
+            return -1;
+        }
+
+        crayon_savefile_buffer_to_savedata(new_savedata, data);
     } else { // If same version
         // The size is wrong, savefile has been tampered with
         if (details->savedata.size - sizeof(crayon_savefile_version_t) != data_length) {
@@ -1109,7 +1121,7 @@ crayon_savefile_devices_free_space(int8_t device_id) {
 
     maple_device_t* vmu;
     vmu = maple_enum_dev(port_and_slot.x, port_and_slot.y);
-    if (!vmu) { // Device not found
+    if (!vmu || !vmu->valid) { // Device not found or invalid
         return 0;
     }
 

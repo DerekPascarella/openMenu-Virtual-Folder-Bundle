@@ -18,7 +18,8 @@ struct theme_color;
 
 void menu_setup(enum draw_state* state, struct theme_color* _colors, int* timeout_ptr, uint32_t title_color);
 void popup_setup(enum draw_state* state, struct theme_color* _colors, int* timeout_ptr, uint32_t title_color);
-void exit_menu_setup(enum draw_state* state, struct theme_color* _colors, int* timeout_ptr, uint32_t title_color, int is_folder);
+void exit_menu_setup(enum draw_state* state, struct theme_color* _colors, int* timeout_ptr, uint32_t title_color,
+                     int is_folder);
 void cb_menu_setup(enum draw_state* state, struct theme_color* _colors, int* timeout_ptr, uint32_t title_color);
 void saveload_setup(enum draw_state* state, struct theme_color* _colors, int* timeout_ptr, uint32_t title_color);
 
@@ -62,7 +63,27 @@ void draw_saveload_tr(void);
 /* COMPACTION_TEST_START */
 void draw_compaction_test_op(void);
 void draw_compaction_test_tr(void);
+
 /* COMPACTION_TEST_END */
+
+typedef enum {
+    SERIAL_VMU_LAUNCH_DC,
+    SERIAL_VMU_LAUNCH_BLEEM,
+    SERIAL_VMU_LAUNCH_BLOOM,
+    SERIAL_VMU_LAUNCH_CB,
+    SERIAL_VMU_LAUNCH_EXIT_BIOS,
+    SERIAL_VMU_LAUNCH_NONE,
+} serial_vmu_launch_action_t;
+
+void serial_vmu_setup(enum draw_state* state, struct theme_color* _colors, int* timeout_ptr, uint32_t title_color);
+void serial_vmu_start_restore(const gd_item* item, serial_vmu_launch_action_t action);
+void handle_input_serial_vmu(enum control input);
+void draw_serial_vmu_op(void);
+void draw_serial_vmu_tr(void);
+
+/* Check for pending backup on boot - call from UI mode after first frame rendered */
+void serial_vmu_check_boot_backup(enum draw_state* draw_current_ptr, struct theme_color* _colors, int* timeout_ptr,
+                                  uint32_t title_color);
 
 void set_cur_game_item(const gd_item* id);
 const gd_item* get_cur_game_item();

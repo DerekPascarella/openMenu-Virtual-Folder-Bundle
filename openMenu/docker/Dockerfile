@@ -46,9 +46,11 @@ RUN cd /opt/toolchains/dc/kos/utils/dc-chain && \
   make clean
 
 COPY kos_patch/fs_iso9660.patch /opt/toolchains/dc/kos/
+COPY kos_patch/libkosfat_directory.patch /opt/toolchains/dc/kos/
 
 RUN cd /opt/toolchains/dc/kos && \
   git apply fs_iso9660.patch && \
+  git apply libkosfat_directory.patch && \
   cp doc/environ.sh.sample environ.sh && \
   source /opt/toolchains/dc/kos/environ.sh && \
   make && \

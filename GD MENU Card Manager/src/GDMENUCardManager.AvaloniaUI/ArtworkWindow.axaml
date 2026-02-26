@@ -34,7 +34,7 @@
                Text="Artwork changes aren't written to DAT files until clicking Save Changes in the main window."/>
 
     <!-- Buttons -->
-    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,15,0,0">
+    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
       <Button Content="Browse for Image" Click="BrowseImage_Click" Margin="0,0,10,0" Padding="15,8"/>
       <Button Content="Delete Entry" Click="DeleteEntry_Click" Margin="0,0,10,0" Padding="15,8"
               IsEnabled="{Binding CanDelete}"/>

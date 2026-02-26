@@ -1,33 +1,43 @@
-﻿<Window x:Class="GDMENUCardManager.InfoWindow"
+<Window x:Class="GDMENUCardManager.InfoWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:GDMENUCardManager"
         mc:Ignorable="d"
-        Title="Info" SizeToContent="Height" Width="650" ResizeMode="NoResize" WindowStartupLocation="CenterOwner">
+        Title="Info" SizeToContent="WidthAndHeight" ResizeMode="NoResize" WindowStartupLocation="CenterOwner">
     <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="1*"/>
+            <ColumnDefinition Width="372"/>
             <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
 
-        <GroupBox Grid.Row="0" Grid.ColumnSpan="2" Header="File Info" Margin="5">
-            <TextBlock Text="{Binding FileInfo, Mode=OneTime}" TextWrapping="Wrap"/>
-        </GroupBox>
-        
-        <GroupBox Grid.Row="1" Grid.Column="0" Header="IP.BIN Info" Margin="5">
-            <TextBlock Text="{Binding IpInfo, Mode=OneWay}" TextWrapping="Wrap"/>
-        </GroupBox>
+        <!-- Left column: File Info and IP.BIN Info stacked, determines window height -->
+        <StackPanel x:Name="LeftPanel" Grid.Column="0">
+            <GroupBox Margin="5">
+                <GroupBox.Header>
+                    <TextBlock Text="File Info" FontWeight="Bold"/>
+                </GroupBox.Header>
+                <TextBlock Text="{Binding FileInfo, Mode=OneTime}" TextWrapping="Wrap"/>
+            </GroupBox>
 
-        <GroupBox Grid.Row="1" Grid.Column="1" Header="0GDTEX.PVR" Width="192" Height="192" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="5">
+            <GroupBox Margin="5">
+                <GroupBox.Header>
+                    <TextBlock Text="IP.BIN Info" FontWeight="Bold"/>
+                </GroupBox.Header>
+                <TextBlock Text="{Binding IpInfo, Mode=OneWay}" TextWrapping="Wrap"/>
+            </GroupBox>
+        </StackPanel>
+
+        <!-- Right column: 0GDTEX.PVR, height capped to left panel -->
+        <GroupBox Grid.Column="1" Width="173" Margin="5"
+                  MaxHeight="{Binding ActualHeight, ElementName=LeftPanel}">
+            <GroupBox.Header>
+                <TextBlock Text="0GDTEX.PVR" FontWeight="Bold"/>
+            </GroupBox.Header>
             <Grid>
                 <TextBlock Text="{Binding LabelText, Mode=OneWay}" TextWrapping="Wrap"/>
-                <Image Source="{Binding GdTexture, Mode=OneWay}"/>
+                <Image Source="{Binding GdTexture, Mode=OneWay}" Stretch="Uniform" Margin="9.5"/>
             </Grid>
         </GroupBox>
 

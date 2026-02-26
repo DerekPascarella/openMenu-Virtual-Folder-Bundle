@@ -101,9 +101,9 @@ static const struct gd_item* list_genre[17] = {
 static struct gd_item back_button = {"Back", "", " ", "DIR", "", "", 0, {' '}, ""};
 
 /* Folder tree system for hierarchical navigation */
-#define MAX_FOLDER_DEPTH 8
-#define MAX_FOLDER_PATH 512
-#define MAX_FOLDER_NODES 1024
+#define MAX_FOLDER_DEPTH    8
+#define MAX_FOLDER_PATH     512
+#define MAX_FOLDER_NODES    1024
 #define MAX_FOLDER_CHILDREN 1024
 
 typedef struct folder_node {
@@ -111,10 +111,10 @@ typedef struct folder_node {
     struct folder_node* parent;
     struct folder_node* children[MAX_FOLDER_CHILDREN];
     int num_children;
-    gd_item** games;        /* Dynamic array of game pointers */
-    int num_games;          /* Current number of games */
-    int games_capacity;     /* Allocated capacity */
-    int first_seen_slot;    /* Slot number of first game with this folder path */
+    gd_item** games;     /* Dynamic array of game pointers */
+    int num_games;       /* Current number of games */
+    int games_capacity;  /* Allocated capacity */
+    int first_seen_slot; /* Slot number of first game with this folder path */
 } folder_node_t;
 
 typedef struct {
@@ -130,10 +130,62 @@ static struct gd_item parent_button = {"[..]", "", "F..", "DIR", "", "", 0, {' '
 static struct gd_item folder_items[MAX_FOLDER_NODES];
 static int folder_items_count = 0;
 
+/* Currently browsed folder node (set by list_set_folder_root/path) */
+static folder_node_t* folder_current_node = NULL;
+
 /* Temporary list for holding all multidisc games in a set */
 #define MULTIDISC_MAX_GAMES_PER_SET (10)
 static int num_items_multidisc = -1;
 static gd_item* list_multidisc[MULTIDISC_MAX_GAMES_PER_SET] = {NULL};
+
+/* Alt folder paths - temporary storage during INI parse + tree build, then freed */
+#define MAX_FOLDER_ALTS 5
+
+typedef struct folder_alt_entry {
+    int slot;
+    int count;
+    char paths[MAX_FOLDER_ALTS][MAX_FOLDER_PATH];
+} folder_alt_entry_t;
+
+static folder_alt_entry_t* folder_alt_entries = NULL;
+static int folder_alt_count = 0;
+static int folder_alt_capacity = 0;
+
+static folder_alt_entry_t*
+folder_alt_find(int slot) {
+    for (int i = 0; i < folder_alt_count; i++) {
+        if (folder_alt_entries[i].slot == slot) {
+            return &folder_alt_entries[i];
+        }
+    }
+    return NULL;
+}
+
+static void
+folder_alt_store(int slot, int alt_idx, const char* path) {
+    folder_alt_entry_t* entry = folder_alt_find(slot);
+    if (!entry) {
+        if (folder_alt_count >= folder_alt_capacity) {
+            int new_cap = folder_alt_capacity ? folder_alt_capacity * 2 : 16;
+            folder_alt_entry_t* new_arr = realloc(folder_alt_entries, new_cap * sizeof(folder_alt_entry_t));
+            if (!new_arr) {
+                return;
+            }
+            folder_alt_entries = new_arr;
+            folder_alt_capacity = new_cap;
+        }
+        entry = &folder_alt_entries[folder_alt_count++];
+        memset(entry, 0, sizeof(*entry));
+        entry->slot = slot;
+    }
+    if (alt_idx < MAX_FOLDER_ALTS) {
+        strncpy(entry->paths[alt_idx], path, MAX_FOLDER_PATH - 1);
+        entry->paths[alt_idx][MAX_FOLDER_PATH - 1] = '\0';
+        if (alt_idx >= entry->count) {
+            entry->count = alt_idx + 1;
+        }
+    }
+}
 
 #ifndef STANDALONE_BINARY
 static inline long int
@@ -198,6 +250,13 @@ read_openmenu_ini(void* user, const char* section, const char* name, const char*
 #define CFG(s, n, default)                                                                                             \
     else if (strcasecmp(section, #s) == 0 && strcasecmp(plain_name, #n) == 0) strcpy(item->n, value);
 #include "backend/gd_item.def"
+            /* Alt folder paths for Folders mode (folder_alt1..folder_alt5) */
+            else if (strcasecmp(section, "ITEMS") == 0 && strncasecmp(plain_name, "folder_alt", 10) == 0) {
+                int alt_num = atoi(plain_name + 10);
+                if (alt_num >= 1 && alt_num <= MAX_FOLDER_ALTS) {
+                    folder_alt_store(slot, alt_num - 1, value);
+                }
+            }
 
         } else {
             /* error */
@@ -496,6 +555,35 @@ list_count_multidisc_filtered(const char* product_id, const char* folder_path) {
     return count;
 }
 
+/* Node-based multi-disc lookup (uses current folder node, handles alt folders) */
+void
+list_set_multidisc_in_folder(const char* product_id) {
+    int temp_idx = 0;
+    folder_node_t* node = folder_current_node ? folder_current_node : folder_tree_root;
+
+    for (int i = 0; i < node->num_games; i++) {
+        if (strcmp(node->games[i]->product, product_id) == 0) {
+            if (temp_idx < MULTIDISC_MAX_GAMES_PER_SET) {
+                list_multidisc[temp_idx++] = node->games[i];
+            }
+        }
+    }
+    num_items_multidisc = temp_idx;
+}
+
+int
+list_count_multidisc_in_folder(const char* product_id) {
+    int count = 0;
+    folder_node_t* node = folder_current_node ? folder_current_node : folder_tree_root;
+
+    for (int i = 0; i < node->num_games; i++) {
+        if (strcmp(node->games[i]->product, product_id) == 0) {
+            count++;
+        }
+    }
+    return count;
+}
+
 int
 list_length(void) {
     return num_items_current;
@@ -523,7 +611,7 @@ fix_sega_serials(void) {
             strcpy(item->product, "MK5103550");
         }
         /* Fix Disney's Donald Duck: Goin' Quackers (USA) overlapping Disney's
-     * Donald Duck: Quack Attack (PAL) */
+         * Donald Duck: Quack Attack (PAL) */
         if (!strcmp(item->product, "T17714D50") && !strcmp(item->date, "20001116")) {
             strcpy(item->product, "T17719N");
         }
@@ -532,7 +620,7 @@ fix_sega_serials(void) {
             strcpy(item->product, "MK5111450");
         }
         /* Fix Legacy of Kain: Soul Reaver (PAL) overlapping Legacy of Kain: Soul
-     * Reaver (USA) */
+         * Reaver (USA) */
         if (!strcmp(item->product, "T36802N") && !strcmp(item->date, "19991220")) {
             strcpy(item->product, "T36803D05");
         }
@@ -716,7 +804,7 @@ folder_find_or_create_node(folder_node_t* parent, const char* name, int slot_num
     strncpy(node->name, name, 255);
     node->name[255] = '\0';
     node->parent = parent;
-    node->first_seen_slot = slot_num;  /* Track when this folder was first seen */
+    node->first_seen_slot = slot_num; /* Track when this folder was first seen */
 
     /* Allocate initial capacity for games (start with 64, will grow as needed) */
     node->games_capacity = 64;
@@ -811,7 +899,7 @@ folder_cmp(const void* a, const void* b) {
 static int
 folder_game_visible(folder_node_t* node, gd_item* game, int hide_multidisc) {
     if (!hide_multidisc) {
-        return 1;  /* Show all discs */
+        return 1; /* Show all discs */
     }
 
     /* Games without product codes are always visible (treat as single disc) */
@@ -823,7 +911,7 @@ folder_game_visible(folder_node_t* node, gd_item* game, int hide_multidisc) {
     int disc_set = gd_item_disc_total(game->disc);
 
     if (disc_set <= 1) {
-        return 1;  /* Single disc game, always visible */
+        return 1; /* Single disc game, always visible */
     }
 
     /* Show only the lowest disc number for this product in this folder */
@@ -871,6 +959,39 @@ folder_has_visible_content(folder_node_t* node, int hide_multidisc) {
     return 0;
 }
 
+/* Register a game into a folder path in the tree. Skips duplicates. */
+static void
+folder_register_item(gd_item* item, const char* folder_path, int slot_idx) {
+    char segments[MAX_FOLDER_DEPTH][256];
+    int depth = folder_parse_path(folder_path, segments, MAX_FOLDER_DEPTH);
+
+    folder_node_t* current = folder_tree_root;
+    for (int d = 0; d < depth; d++) {
+        current = folder_find_or_create_node(current, segments[d], slot_idx);
+        if (!current) {
+            return;
+        }
+    }
+
+    /* Check for duplicate (same item pointer already in this node) */
+    for (int i = 0; i < current->num_games; i++) {
+        if (current->games[i] == item) {
+            return;
+        }
+    }
+
+    if (current->num_games >= current->games_capacity) {
+        int new_capacity = current->games_capacity * 2;
+        gd_item** new_games = realloc(current->games, new_capacity * sizeof(gd_item*));
+        if (!new_games) {
+            return;
+        }
+        current->games = new_games;
+        current->games_capacity = new_capacity;
+    }
+    current->games[current->num_games++] = item;
+}
+
 void
 list_folder_init(void) {
     folder_tree_root = calloc(1, sizeof(folder_node_t));
@@ -895,34 +1016,26 @@ list_folder_init(void) {
     for (int i = 1; i < num_items_BASE; i++) {
         gd_item* item = &gd_slots_BASE[i];
 
-        char segments[MAX_FOLDER_DEPTH][256];
-        int depth = folder_parse_path(item->folder, segments, MAX_FOLDER_DEPTH);
+        /* Register primary folder */
+        folder_register_item(item, item->folder, i);
 
-        folder_node_t* current = folder_tree_root;
-
-        for (int d = 0; d < depth; d++) {
-            current = folder_find_or_create_node(current, segments[d], i);
-            if (!current) {
-                break;
-            }
-        }
-
-        if (current) {
-            /* Grow the games array if needed */
-            if (current->num_games >= current->games_capacity) {
-                int new_capacity = current->games_capacity * 2;
-                gd_item** new_games = realloc(current->games, new_capacity * sizeof(gd_item*));
-                if (new_games) {
-                    current->games = new_games;
-                    current->games_capacity = new_capacity;
-                } else {
-                    printf("Warning: Could not expand games array for folder '%s'\n", current->name);
-                    continue;
+        /* Register alt folders (folder_alt1..folder_alt5 from INI) */
+        folder_alt_entry_t* alts = folder_alt_find(i + 1); /* slot is 1-indexed */
+        if (alts) {
+            for (int a = 0; a < alts->count; a++) {
+                if (alts->paths[a][0] == '\0') {
+                    continue; /* skip unset/gap entries */
                 }
+                folder_register_item(item, alts->paths[a], i);
             }
-            current->games[current->num_games++] = item;
         }
     }
+
+    /* Free alt folder table, no longer needed after tree build */
+    free(folder_alt_entries);
+    folder_alt_entries = NULL;
+    folder_alt_count = 0;
+    folder_alt_capacity = 0;
 
     folder_state.depth = 0;
     folder_state.path[0] = '\0';
@@ -988,6 +1101,7 @@ list_set_folder_root(void) {
     list_current = list_temp;
     num_items_current = num_items_temp = temp_idx;
 
+    folder_current_node = folder_tree_root;
     folder_state.depth = 0;
     folder_state.path[0] = '\0';
 
@@ -1006,6 +1120,8 @@ list_set_folder_path(const char* path) {
         list_set_folder_root();
         return;
     }
+
+    folder_current_node = node;
 
 #ifndef STANDALONE_BINARY
     int hide_multidisc = sf_multidisc[0];
@@ -1079,7 +1195,7 @@ list_folder_enter(const char* folder_name, int cursor_pos) {
     }
 
     if (!target_folder) {
-        return;  /* Folder not found */
+        return; /* Folder not found */
     }
 
     /* Save cursor position before descending */
@@ -1137,7 +1253,7 @@ list_folder_get_stats(const char* folder_name, int* num_subfolders, int* num_gam
         }
     }
 
-    return -1;  /* Folder not found */
+    return -1; /* Folder not found */
 }
 
 int

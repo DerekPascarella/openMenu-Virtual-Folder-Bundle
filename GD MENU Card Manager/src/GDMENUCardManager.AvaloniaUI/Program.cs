@@ -2,6 +2,8 @@
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Dialogs;
 using System;
+using System.Runtime.InteropServices;
+using GDMENUCardManager.Core;
 
 namespace GDMENUCardManager
 {
@@ -11,8 +13,17 @@ namespace GDMENUCardManager
         // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
         // yet and stuff might break.
         [STAThread]
-        public static void Main(string[] args) => BuildAvaloniaApp()
-            .StartWithClassicDesktopLifetime(args);
+        public static void Main(string[] args)
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                var bundlePath = AppDomain.CurrentDomain.BaseDirectory;
+                MacOsDataMigration.EnsureApplicationSupportExists(bundlePath);
+                AppDomain.CurrentDomain.SetData("APP_CONFIG_FILE",
+                    MacOsDataMigration.GetUserConfigPath());
+            }
+            BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+        }
 
         // Avalonia configuration, don't remove; also used by visual designer.
         public static AppBuilder BuildAvaloniaApp()

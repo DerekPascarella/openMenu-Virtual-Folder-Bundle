@@ -28,13 +28,13 @@
 #include "ui/ui_line_desc.h"
 
 /* Keyboard scancodes for quick-jump (from KOS keyboard.h) */
-#define KBD_KEY_A      0x04
-#define KBD_KEY_Z      0x1d
-#define KBD_KEY_1      0x1e
-#define KBD_KEY_9      0x26
-#define KBD_KEY_0      0x27
-#define KBD_MOD_LSHIFT 0x02
-#define KBD_MOD_RSHIFT 0x20
+#define KBD_KEY_A            0x04
+#define KBD_KEY_Z            0x1d
+#define KBD_KEY_1            0x1e
+#define KBD_KEY_9            0x26
+#define KBD_KEY_0            0x27
+#define KBD_MOD_LSHIFT       0x02
+#define KBD_MOD_RSHIFT       0x20
 
 /* Scaling */
 #define X_SCALE_4_3          ((float)1.0f)
@@ -89,6 +89,7 @@ static theme_color* current_theme_colors;
 
 static region region_current = REGION_NTSC_U;
 static enum draw_state draw_current = DRAW_UI;
+static bool serial_vmu_boot_checked = false;
 
 static void
 recalculate_aspect(CFG_ASPECT aspect) {
@@ -148,7 +149,7 @@ draw_small_boxes(void) {
     float y_pos = 350.0f;
 
     /* possible change how many we draw based on if we are not quite at the 5th
-   * item in the list */
+     * item in the list */
     if (current_selected_item < (NUM_ICONS / 2)) {
         num_icons = (NUM_ICONS / 2) + current_selected_item;
         x_start += (((NUM_ICONS / 2)) - current_selected_item) * (ICON_SIZE_X + ICON_SPACING);
@@ -430,7 +431,8 @@ menu_cb(void) {
 
     start_cb = 0;
     draw_current = DRAW_CODEBREAKER;
-    cb_menu_setup(&draw_current, &region_themes[region_current].colors, &navigate_timeout, region_themes[region_current].colors.menu_highlight_color);
+    cb_menu_setup(&draw_current, &region_themes[region_current].colors, &navigate_timeout,
+                  region_themes[region_current].colors.menu_highlight_color);
 }
 
 static void
@@ -445,12 +447,21 @@ run_cb(void) {
     if (hide_multidisc && (disc_set > 1) && list_current[current_selected_item]->product[0] != '\0') {
         cb_multidisc = 1;
         draw_current = DRAW_MULTIDISC;
-        popup_setup(&draw_current, &region_themes[region_current].colors, &navigate_timeout, region_themes[region_current].colors.menu_highlight_color);
+        popup_setup(&draw_current, &region_themes[region_current].colors, &navigate_timeout,
+                    region_themes[region_current].colors.menu_highlight_color);
         list_set_multidisc(list_current[current_selected_item]->product);
         return;
     }
 
-    dreamcast_launch_cb(list_current[current_selected_item]);
+    if (sf_serial_vmu[0] != SERIAL_VMU_OFF) {
+        set_cur_game_item(list_current[current_selected_item]);
+        draw_current = DRAW_SERIAL_VMU;
+        serial_vmu_setup(&draw_current, &region_themes[region_current].colors, &navigate_timeout,
+                         region_themes[region_current].colors.menu_highlight_color);
+        serial_vmu_start_restore(list_current[current_selected_item], SERIAL_VMU_LAUNCH_CB);
+    } else {
+        dreamcast_launch_cb(list_current[current_selected_item]);
+    }
 }
 
 static void
@@ -494,23 +505,41 @@ menu_accept(void) {
     if (hide_multidisc && (disc_set > 1) && list_current[current_selected_item]->product[0] != '\0') {
         cb_multidisc = 0;
         draw_current = DRAW_MULTIDISC;
-        popup_setup(&draw_current, &region_themes[region_current].colors, &navigate_timeout, region_themes[region_current].colors.menu_highlight_color);
+        popup_setup(&draw_current, &region_themes[region_current].colors, &navigate_timeout,
+                    region_themes[region_current].colors.menu_highlight_color);
         list_set_multidisc(list_current[current_selected_item]->product);
         return;
     }
 
     if (!strcmp(list_current[current_selected_item]->type, "psx")) {
         if (is_bloom_available()) {
-            /* Show PSX launcher choice popup */
+            /* Show PSX launcher choice popup (Serial VMU intercept happens in menu_accept_psx_launcher) */
             set_cur_game_item(list_current[current_selected_item]);
             draw_current = DRAW_PSX_LAUNCHER;
-            popup_setup(&draw_current, &region_themes[region_current].colors, &navigate_timeout, region_themes[region_current].colors.menu_highlight_color);
+            popup_setup(&draw_current, &region_themes[region_current].colors, &navigate_timeout,
+                        region_themes[region_current].colors.menu_highlight_color);
         } else {
             /* No Bloom available, launch directly with Bleem */
-            bleem_launch(list_current[current_selected_item]);
+            if (sf_serial_vmu[0] != SERIAL_VMU_OFF && strcmp(list_current[current_selected_item]->type, "other") != 0) {
+                set_cur_game_item(list_current[current_selected_item]);
+                draw_current = DRAW_SERIAL_VMU;
+                serial_vmu_setup(&draw_current, &region_themes[region_current].colors, &navigate_timeout,
+                                 region_themes[region_current].colors.menu_highlight_color);
+                serial_vmu_start_restore(list_current[current_selected_item], SERIAL_VMU_LAUNCH_BLEEM);
+            } else {
+                bleem_launch(list_current[current_selected_item]);
+            }
         }
     } else {
-        dreamcast_launch_disc(list_current[current_selected_item]);
+        if (sf_serial_vmu[0] != SERIAL_VMU_OFF && strcmp(list_current[current_selected_item]->type, "other") != 0) {
+            set_cur_game_item(list_current[current_selected_item]);
+            draw_current = DRAW_SERIAL_VMU;
+            serial_vmu_setup(&draw_current, &region_themes[region_current].colors, &navigate_timeout,
+                             region_themes[region_current].colors.menu_highlight_color);
+            serial_vmu_start_restore(list_current[current_selected_item], SERIAL_VMU_LAUNCH_DC);
+        } else {
+            dreamcast_launch_disc(list_current[current_selected_item]);
+        }
     }
 }
 
@@ -518,7 +547,8 @@ static void
 menu_settings(void) {
 
     draw_current = DRAW_MENU;
-    menu_setup(&draw_current, &region_themes[region_current].colors, &navigate_timeout, region_themes[region_current].colors.menu_highlight_color);
+    menu_setup(&draw_current, &region_themes[region_current].colors, &navigate_timeout,
+               region_themes[region_current].colors.menu_highlight_color);
 }
 
 static void
@@ -548,7 +578,8 @@ menu_exit(void) {
 
     set_cur_game_item(list_current[current_selected_item]);
     draw_current = DRAW_EXIT;
-    exit_menu_setup(&draw_current, &region_themes[region_current].colors, &navigate_timeout, region_themes[region_current].colors.menu_highlight_color, 0 /* not a folder */);
+    exit_menu_setup(&draw_current, &region_themes[region_current].colors, &navigate_timeout,
+                    region_themes[region_current].colors.menu_highlight_color, 0 /* not a folder */);
 }
 
 /* Quick-jump: check for Shift+Key and jump to first matching item */
@@ -752,6 +783,9 @@ FUNCTION_INPUT(UI_NAME, handle_input) {
             handle_input_compaction_test(input_current);
         } break;
         /* COMPACTION_TEST_END */
+        case DRAW_SERIAL_VMU: {
+            handle_input_serial_vmu(input_current);
+        } break;
         default:
         case DRAW_UI: {
             handle_input_ui(input_current);
@@ -813,6 +847,13 @@ FUNCTION(UI_NAME, drawTR) {
         draw_big_box();
     }
 
+    /* Check for pending Serial VMU backup on first frame */
+    if (!serial_vmu_boot_checked && draw_current == DRAW_UI) {
+        serial_vmu_boot_checked = true;
+        serial_vmu_check_boot_backup(&draw_current, &region_themes[region_current].colors, &navigate_timeout,
+                                     region_themes[region_current].colors.menu_highlight_color);
+    }
+
     switch (draw_current) {
         case DRAW_MENU: {
             /* Menu on top */
@@ -847,6 +888,10 @@ FUNCTION(UI_NAME, drawTR) {
             draw_compaction_test_tr();
         } break;
         /* COMPACTION_TEST_END */
+        case DRAW_SERIAL_VMU: {
+            draw_serial_vmu_op();
+            draw_serial_vmu_tr();
+        } break;
         default:
         case DRAW_UI: {
             /* always drawn */

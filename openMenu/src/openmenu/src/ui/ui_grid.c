@@ -27,13 +27,13 @@
 #include "ui/ui_grid.h"
 
 /* Keyboard scancodes for quick-jump (from KOS keyboard.h) */
-#define KBD_KEY_A      0x04
-#define KBD_KEY_Z      0x1d
-#define KBD_KEY_1      0x1e
-#define KBD_KEY_9      0x26
-#define KBD_KEY_0      0x27
-#define KBD_MOD_LSHIFT 0x02
-#define KBD_MOD_RSHIFT 0x20
+#define KBD_KEY_A            0x04
+#define KBD_KEY_Z            0x1d
+#define KBD_KEY_1            0x1e
+#define KBD_KEY_9            0x26
+#define KBD_KEY_0            0x27
+#define KBD_MOD_LSHIFT       0x02
+#define KBD_MOD_RSHIFT       0x20
 
 /* Scaling */
 #define X_SCALE_4_3          ((float)1.0f)
@@ -122,6 +122,7 @@ static theme_color* current_theme_colors;
 
 static region region_current = REGION_NTSC_U;
 static enum draw_state draw_current = DRAW_UI;
+static bool serial_vmu_boot_checked = false;
 
 static void
 recalculate_aspect(CFG_ASPECT aspect) {
@@ -502,7 +503,15 @@ run_cb(void) {
         return;
     }
 
-    dreamcast_launch_cb(list_current[current_selected()]);
+    if (sf_serial_vmu[0] != SERIAL_VMU_OFF) {
+        set_cur_game_item(list_current[current_selected()]);
+        draw_current = DRAW_SERIAL_VMU;
+        serial_vmu_setup(&draw_current, current_theme_colors, &navigate_timeout,
+                         current_theme_colors->menu_highlight_color);
+        serial_vmu_start_restore(list_current[current_selected()], SERIAL_VMU_LAUNCH_CB);
+    } else {
+        dreamcast_launch_cb(list_current[current_selected()]);
+    }
 }
 
 static void
@@ -561,13 +570,30 @@ menu_accept(void) {
             /* Show PSX launcher choice popup */
             set_cur_game_item(list_current[current_selected()]);
             draw_current = DRAW_PSX_LAUNCHER;
-            popup_setup(&draw_current, current_theme_colors, &navigate_timeout, current_theme_colors->menu_highlight_color);
+            popup_setup(&draw_current, current_theme_colors, &navigate_timeout,
+                        current_theme_colors->menu_highlight_color);
         } else {
             /* No Bloom available, launch directly with Bleem */
-            bleem_launch(list_current[current_selected()]);
+            if (sf_serial_vmu[0] != SERIAL_VMU_OFF && strcmp(list_current[current_selected()]->type, "other") != 0) {
+                set_cur_game_item(list_current[current_selected()]);
+                draw_current = DRAW_SERIAL_VMU;
+                serial_vmu_setup(&draw_current, current_theme_colors, &navigate_timeout,
+                                 current_theme_colors->menu_highlight_color);
+                serial_vmu_start_restore(list_current[current_selected()], SERIAL_VMU_LAUNCH_BLEEM);
+            } else {
+                bleem_launch(list_current[current_selected()]);
+            }
         }
     } else {
-        dreamcast_launch_disc(list_current[current_selected()]);
+        if (sf_serial_vmu[0] != SERIAL_VMU_OFF && strcmp(list_current[current_selected()]->type, "other") != 0) {
+            set_cur_game_item(list_current[current_selected()]);
+            draw_current = DRAW_SERIAL_VMU;
+            serial_vmu_setup(&draw_current, current_theme_colors, &navigate_timeout,
+                             current_theme_colors->menu_highlight_color);
+            serial_vmu_start_restore(list_current[current_selected()], SERIAL_VMU_LAUNCH_DC);
+        } else {
+            dreamcast_launch_disc(list_current[current_selected()]);
+        }
     }
 }
 
@@ -613,7 +639,8 @@ menu_exit(void) {
 
     set_cur_game_item(list_current[current_selected()]);
     draw_current = DRAW_EXIT;
-    exit_menu_setup(&draw_current, current_theme_colors, &navigate_timeout, current_theme_colors->menu_highlight_color, 0 /* not a folder */);
+    exit_menu_setup(&draw_current, current_theme_colors, &navigate_timeout, current_theme_colors->menu_highlight_color,
+                    0 /* not a folder */);
 }
 
 /* Quick-jump: check for Shift+Key and jump to first matching item */
@@ -673,9 +700,11 @@ handle_keyboard_quickjump(void) {
             int page = i / items_per_page;
             current_starting_index = page * items_per_page;
 
-            /* Ensure we don't start past the last visible page */
+            /* clamp to last visible page */
             int max_start = list_len - items_per_page;
-            if (max_start < 0) max_start = 0;
+            if (max_start < 0) {
+                max_start = 0;
+            }
             if (current_starting_index > max_start) {
                 current_starting_index = max_start;
             }
@@ -863,6 +892,9 @@ FUNCTION_INPUT(UI_NAME, handle_input) {
             handle_input_compaction_test(input_current);
         } break;
         /* COMPACTION_TEST_END */
+        case DRAW_SERIAL_VMU: {
+            handle_input_serial_vmu(input_current);
+        } break;
         default:
         case DRAW_UI: {
             handle_input_ui(input_current);
@@ -921,6 +953,13 @@ FUNCTION(UI_NAME, drawTR) {
     draw_grid_boxes();
     draw_game_title();
 
+    /* Check for pending Serial VMU backup on first frame */
+    if (!serial_vmu_boot_checked && draw_current == DRAW_UI) {
+        serial_vmu_boot_checked = true;
+        serial_vmu_check_boot_backup(&draw_current, current_theme_colors, &navigate_timeout,
+                                     current_theme_colors->menu_highlight_color);
+    }
+
     switch (draw_current) {
         case DRAW_MENU: {
             /* Menu on top */
@@ -955,6 +994,10 @@ FUNCTION(UI_NAME, drawTR) {
             draw_compaction_test_tr();
         } break;
         /* COMPACTION_TEST_END */
+        case DRAW_SERIAL_VMU: {
+            draw_serial_vmu_op();
+            draw_serial_vmu_tr();
+        } break;
         default:
         case DRAW_UI: {
             /* always drawn */

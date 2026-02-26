@@ -121,23 +121,23 @@
 
                     <Separator Margin="0,12"/>
 
-                    <!-- Assign Folder Path -->
-                    <TextBlock FontWeight="Bold" TextWrapping="Wrap">Assign Single or Bulk Folder Path (openMenu mode)</TextBlock>
-                    <TextBlock Margin="0,4,0,0" TextWrapping="Wrap">Context menu → Assign Folder Path to organize games into folders</TextBlock>
+                    <!-- Folder Paths -->
+                    <TextBlock FontWeight="Bold" TextWrapping="Wrap">Folder Paths (openMenu mode)</TextBlock>
+                    <TextBlock Margin="0,4,0,0" TextWrapping="Wrap">Context menu → Assign Folder Path to organize one or more games into a folder. Assign Additional Folder Paths to place a single game in up to five additional folders.</TextBlock>
                 </StackPanel>
 
                 <!-- Right Column -->
                 <StackPanel Grid.Column="2">
                     <!-- Artwork -->
                     <TextBlock FontWeight="Bold" TextWrapping="Wrap">Artwork (openMenu mode)</TextBlock>
-                    <TextBlock Margin="0,4,0,0" TextWrapping="Wrap">Click Assign/Manage button in the Art column to set box art</TextBlock>
+                    <TextBlock Margin="0,4,0,0" TextWrapping="Wrap">Click Assign/Manage button in the Art column to set box art.</TextBlock>
 
                     <Separator Margin="0,12"/>
 
                     <!-- Batch Folder Move and Rename -->
                     <TextBlock FontWeight="Bold" TextWrapping="Wrap">Batch Folder Move and Rename (openMenu mode)</TextBlock>
-                    <TextBlock Margin="0,4,0,0">Reorganize folder hierarchy via tree view</TextBlock>
-                    <TextBlock>Double-click to rename, drag to reparent</TextBlock>
+                    <TextBlock Margin="0,4,0,0">Reorganize folder hierarchy via tree view.</TextBlock>
+                    <TextBlock>Double-click to rename, drag to reparent.</TextBlock>
 
                     <Separator Margin="0,12"/>
 
@@ -183,5 +183,10 @@
             <TextBlock FontWeight="Bold" TextWrapping="Wrap">Credits</TextBlock>
             <TextBlock Margin="0,4,0,0" TextWrapping="Wrap">GDEMU - Deunan; gdMenu - neuroacid; openMenu - mrneo240; GdiBuilder - Paul Kratt; GdiShrink - FamilyGuy; Aaru - Natalia Portillo; PuyoTools - Nick Woronekin; Redump2CDI - darc; gdidrop - feyris-tan; libchdr - Romain Tisserand; ImageSharp - SixLabors; ClosedXML - Jan Havlíček; 7z - Igor Pavlov; SevenZipSharp - Joel Ahlgren</TextBlock>
         </StackPanel>
+
+        <!-- Check for Updates button (top-right, rendered after StackPanel so it's on top for clicks) -->
+        <Button Content="Check for Updates" Click="CheckForUpdatesButton_Click"
+                HorizontalAlignment="Right" VerticalAlignment="Top"
+                Height="28" Padding="12 0"/>
     </Grid>
 </Window>

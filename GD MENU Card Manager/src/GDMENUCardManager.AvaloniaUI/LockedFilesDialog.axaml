@@ -15,7 +15,7 @@
     </Grid.RowDefinitions>
 
     <StackPanel Grid.Row="0" Margin="0,0,0,10">
-      <TextBlock FontWeight="Bold" TextWrapping="Wrap">The following files or folders are currently in use and cannot be modified.</TextBlock>
+      <TextBlock FontWeight="Bold" TextWrapping="Wrap" Margin="0,0,0,8">The following files or folders are currently in use and cannot be modified.</TextBlock>
       <TextBlock TextWrapping="Wrap">Please close any programs that may be using these files (e.g., file explorer, media players) and click Retry.</TextBlock>
     </StackPanel>
 
@@ -31,8 +31,8 @@
     </ListBox>
 
     <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
-      <Button Content="Retry" Width="80" Margin="0,0,10,0" Click="RetryButton_Click" IsDefault="True"/>
-      <Button Content="Cancel" Width="80" Click="CancelButton_Click"/>
+      <Button Content="Retry" Width="80" Padding="15,8" Margin="0,0,10,0" Click="RetryButton_Click" IsDefault="True"/>
+      <Button Content="Cancel" Width="80" Padding="15,8" Click="CancelButton_Click"/>
     </StackPanel>
   </Grid>
 </Window>

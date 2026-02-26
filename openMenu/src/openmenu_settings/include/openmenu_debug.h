@@ -2,9 +2,7 @@
  * File: openmenu_debug.h
  * Project: openMenu
  *
- * Central debug feature toggles.
- * Set any of these to 1 to enable, 0 to disable.
- * All debug features are disabled by default for release builds.
+ * Debug feature toggles. Set to 1 to enable.
  */
 
 #ifndef OPENMENU_DEBUG_H
@@ -15,7 +13,7 @@
  *
  * When enabled, the screen will flash different colors at each stage of
  * maple device initialization. The last color shown indicates where a
- * hang occurs. Useful for diagnosing issues when no VMU is connected.
+ * hang occurs.
  *
  * Color sequence in main.c:
  *   RED (255,0,0)     - Before maple_wait_scan()
@@ -40,7 +38,7 @@
  *
  * Each flash lasts 300ms, so boot will be ~4.5 seconds slower when enabled.
  */
-#define DEBUG_MAPLE_FLASH 0
+#define DEBUG_MAPLE_FLASH     0
 
 /*
  * DEBUG_COMPACTION_TEST - Enable flashrom partition compaction test menu
@@ -65,9 +63,7 @@
  *   - vmu_get_datetime result and time value
  *   - RTC set result and flashrom update result
  *   - Raw clock bytes from VMU response
- *
- * Useful for debugging VMU time sync issues.
  */
-#define DEBUG_VMU_SYNC 0
+#define DEBUG_VMU_SYNC        0
 
 #endif /* OPENMENU_DEBUG_H */

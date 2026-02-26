@@ -270,7 +270,7 @@ theme_read(const char* filename, void* theme, int type) {
     }
 
     size_t ini_size = filelength(ini);
-    char* ini_buffer = malloc(ini_size + 1);  /* +1 for null terminator */
+    char* ini_buffer = malloc(ini_size + 1); /* +1 for null terminator */
     if (!ini_buffer) {
         /* printf("%s no free memory\n", __func__); */
         fs_close(ini);

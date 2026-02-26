@@ -14,6 +14,7 @@
         <TextBlock Grid.Row="0" TextWrapping="Wrap" Margin="0,0,0,10">
             <Run FontWeight="Bold">The following files or folders are currently in use and cannot be modified.</Run>
             <LineBreak/>
+            <LineBreak/>
             <Run>Please close any programs that may be using these files (e.g., file explorer, media players) and click Retry.</Run>
         </TextBlock>
 
@@ -29,8 +30,8 @@
         </ListBox>
 
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button Content="Retry" Width="80" Margin="0,0,10,0" Click="RetryButton_Click" IsDefault="True"/>
-            <Button Content="Cancel" Width="80" Click="CancelButton_Click" IsCancel="True"/>
+            <Button Content="Retry" Width="80" Padding="15,8" Margin="0,0,10,0" Click="RetryButton_Click" IsDefault="True"/>
+            <Button Content="Cancel" Width="80" Padding="15,8" Click="CancelButton_Click" IsCancel="True"/>
         </StackPanel>
     </Grid>
 </Window>

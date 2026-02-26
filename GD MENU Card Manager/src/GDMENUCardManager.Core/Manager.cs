@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using ClosedXML.Excel;
@@ -12,68 +13,30 @@ using GDMENUCardManager.Core.Interface;
 
 namespace GDMENUCardManager.Core
 {
-    /// <summary>
-    /// Represents the status of DAT files when loading openMenu.
-    /// </summary>
     public enum DatFileStatus
     {
-        /// <summary>Both DAT files exist and are valid.</summary>
         OK,
-        /// <summary>Both BOX.DAT and ICON.DAT are missing.</summary>
         BothMissing,
-        /// <summary>BOX.DAT is missing but ICON.DAT exists.</summary>
         BoxMissingIconExists,
-        /// <summary>BOX.DAT exists but ICON.DAT is missing.</summary>
         BoxExistsIconMissing,
-        /// <summary>Both exist but ICON.DAT serials don't match BOX.DAT.</summary>
         SerialsMismatch
     }
 
-    /// <summary>
-    /// Result of space requirement calculation for Save operation.
-    /// </summary>
     public class SpaceCheckResult
     {
-        /// <summary>Available free space on the SD card.</summary>
         public long AvailableSpace { get; set; }
-
-        /// <summary>Space that will be freed by deleting unused folders and old menu.</summary>
         public long SpaceToBeFreed { get; set; }
-
-        /// <summary>Total size of new disc images to be copied.</summary>
         public long NewItemsSize { get; set; }
-
-        /// <summary>Wiggle room for menu GDI (50MB for openMenu, 5MB for gdMenu).</summary>
-        public long MenuWiggleRoom { get; set; }
-
-        /// <summary>Size of existing 01 folder or template (for display purposes).</summary>
+        public long MenuWiggleRoom { get; set; } // 50MB for openMenu, 5MB for gdMenu
         public long MenuBaseSize { get; set; }
-
-        /// <summary>Buffer for metadata text files (1MB).</summary>
         public long MetadataBuffer { get; set; }
-
-        /// <summary>Total space needed (NewItemsSize + MenuWiggleRoom + MetadataBuffer).</summary>
         public long TotalNeeded { get; set; }
-
-        /// <summary>Effective available space (AvailableSpace + SpaceToBeFreed).</summary>
-        public long EffectiveAvailable { get; set; }
-
-        /// <summary>Space shortfall (positive if insufficient space, negative if surplus).</summary>
+        public long EffectiveAvailable { get; set; } // AvailableSpace + SpaceToBeFreed
         public long Shortfall { get; set; }
-
-        /// <summary>Whether there is sufficient space for the operation.</summary>
         public bool HasSufficientSpace { get; set; }
-
-        /// <summary>Whether any items are compressed (affects accuracy of estimate).</summary>
         public bool ContainsCompressedFiles { get; set; }
-
-        /// <summary>Whether GDI shrinking is enabled (actual space may be less).</summary>
         public bool ShrinkingEnabled { get; set; }
-
-        /// <summary>Number of new items to be added.</summary>
         public int NewItemCount { get; set; }
-
-        /// <summary>Whether an existing menu folder (01) exists and will be replaced.</summary>
         public bool MenuFolderExists { get; set; }
     }
 
@@ -139,55 +102,33 @@ namespace GDMENUCardManager.Core
         public IconDatManager IconDat { get; private set; }
         public MetaDatManager MetaDat { get; private set; }
 
-        /// <summary>
-        /// Manages undo/redo operations for user edits.
-        /// </summary>
         public UndoManager UndoManager { get; } = new UndoManager();
 
-        /// <summary>
-        /// Get the path to BOX.DAT file (tools\openMenu\menu_data\BOX.DAT)
-        /// </summary>
-        public string GetBoxDatPath()
-        {
-            return Path.Combine(currentAppPath, "tools", "openMenu", "menu_data", "BOX.DAT");
-        }
+        public string GetBoxDatPath() =>
+            RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
+                ? Path.Combine(MacOsDataMigration.GetUserMenuDataDir(), "BOX.DAT")
+                : Path.Combine(currentAppPath, "tools", "openMenu", "menu_data", "BOX.DAT");
 
-        /// <summary>
-        /// Get the path to ICON.DAT file (tools\openMenu\menu_data\ICON.DAT)
-        /// </summary>
-        public string GetIconDatPath()
-        {
-            return Path.Combine(currentAppPath, "tools", "openMenu", "menu_data", "ICON.DAT");
-        }
+        public string GetIconDatPath() =>
+            RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
+                ? Path.Combine(MacOsDataMigration.GetUserMenuDataDir(), "ICON.DAT")
+                : Path.Combine(currentAppPath, "tools", "openMenu", "menu_data", "ICON.DAT");
 
-        /// <summary>
-        /// Get the path to META.DAT file (tools\openMenu\menu_data\META.DAT)
-        /// </summary>
-        public string GetMetaDatPath()
-        {
-            return Path.Combine(currentAppPath, "tools", "openMenu", "menu_data", "META.DAT");
-        }
+        public string GetMetaDatPath() =>
+            RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
+                ? Path.Combine(MacOsDataMigration.GetUserMenuDataDir(), "META.DAT")
+                : Path.Combine(currentAppPath, "tools", "openMenu", "menu_data", "META.DAT");
 
-        /// <summary>
-        /// Get the path to the menu_data folder (tools\openMenu\menu_data)
-        /// </summary>
-        public string GetMenuDataPath()
-        {
-            return Path.Combine(currentAppPath, "tools", "openMenu", "menu_data");
-        }
+        public string GetMenuDataPath() =>
+            RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
+                ? MacOsDataMigration.GetUserMenuDataDir()
+                : Path.Combine(currentAppPath, "tools", "openMenu", "menu_data");
 
-        /// <summary>
-        /// Get the path to the DAT backups folder (dat_backups next to executable)
-        /// </summary>
-        public string GetDatBackupFolder()
-        {
-            return Path.Combine(currentAppPath, "dat_backups");
-        }
+        public string GetDatBackupFolder() =>
+            RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
+                ? MacOsDataMigration.GetUserDatBackupsDir()
+                : Path.Combine(currentAppPath, "dat_backups");
 
-        /// <summary>
-        /// Initialize the BoxDatManager, IconDatManager, and MetaDatManager and load DAT files if they exist.
-        /// Also links BoxDatManager to GdItem for HasArtwork lookups.
-        /// </summary>
         public void InitializeBoxDat()
         {
             if (BoxDat == null)
@@ -223,20 +164,14 @@ namespace GDMENUCardManager.Core
                 MetaDat.Load(metaDatPath);
             }
 
-            // Link BoxDatManager to GdItem for HasArtwork lookups
             GdItem.BoxDatManagerInstance = BoxDat;
 
-            // Refresh artwork status for all loaded items
             foreach (var item in ItemList)
             {
                 item.RefreshArtworkStatus();
             }
         }
 
-        /// <summary>
-        /// Save BOX.DAT with backup.
-        /// Returns (success, errorMessage).
-        /// </summary>
         public (bool success, string errorMessage) SaveBoxDat(bool proceedWithoutBackupOnFailure = false)
         {
             if (BoxDat == null)
@@ -247,7 +182,6 @@ namespace GDMENUCardManager.Core
 
             var result = BoxDat.BackupAndSave(boxDatPath, backupFolder, proceedWithoutBackupOnFailure);
 
-            // Refresh artwork status for all items after save
             if (result.success)
             {
                 foreach (var item in ItemList)
@@ -259,10 +193,6 @@ namespace GDMENUCardManager.Core
             return result;
         }
 
-        /// <summary>
-        /// Save ICON.DAT with backup.
-        /// Returns (success, errorMessage).
-        /// </summary>
         public (bool success, string errorMessage) SaveIconDat(bool proceedWithoutBackupOnFailure = false)
         {
             if (IconDat == null)
@@ -274,23 +204,17 @@ namespace GDMENUCardManager.Core
             return IconDat.BackupAndSave(iconDatPath, backupFolder, proceedWithoutBackupOnFailure);
         }
 
-        /// <summary>
-        /// Refreshes artwork status for all items that share the same artwork serial.
-        /// Call this after modifying artwork for a serial to update all related items.
-        /// This handles Table 2 translations where multiple ProductNumbers share artwork.
-        /// </summary>
+        // Refreshes HasArtwork for all items sharing the same artwork serial (via Table 2 translation)
         public void RefreshArtworkStatusForSerial(string serial)
         {
             if (string.IsNullOrWhiteSpace(serial))
                 return;
 
-            // Get the artwork serial for the input serial (applies Table 2 translation)
             var artworkSerial = SerialTranslator.TranslateForArtwork(serial);
             var normalizedArtworkSerial = BoxDatManager.NormalizeSerial(artworkSerial);
 
             foreach (var item in ItemList)
             {
-                // Get the artwork serial for each item's ProductNumber
                 var itemArtworkSerial = SerialTranslator.TranslateForArtwork(item.ProductNumber);
                 if (BoxDatManager.NormalizeSerial(itemArtworkSerial) == normalizedArtworkSerial)
                 {
@@ -299,23 +223,16 @@ namespace GDMENUCardManager.Core
             }
         }
 
-        /// <summary>
-        /// Save both BOX.DAT and ICON.DAT with backups.
-        /// Returns (success, errorMessage).
-        /// </summary>
         public (bool success, string errorMessage) SaveBothDats(bool proceedWithoutBackupOnFailure = false)
         {
-            // Save BOX.DAT first
             var boxResult = SaveBoxDat(proceedWithoutBackupOnFailure);
             if (!boxResult.success && !proceedWithoutBackupOnFailure)
                 return boxResult;
 
-            // Save ICON.DAT
             var iconResult = SaveIconDat(proceedWithoutBackupOnFailure);
             if (!iconResult.success && !proceedWithoutBackupOnFailure)
                 return iconResult;
 
-            // Combine error messages if any
             var errors = new List<string>();
             if (!string.IsNullOrEmpty(boxResult.errorMessage))
                 errors.Add($"BOX.DAT: {boxResult.errorMessage}");
@@ -325,10 +242,6 @@ namespace GDMENUCardManager.Core
             return (boxResult.success && iconResult.success, string.Join("\n", errors));
         }
 
-        /// <summary>
-        /// Save META.DAT with backup.
-        /// Returns (success, errorMessage).
-        /// </summary>
         public (bool success, string errorMessage) SaveMetaDat(bool proceedWithoutBackupOnFailure = false)
         {
             if (MetaDat == null)
@@ -340,10 +253,6 @@ namespace GDMENUCardManager.Core
             return MetaDat.BackupAndSave(metaDatPath, backupFolder, proceedWithoutBackupOnFailure);
         }
 
-        /// <summary>
-        /// Backup all DAT files (BOX.DAT, ICON.DAT, META.DAT) to the backup folder.
-        /// Returns (success, errorMessage).
-        /// </summary>
         public (bool success, string errorMessage) BackupAllDats()
         {
             var backupFolder = GetDatBackupFolder();
@@ -382,18 +291,14 @@ namespace GDMENUCardManager.Core
             }
         }
 
-        /// <summary>
-        /// Regenerate ICON.DAT from BOX.DAT by downscaling all artwork entries.
-        /// </summary>
         public void RegenerateIconDatFromBoxDat()
         {
             if (BoxDat == null || IconDat == null)
                 return;
 
-            // Clear existing ICON.DAT entries
             IconDat = new IconDatManager();
 
-            // For each entry in BOX.DAT, generate a 128x128 icon
+            // Downscale each BOX.DAT entry to 128x128 for ICON.DAT
             foreach (var entry in BoxDat.GetAllEntries())
             {
                 if (string.IsNullOrEmpty(entry.Name))
@@ -407,10 +312,6 @@ namespace GDMENUCardManager.Core
             }
         }
 
-        /// <summary>
-        /// Validate a DAT file by checking its magic header and entry size.
-        /// Returns (isValid, errorMessage).
-        /// </summary>
         public static (bool isValid, string errorMessage) ValidateDatFile(string filePath, uint expectedEntrySize)
         {
             try
@@ -442,10 +343,6 @@ namespace GDMENUCardManager.Core
             }
         }
 
-        /// <summary>
-        /// Clear all DAT entries and replace with bare minimum files.
-        /// This backs up existing DATs, then creates empty DAT files.
-        /// </summary>
         public (bool success, string errorMessage) ClearAllDatEntries()
         {
             try
@@ -476,13 +373,108 @@ namespace GDMENUCardManager.Core
             }
         }
 
-        /// <summary>
-        /// Import DAT entries from a source folder into the current DATs.
-        /// </summary>
-        /// <param name="sourceFolderPath">Folder containing BOX.DAT and/or META.DAT to import</param>
-        /// <param name="overwriteExisting">If true, overwrite existing entries; if false, only add missing</param>
-        /// <param name="progress">Optional progress callback (0.0 to 1.0)</param>
-        /// <returns>(success, errorMessage, boxEntriesMerged, metaEntriesMerged)</returns>
+        public (bool success, string errorMessage) OverwriteDatsFromSdCard()
+        {
+            const string notFoundError = "Could not find openMenu DAT files on the SD card. Ensure the SD card contains an openMenu disc image in the 01 folder.";
+
+            try
+            {
+                if (string.IsNullOrEmpty(sdPath) || !Directory.Exists(sdPath))
+                    return (false, "No SD card path is set.");
+
+                var gdiPath = Path.Combine(sdPath, "01", "disc.gdi");
+                if (!File.Exists(gdiPath))
+                    return (false, notFoundError);
+
+                // Open the GDI and extract DAT files
+                var filtersList = new Aaru.CommonTypes.FiltersList();
+                Aaru.CommonTypes.Interfaces.IFilter inputFilter = null;
+
+                try
+                {
+                    inputFilter = filtersList.GetFilter(gdiPath);
+                    if (inputFilter == null)
+                        return (false, notFoundError);
+
+                    var opticalImage = new Aaru.DiscImages.Gdi();
+                    if (!opticalImage.Open(inputFilter))
+                        return (false, notFoundError);
+
+                    try
+                    {
+                        // Get the high-density partition (skip audio, skip first non-audio)
+                        var nonAudioPartitions = opticalImage.Partitions.Where(x => x.Type != "Audio").ToList();
+                        if (nonAudioPartitions.Count < 2)
+                            return (false, notFoundError);
+
+                        var partition = nonAudioPartitions[1];
+
+                        // Mount ISO9660 filesystem
+                        var iso = new Aaru.Filesystems.ISO9660();
+                        var dict = new Dictionary<string, string>();
+                        iso.Mount(opticalImage, partition, Encoding.ASCII, dict, "normal");
+
+                        try
+                        {
+                            var boxData = ExtractFileFromIso(iso, "/BOX.DAT");
+                            var iconData = ExtractFileFromIso(iso, "/ICON.DAT");
+                            var metaData = ExtractFileFromIso(iso, "/META.DAT");
+
+                            if (boxData == null || iconData == null || metaData == null)
+                                return (false, notFoundError);
+
+                            var backupResult = BackupAllDats();
+                            if (!backupResult.success)
+                                return backupResult;
+
+                            File.WriteAllBytes(GetBoxDatPath(), boxData);
+                            File.WriteAllBytes(GetIconDatPath(), iconData);
+                            File.WriteAllBytes(GetMetaDatPath(), metaData);
+
+                            BoxDat = new BoxDatManager();
+                            BoxDat.Load(GetBoxDatPath());
+                            IconDat = new IconDatManager();
+                            IconDat.Load(GetIconDatPath());
+                            MetaDat = new MetaDatManager();
+                            MetaDat.Load(GetMetaDatPath());
+
+                            GdItem.BoxDatManagerInstance = BoxDat;
+
+                            return (true, string.Empty);
+                        }
+                        finally
+                        {
+                            iso.Unmount();
+                        }
+                    }
+                    finally
+                    {
+                        opticalImage.Close();
+                    }
+                }
+                finally
+                {
+                    if (inputFilter != null && inputFilter.IsOpened())
+                        inputFilter.Close();
+                }
+            }
+            catch (Exception ex)
+            {
+                return (false, $"Failed to overwrite DATs from SD card: {ex.Message}");
+            }
+        }
+
+        private static byte[] ExtractFileFromIso(Aaru.Filesystems.ISO9660 iso, string fileName)
+        {
+            if (iso.Stat(fileName, out var stat) == Aaru.CommonTypes.Structs.Errno.NoError && stat.Length > 0)
+            {
+                var buff = new byte[stat.Length];
+                iso.Read(fileName, 0, stat.Length, ref buff);
+                return buff;
+            }
+            return null;
+        }
+
         public (bool success, string errorMessage, int boxEntriesMerged, int metaEntriesMerged) ImportDatEntries(
             string sourceFolderPath,
             bool overwriteExisting,
@@ -621,13 +613,7 @@ namespace GDMENUCardManager.Core
             }
         }
 
-        /// <summary>
-        /// Export artwork from BOX.DAT to PNG files.
-        /// Only exports artwork for items currently in the Games List.
-        /// </summary>
-        /// <param name="outputFolderPath">Target folder for PNG files</param>
-        /// <param name="progress">Optional progress callback (0.0 to 1.0)</param>
-        /// <returns>(success, errorMessage, exportedCount)</returns>
+        // Only exports artwork for items currently in the list
         public (bool success, string errorMessage, int exportedCount) ExportArtworkToPngs(
             string outputFolderPath,
             Action<double> progress = null)
@@ -692,9 +678,6 @@ namespace GDMENUCardManager.Core
             }
         }
 
-        /// <summary>
-        /// Sanitize a string for use as a filename by replacing invalid characters.
-        /// </summary>
         private static string SanitizeFileName(string fileName)
         {
             if (string.IsNullOrEmpty(fileName))
@@ -724,10 +707,6 @@ namespace GDMENUCardManager.Core
             return string.IsNullOrEmpty(result) ? "Unknown" : result;
         }
 
-        /// <summary>
-        /// Check the status of DAT files (only valid for openMenu).
-        /// Returns the status indicating what action may be needed.
-        /// </summary>
         public DatFileStatus CheckDatFilesStatus()
         {
             var boxPath = GetBoxDatPath();
@@ -759,9 +738,6 @@ namespace GDMENUCardManager.Core
             return DatFileStatus.OK;
         }
 
-        /// <summary>
-        /// Create empty BOX.DAT and ICON.DAT files.
-        /// </summary>
         public (bool success, string errorMessage) CreateEmptyDatFiles()
         {
             try
@@ -789,9 +765,6 @@ namespace GDMENUCardManager.Core
             }
         }
 
-        /// <summary>
-        /// Create an empty BOX.DAT file only.
-        /// </summary>
         public (bool success, string errorMessage) CreateEmptyBoxDat()
         {
             try
@@ -816,9 +789,6 @@ namespace GDMENUCardManager.Core
             }
         }
 
-        /// <summary>
-        /// Generate ICON.DAT from existing BOX.DAT by downscaling all entries.
-        /// </summary>
         public (bool success, string errorMessage) GenerateIconDatFromBox()
         {
             try
@@ -842,10 +812,6 @@ namespace GDMENUCardManager.Core
             }
         }
 
-        /// <summary>
-        /// Gets whether artwork features should be disabled.
-        /// Set this to true when user chooses "Skip" on DAT file dialogs.
-        /// </summary>
         public bool ArtworkDisabled { get; set; }
 
         public static Manager CreateInstance(IDependencyManager m, string[] compressedFileExtensions)
@@ -981,9 +947,7 @@ namespace GDMENUCardManager.Core
                 item.ImageFiles.Clear();
                 item.ImageFiles.AddRange(i.ImageFiles);
 
-                // Re-apply serial translation now that Ip has full context (ReleaseDate, Name)
-                // This ensures items loaded without cache files get properly translated
-                // after their disc images are parsed. The setter is idempotent.
+                // Re-trigger serial translation now that Ip is populated
                 item.ProductNumber = item.ProductNumber;
             }
             catch (Exception)
@@ -992,21 +956,12 @@ namespace GDMENUCardManager.Core
             }
         }
 
-        /// <summary>
-        /// Gets all items on the SD card that are missing cached metadata (Ip is null).
-        /// These items need a one-time scan to populate metadata from disc images.
-        /// </summary>
         public List<GdItem> GetItemsNeedingMetadataScan()
         {
             return ItemList.Where(x => x.Ip == null && x.SdNumber > 0).ToList();
         }
 
-        /// <summary>
-        /// Performs a one-time metadata scan for items missing cached metadata.
-        /// Parses disc images, populates Ip data, applies serial translation, and writes cache files.
-        /// </summary>
-        /// <param name="items">Items to scan (typically from GetItemsNeedingMetadataScan)</param>
-        /// <param name="progress">Progress reporter for UI updates</param>
+        // Parses disc images for items missing cache files and writes the cache out
         public async Task PerformMetadataScan(List<GdItem> items, IProgress<(int current, int total, string name)> progress)
         {
             for (int i = 0; i < items.Count; i++)
@@ -1016,51 +971,86 @@ namespace GDMENUCardManager.Core
 
                 try
                 {
-                    // Parse disc image to get full Ip data
                     await LoadIP(item);
-
-                    // Write cache files so future loads are fast
-                    await WriteCacheFiles(item);
                 }
                 catch (Exception ex)
                 {
-                    // Log error but continue with other items
+                    // Give it a default Ip so we can still write cache files
                     System.Diagnostics.Debug.WriteLine($"Error scanning {item.Name}: {ex.Message}");
+                    if (item.Ip == null)
+                        item.Ip = new IpBin();
                 }
+
+                // Write cache even on failure so we don't re-scan every launch
+                await WriteCacheFiles(item);
+
+                // Re-read cache to pick up any user-customized values LoadIP may have clobbered
+                await SyncIpFromCacheFiles(item);
             }
         }
 
-        /// <summary>
-        /// Writes metadata cache files for an item (serial.txt, disc.txt, vga.txt, version.txt, date.txt).
-        /// </summary>
+        // Only writes files that don't already exist (preserves user edits)
         private async Task WriteCacheFiles(GdItem item)
         {
             if (string.IsNullOrEmpty(item.FullFolderPath))
                 return;
 
-            // Write serial.txt with translated serial
             var itemSerialPath = Path.Combine(item.FullFolderPath, Constants.SerialTextFile);
-            await Helper.WriteTextFileAsync(itemSerialPath, item.ProductNumber?.Trim() ?? string.Empty);
+            if (!File.Exists(itemSerialPath))
+                await Helper.WriteTextFileAsync(itemSerialPath, item.ProductNumber?.Trim() ?? string.Empty);
 
-            // Write disc.txt
             var itemDiscPath = Path.Combine(item.FullFolderPath, Constants.DiscTextFile);
-            var discValue = item.Ip?.Disc ?? "1/1";
-            await Helper.WriteTextFileAsync(itemDiscPath, discValue);
+            if (!File.Exists(itemDiscPath))
+                await Helper.WriteTextFileAsync(itemDiscPath, item.Ip?.Disc ?? "1/1");
 
-            // Write vga.txt
             var itemVgaPath = Path.Combine(item.FullFolderPath, Constants.VgaTextFile);
-            var vgaValue = (item.Ip?.Vga ?? false) ? "1" : "0";
-            await Helper.WriteTextFileAsync(itemVgaPath, vgaValue);
+            if (!File.Exists(itemVgaPath))
+                await Helper.WriteTextFileAsync(itemVgaPath, (item.Ip?.Vga ?? false) ? "1" : "0");
 
-            // Write version.txt
             var itemVersionPath = Path.Combine(item.FullFolderPath, Constants.VersionTextFile);
-            var versionValue = item.Ip?.Version ?? string.Empty;
-            await Helper.WriteTextFileAsync(itemVersionPath, versionValue);
+            if (!File.Exists(itemVersionPath))
+                await Helper.WriteTextFileAsync(itemVersionPath, item.Ip?.Version ?? string.Empty);
 
-            // Write date.txt
             var itemDatePath = Path.Combine(item.FullFolderPath, Constants.DateTextFile);
-            var dateValue = item.Ip?.ReleaseDate ?? string.Empty;
-            await Helper.WriteTextFileAsync(itemDatePath, dateValue);
+            if (!File.Exists(itemDatePath))
+                await Helper.WriteTextFileAsync(itemDatePath, item.Ip?.ReleaseDate ?? string.Empty);
+
+            var itemRegionPath = Path.Combine(item.FullFolderPath, Constants.RegionTextFile);
+            if (!File.Exists(itemRegionPath))
+                await Helper.WriteTextFileAsync(itemRegionPath, item.Ip?.Region ?? string.Empty);
+        }
+
+        // Re-reads cache files into item.Ip (cache wins over in-memory values)
+        private async Task SyncIpFromCacheFiles(GdItem item)
+        {
+            if (item.Ip == null || string.IsNullOrEmpty(item.FullFolderPath))
+                return;
+
+            var discPath = Path.Combine(item.FullFolderPath, Constants.DiscTextFile);
+            if (File.Exists(discPath))
+                item.Ip.Disc = (await Helper.ReadAllTextAsync(discPath))?.Trim() ?? "1/1";
+
+            var vgaPath = Path.Combine(item.FullFolderPath, Constants.VgaTextFile);
+            if (File.Exists(vgaPath))
+            {
+                var vgaVal = (await Helper.ReadAllTextAsync(vgaPath))?.Trim() ?? "";
+                item.Ip.Vga = vgaVal == "1" || vgaVal.Equals("true", StringComparison.OrdinalIgnoreCase);
+            }
+
+            var versionPath = Path.Combine(item.FullFolderPath, Constants.VersionTextFile);
+            if (File.Exists(versionPath))
+                item.Ip.Version = (await Helper.ReadAllTextAsync(versionPath))?.Trim() ?? string.Empty;
+
+            var datePath = Path.Combine(item.FullFolderPath, Constants.DateTextFile);
+            if (File.Exists(datePath))
+                item.Ip.ReleaseDate = (await Helper.ReadAllTextAsync(datePath))?.Trim() ?? string.Empty;
+
+            var regionPath = Path.Combine(item.FullFolderPath, Constants.RegionTextFile);
+            if (File.Exists(regionPath))
+                item.Ip.Region = (await Helper.ReadAllTextAsync(regionPath))?.Trim() ?? string.Empty;
+
+            // Notify UI that Ip-derived values have changed
+            item.NotifyIpChanged();
         }
 
         public async Task RenameItems(IEnumerable<GdItem> items, RenameBy renameBy)
@@ -1115,9 +1105,9 @@ namespace GDMENUCardManager.Core
                 {
                     string name;
                     if (renameBy == RenameBy.Folder)
-                        name = Path.GetFileName(item.FullFolderPath).ToUpperInvariant();
+                        name = Path.GetFileName(item.FullFolderPath);
                     else // file
-                        name = Path.GetFileNameWithoutExtension(item.ImageFile).ToUpperInvariant();
+                        name = Path.GetFileNameWithoutExtension(item.ImageFile);
                     var m = RegularExpressions.TosecnNameRegexp.Match(name);
                     if (m.Success)
                         name = name.Substring(0, m.Index);
@@ -1146,9 +1136,9 @@ namespace GDMENUCardManager.Core
                     string name;
 
                     if (FolderName)
-                        name = Path.GetFileName(item.FullFolderPath).ToUpperInvariant();
+                        name = Path.GetFileName(item.FullFolderPath);
                     else//file name
-                        name = Path.GetFileNameWithoutExtension(item.ImageFile).ToUpperInvariant();
+                        name = Path.GetFileNameWithoutExtension(item.ImageFile);
 
                     if (ParseTosec)
                     {
@@ -1198,6 +1188,19 @@ namespace GDMENUCardManager.Core
                 itemFolder = itemFolder?.Trim() ?? string.Empty;
             }
 
+            var itemAltFolders = new List<string>();
+            foreach (var altFileName in Constants.FolderAltTextFiles)
+            {
+                var altFile = files.FirstOrDefault(x => Path.GetFileName(x).Equals(altFileName, StringComparison.OrdinalIgnoreCase));
+                if (altFile != null)
+                {
+                    var altValue = await Helper.ReadAllTextAsync(altFile);
+                    altValue = altValue?.Trim() ?? string.Empty;
+                    if (!string.IsNullOrEmpty(altValue))
+                        itemAltFolders.Add(altValue);
+                }
+            }
+
             var itemType = "Game";
             var typeFile = files.FirstOrDefault(x => Path.GetFileName(x).Equals(Constants.TypeTextFile, StringComparison.OrdinalIgnoreCase));
             if (typeFile != null)
@@ -1241,6 +1244,15 @@ namespace GDMENUCardManager.Core
                 itemDate = itemDate?.Trim() ?? string.Empty;
             }
 
+            // Read region.txt if it exists
+            var itemRegion = string.Empty;
+            var regionFile = files.FirstOrDefault(x => Path.GetFileName(x).Equals(Constants.RegionTextFile, StringComparison.OrdinalIgnoreCase));
+            if (regionFile != null)
+            {
+                itemRegion = await Helper.ReadAllTextAsync(regionFile);
+                itemRegion = itemRegion?.Trim() ?? string.Empty;
+            }
+
             string itemImageFile = null;
 
             //is uncompressed?
@@ -1256,8 +1268,7 @@ namespace GDMENUCardManager.Core
             if (itemImageFile == null)
                 throw new Exception("No valid image found on folder");
 
-            // Create GdItem WITHOUT ProductNumber first - we'll set it after Ip
-            // so that serial translation has access to Ip context (ReleaseDate, Name)
+            // ProductNumber set after Ip so serial translation can see ReleaseDate
             var item = new GdItem
             {
                 Guid = Guid.NewGuid().ToString(),
@@ -1265,20 +1276,20 @@ namespace GDMENUCardManager.Core
                 FileFormat = FileFormat.Uncompressed,
                 SdNumber = sdNumber,
                 Name = itemName,
-                // ProductNumber set below after Ip is assigned
+                // set below after Ip
                 Folder = itemFolder,
+                AlternativeFolders = itemAltFolders,
                 DiscType = itemType,
                 Length = ByteSizeLib.ByteSize.FromBytes(new DirectoryInfo(folderPath).GetFiles().Sum(x => x.Length)),
             };
 
-            // Only create IpBin with cached values if the cache files exist
-            // If vga.txt, version.txt, date.txt don't exist, leave Ip as null
-            // so the one-time metadata scan will parse from disc image
-            bool hasCachedIpData = vgaFile != null && versionFile != null && dateFile != null;
+            // Need all cache files present; if any are missing, Ip stays null
+            // and the metadata scan will parse from disc image later
+            bool hasCachedIpData = discFile != null && vgaFile != null && versionFile != null && dateFile != null && regionFile != null;
 
             if (hasCachedIpData)
             {
-                // Parse vga value: "1" or "true" = true, anything else = false
+                // "1" or "true" = VGA capable
                 bool vgaValue = itemVga == "1" || itemVga.Equals("true", StringComparison.OrdinalIgnoreCase);
 
                 item.Ip = new IpBin
@@ -1286,13 +1297,11 @@ namespace GDMENUCardManager.Core
                     Disc = !string.IsNullOrWhiteSpace(itemDisc) ? itemDisc : "1/1",
                     Vga = vgaValue,
                     Version = itemVersion,
-                    ReleaseDate = itemDate
+                    ReleaseDate = itemDate,
+                    Region = itemRegion
                 };
             }
-            // else: Ip remains null, one-time metadata scan will parse from disc image
-
-            // NOW set ProductNumber - Ip is available if cache existed,
-            // so serial translation can use ReleaseDate for context
+            // Now safe to set ProductNumber (Ip is populated if cache existed)
             item.ProductNumber = itemSerial;
 
             item.ImageFiles.Add(Path.GetFileName(itemImageFile));
@@ -1300,13 +1309,6 @@ namespace GDMENUCardManager.Core
             return item;
         }
 
-        /// <summary>
-        /// Collects all paths on the SD card that will be modified during save.
-        /// This includes folders to delete, folders to move, and the menu folder.
-        /// </summary>
-        /// <summary>
-        /// Calculates the space required for the Save operation.
-        /// </summary>
         public async Task<SpaceCheckResult> CalculateRequiredSpace()
         {
             var result = new SpaceCheckResult
@@ -1546,10 +1548,6 @@ namespace GDMENUCardManager.Core
             return paths;
         }
 
-        /// <summary>
-        /// Checks if any files/folders that will be modified are locked.
-        /// Returns a dictionary of locked paths and their error messages.
-        /// </summary>
         public async Task<Dictionary<string, string>> CheckForLockedFiles()
         {
             var pathsToCheck = await CollectPathsToModify();
@@ -1568,7 +1566,12 @@ namespace GDMENUCardManager.Core
                     throw new Exception("Menu not selected on Settings");
                 }
 
-                if (ItemList.Count == 0 || await Helper.DependencyManager.ShowYesNoDialog("Save", $"Save changes to {sdPath} drive?") == false)
+                if (!Directory.Exists(sdPath))
+                {
+                    throw new Exception($"The SD card is no longer accessible at \"{sdPath}\".\n\nPlease reconnect the SD card and try again.");
+                }
+
+                if (ItemList.Count == 0 || await Helper.DependencyManager.ShowYesNoDialog("Save", $"Save changes to \"{sdPath}\" drive?") == false)
                 {
                     return false;
                 }
@@ -1737,7 +1740,7 @@ namespace GDMENUCardManager.Core
                 {
                     int entryNumber = menuAtIndexZero ? i + 1 : i + 2;
                     FillListText(sb, ItemList[i].Ip, ItemList[i].Name, ItemList[i].ProductNumber, entryNumber);
-                    FillListText(sb_open, ItemList[i].Ip, ItemList[i].Name, ItemList[i].ProductNumber, entryNumber, true, ItemList[i].Folder, ItemList[i].GetDiscTypeFileValue());
+                    FillListText(sb_open, ItemList[i].Ip, ItemList[i].Name, ItemList[i].ProductNumber, entryNumber, true, ItemList[i].Folder, ItemList[i].GetDiscTypeFileValue(), ItemList[i].AlternativeFolders);
                 }
 
                 // Save DAT files if there are unsaved changes (only for openMenu)
@@ -1873,6 +1876,24 @@ namespace GDMENUCardManager.Core
                     if (!await Helper.FileExistsAsync(itemFolderPath) || (await Helper.ReadAllTextAsync(itemFolderPath)).Trim() != folderValue)
                         await Helper.WriteTextFileAsync(itemFolderPath, folderValue);
 
+                    //write alt folder paths
+                    for (int altIdx = 0; altIdx < Constants.FolderAltTextFiles.Length; altIdx++)
+                    {
+                        var altFilePath = Path.Combine(item.FullFolderPath, Constants.FolderAltTextFiles[altIdx]);
+                        var altValue = (altIdx < item.AlternativeFolders.Count) ? item.AlternativeFolders[altIdx] : string.Empty;
+
+                        if (string.IsNullOrEmpty(altValue))
+                        {
+                            if (await Helper.FileExistsAsync(altFilePath))
+                                await Helper.DeleteFileAsync(altFilePath);
+                        }
+                        else
+                        {
+                            if (!await Helper.FileExistsAsync(altFilePath) || (await Helper.ReadAllTextAsync(altFilePath)).Trim() != altValue)
+                                await Helper.WriteTextFileAsync(altFilePath, altValue);
+                        }
+                    }
+
                     //write disc type into folder (openMenu only)
                     if (MenuKindSelected == MenuKind.openMenu)
                     {
@@ -1904,6 +1925,12 @@ namespace GDMENUCardManager.Core
                         var dateValue = item.Ip?.ReleaseDate ?? string.Empty;
                         if (!await Helper.FileExistsAsync(itemDatePath) || (await Helper.ReadAllTextAsync(itemDatePath)).Trim() != dateValue)
                             await Helper.WriteTextFileAsync(itemDatePath, dateValue);
+
+                        //write region into folder
+                        var itemRegionPath = Path.Combine(item.FullFolderPath, Constants.RegionTextFile);
+                        var regionValue = item.Ip?.Region ?? string.Empty;
+                        if (!await Helper.FileExistsAsync(itemRegionPath) || (await Helper.ReadAllTextAsync(itemRegionPath)).Trim() != regionValue)
+                            await Helper.WriteTextFileAsync(itemRegionPath, regionValue);
                     }
 
                     //write info text into folder for cdi files
@@ -1986,19 +2013,20 @@ namespace GDMENUCardManager.Core
                 var colTitle = Math.Max(5, sortedItems.Max(x => (x.Name ?? "").Length));
                 var colDisc = Math.Max(4, sortedItems.Max(x => (x.Ip?.Disc ?? "1/1").Length));
                 var colSerial = Math.Max(6, sortedItems.Max(x => (x.ProductNumber ?? "").Length));
+                var colRegion = Math.Max(6, sortedItems.Max(x => (x.Ip?.Region ?? "").Length));
                 var colArt = 3; // "Yes" or "No"
                 var colType = Math.Max(4, sortedItems.Max(x => (x.DiscType ?? "Game").Length));
 
                 // Box-drawing characters
-                string TopLine()    => $"┌{"".PadRight(colNum + 2, '─')}┬{"".PadRight(colFolder + 2, '─')}┬{"".PadRight(colTitle + 2, '─')}┬{"".PadRight(colDisc + 2, '─')}┬{"".PadRight(colSerial + 2, '─')}┬{"".PadRight(colArt + 2, '─')}┬{"".PadRight(colType + 2, '─')}┐";
-                string MidLine()    => $"├{"".PadRight(colNum + 2, '─')}┼{"".PadRight(colFolder + 2, '─')}┼{"".PadRight(colTitle + 2, '─')}┼{"".PadRight(colDisc + 2, '─')}┼{"".PadRight(colSerial + 2, '─')}┼{"".PadRight(colArt + 2, '─')}┼{"".PadRight(colType + 2, '─')}┤";
-                string BottomLine() => $"└{"".PadRight(colNum + 2, '─')}┴{"".PadRight(colFolder + 2, '─')}┴{"".PadRight(colTitle + 2, '─')}┴{"".PadRight(colDisc + 2, '─')}┴{"".PadRight(colSerial + 2, '─')}┴{"".PadRight(colArt + 2, '─')}┴{"".PadRight(colType + 2, '─')}┘";
-                string DataRow(string num, string folder, string title, string disc, string serial, string art, string type) =>
-                    $"│ {num.PadLeft(colNum)} │ {folder.PadRight(colFolder)} │ {title.PadRight(colTitle)} │ {disc.PadRight(colDisc)} │ {serial.PadRight(colSerial)} │ {art.PadRight(colArt)} │ {type.PadRight(colType)} │";
+                string TopLine()    => $"┌{"".PadRight(colNum + 2, '─')}┬{"".PadRight(colFolder + 2, '─')}┬{"".PadRight(colTitle + 2, '─')}┬{"".PadRight(colDisc + 2, '─')}┬{"".PadRight(colSerial + 2, '─')}┬{"".PadRight(colRegion + 2, '─')}┬{"".PadRight(colArt + 2, '─')}┬{"".PadRight(colType + 2, '─')}┐";
+                string MidLine()    => $"├{"".PadRight(colNum + 2, '─')}┼{"".PadRight(colFolder + 2, '─')}┼{"".PadRight(colTitle + 2, '─')}┼{"".PadRight(colDisc + 2, '─')}┼{"".PadRight(colSerial + 2, '─')}┼{"".PadRight(colRegion + 2, '─')}┼{"".PadRight(colArt + 2, '─')}┼{"".PadRight(colType + 2, '─')}┤";
+                string BottomLine() => $"└{"".PadRight(colNum + 2, '─')}┴{"".PadRight(colFolder + 2, '─')}┴{"".PadRight(colTitle + 2, '─')}┴{"".PadRight(colDisc + 2, '─')}┴{"".PadRight(colSerial + 2, '─')}┴{"".PadRight(colRegion + 2, '─')}┴{"".PadRight(colArt + 2, '─')}┴{"".PadRight(colType + 2, '─')}┘";
+                string DataRow(string num, string folder, string title, string disc, string serial, string region, string art, string type) =>
+                    $"│ {num.PadLeft(colNum)} │ {folder.PadRight(colFolder)} │ {title.PadRight(colTitle)} │ {disc.PadRight(colDisc)} │ {serial.PadRight(colSerial)} │ {region.PadRight(colRegion)} │ {art.PadRight(colArt)} │ {type.PadRight(colType)} │";
 
                 // Build table
                 sb.AppendLine(TopLine());
-                sb.AppendLine(DataRow("#", "Folder", "Title", "Disc", "Serial", "Art", "Type"));
+                sb.AppendLine(DataRow("#", "Folder", "Title", "Disc", "Serial", "Region", "Art", "Type"));
                 sb.AppendLine(MidLine());
 
                 for (int i = 0; i < sortedItems.Count; i++)
@@ -2009,9 +2037,10 @@ namespace GDMENUCardManager.Core
                     var title = item.Name ?? "";
                     var disc = item.Ip?.Disc ?? "1/1";
                     var serial = item.ProductNumber ?? "";
+                    var region = !string.IsNullOrWhiteSpace(item.Ip?.Region) ? item.Ip.Region : "N/A";
                     var art = item.HasArtwork ? "Yes" : "No";
                     var type = item.DiscType ?? "Game";
-                    sb.AppendLine(DataRow(num, folder, title, disc, serial, art, type));
+                    sb.AppendLine(DataRow(num, folder, title, disc, serial, region, art, type));
 
                     // Add separator line between rows (but not after the last row)
                     if (i < sortedItems.Count - 1)
@@ -2028,7 +2057,7 @@ namespace GDMENUCardManager.Core
                     var worksheet = workbook.Worksheets.Add("DISCLIST");
 
                     // Set all columns to text format to prevent any auto-formatting
-                    for (int col = 1; col <= 7; col++)
+                    for (int col = 1; col <= 8; col++)
                         worksheet.Column(col).Style.NumberFormat.Format = "@";
 
                     // Headers
@@ -2037,11 +2066,12 @@ namespace GDMENUCardManager.Core
                     worksheet.Cell(1, 3).Value = "Title";
                     worksheet.Cell(1, 4).Value = "Disc";
                     worksheet.Cell(1, 5).Value = "Serial";
-                    worksheet.Cell(1, 6).Value = "Art";
-                    worksheet.Cell(1, 7).Value = "Type";
+                    worksheet.Cell(1, 6).Value = "Region";
+                    worksheet.Cell(1, 7).Value = "Art";
+                    worksheet.Cell(1, 8).Value = "Type";
 
                     // Style header row: bold, background color #d6d4d4
-                    var headerRange = worksheet.Range(1, 1, 1, 7);
+                    var headerRange = worksheet.Range(1, 1, 1, 8);
                     headerRange.Style.Font.Bold = true;
                     headerRange.Style.Fill.BackgroundColor = XLColor.FromHtml("#d6d4d4");
 
@@ -2054,13 +2084,14 @@ namespace GDMENUCardManager.Core
                         worksheet.Cell(row, 3).Value = "'" + (item.Name ?? "");
                         worksheet.Cell(row, 4).Value = "'" + (item.Ip?.Disc ?? "1/1");
                         worksheet.Cell(row, 5).Value = "'" + (item.ProductNumber ?? "");
-                        worksheet.Cell(row, 6).Value = "'" + (item.HasArtwork ? "Yes" : "No");
-                        worksheet.Cell(row, 7).Value = "'" + (item.DiscType ?? "Game");
+                        worksheet.Cell(row, 6).Value = "'" + (!string.IsNullOrWhiteSpace(item.Ip?.Region) ? item.Ip.Region : "N/A");
+                        worksheet.Cell(row, 7).Value = "'" + (item.HasArtwork ? "Yes" : "No");
+                        worksheet.Cell(row, 8).Value = "'" + (item.DiscType ?? "Game");
                         row++;
                     }
 
                     // Add thin black border around all cells (header + data)
-                    var allDataRange = worksheet.Range(1, 1, row - 1, 7);
+                    var allDataRange = worksheet.Range(1, 1, row - 1, 8);
                     allDataRange.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
                     allDataRange.Style.Border.OutsideBorderColor = XLColor.Black;
                     allDataRange.Style.Border.InsideBorder = XLBorderStyleValues.Thin;
@@ -2160,7 +2191,21 @@ namespace GDMENUCardManager.Core
                 var menuGdiSrc = Path.Combine(currentAppPath, "tools", "openMenu", "menu_gdi");
                 var menuLowSrc = Path.Combine(currentAppPath, "tools", "openMenu", "menu_low_data");
 
-                await Helper.CopyDirectoryAsync(menuDataSrc, dataPath);
+                // On macOS, BOX/ICON/META.DAT live in Application Support, not the bundle.
+                // Exclude them from the bulk bundle copy so they don't overwrite user data.
+                var excludeFromBundle = RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
+                    ? new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "BOX.DAT", "ICON.DAT", "META.DAT" }
+                    : null;
+                await Helper.CopyDirectoryAsync(menuDataSrc, dataPath, excludeFromBundle);
+
+                // Copy DATs from their authoritative source (Application Support on macOS, bundle on others).
+                if (File.Exists(GetBoxDatPath()))
+                    File.Copy(GetBoxDatPath(), Path.Combine(dataPath, "BOX.DAT"), overwrite: true);
+                if (File.Exists(GetIconDatPath()))
+                    File.Copy(GetIconDatPath(), Path.Combine(dataPath, "ICON.DAT"), overwrite: true);
+                if (File.Exists(GetMetaDatPath()))
+                    File.Copy(GetMetaDatPath(), Path.Combine(dataPath, "META.DAT"), overwrite: true);
+
                 await Helper.CopyDirectoryAsync(menuGdiSrc, cdiPath);
                 /* Copy to low density */
                 if (await Helper.DirectoryExistsAsync(menuLowSrc))
@@ -2243,7 +2288,7 @@ namespace GDMENUCardManager.Core
             }
         }
 
-        private void FillListText(StringBuilder sb, IpBin ip, string name, string serial, int number, bool is_openmenu=false, string folder=null, string type=null)
+        private void FillListText(StringBuilder sb, IpBin ip, string name, string serial, int number, bool is_openmenu=false, string folder=null, string type=null, List<string> altFolders=null)
         {
             string strnumber = FormatFolderNumber(number);
 
@@ -2253,7 +2298,7 @@ namespace GDMENUCardManager.Core
             else
                 sb.AppendLine($"{strnumber}.disc={ip?.Disc ?? "1/1"}");
             sb.AppendLine($"{strnumber}.vga={(ip?.Vga ?? true ? '1' : '0')}");
-            sb.AppendLine($"{strnumber}.region={ip?.Region ?? "JUE"}");
+            sb.AppendLine($"{strnumber}.region={(!string.IsNullOrWhiteSpace(ip?.Region) ? ip.Region : "JUE")}");
 
             // Use "N/A" as default for version and date if empty or null
             var versionValue = string.IsNullOrWhiteSpace(ip?.Version) ? "N/A" : ip.Version;
@@ -2266,6 +2311,11 @@ namespace GDMENUCardManager.Core
                 string productid = GdItem.CleanSerial(serial);
                 sb.AppendLine($"{strnumber}.product={productid}");
                 sb.AppendLine($"{strnumber}.folder={folder ?? string.Empty}");
+                if (altFolders != null)
+                {
+                    for (int i = 0; i < altFolders.Count; i++)
+                        sb.AppendLine($"{strnumber}.folder_alt{i + 1}={altFolders[i]}");
+                }
                 sb.AppendLine($"{strnumber}.type={type ?? "game"}");
             }
             sb.AppendLine();
@@ -2964,14 +3014,18 @@ namespace GDMENUCardManager.Core
         {
             KnownFolders.Clear();
 
-            // Collect all unique folder values from currently loaded items
-            foreach (var item in ItemList.Where(x => !string.IsNullOrWhiteSpace(x.Folder)))
+            foreach (var item in ItemList)
             {
-                if (!KnownFolders.Contains(item.Folder))
+                if (!string.IsNullOrWhiteSpace(item.Folder) && !KnownFolders.Contains(item.Folder))
                     KnownFolders.Add(item.Folder);
+
+                foreach (var altFolder in item.AlternativeFolders)
+                {
+                    if (!string.IsNullOrWhiteSpace(altFolder) && !KnownFolders.Contains(altFolder))
+                        KnownFolders.Add(altFolder);
+                }
             }
 
-            // Sort for nice display
             var sorted = KnownFolders.OrderBy(x => x).ToList();
             KnownFolders.Clear();
             foreach (var folder in sorted)
@@ -2984,22 +3038,35 @@ namespace GDMENUCardManager.Core
 
             foreach (var item in ItemList)
             {
+                // count once per item using a set of all unique folder paths
+                var allFolders = new HashSet<string>(StringComparer.Ordinal);
+
                 if (!string.IsNullOrWhiteSpace(item.Folder))
+                    allFolders.Add(item.Folder);
+
+                foreach (var altFolder in item.AlternativeFolders)
                 {
-                    if (folderCounts.ContainsKey(item.Folder))
-                        folderCounts[item.Folder]++;
+                    if (!string.IsNullOrWhiteSpace(altFolder))
+                        allFolders.Add(altFolder);
+                }
+
+                foreach (var folder in allFolders)
+                {
+                    if (folderCounts.ContainsKey(folder))
+                        folderCounts[folder]++;
                     else
-                        folderCounts[item.Folder] = 1;
+                        folderCounts[folder] = 1;
                 }
             }
 
             return folderCounts;
         }
 
-        public int ApplyFolderMappings(Dictionary<string, string> mappings)
+        /// <returns>Tuple of (items updated, alt folder conflicts removed).</returns>
+        public (int updatedCount, int conflictsRemoved) ApplyFolderMappings(Dictionary<string, string> mappings)
         {
             if (mappings == null || mappings.Count == 0)
-                return 0;
+                return (0, 0);
 
             int updatedCount = 0;
 
@@ -3007,7 +3074,6 @@ namespace GDMENUCardManager.Core
             {
                 if (!string.IsNullOrWhiteSpace(item.Folder))
                 {
-                    // Check for exact match first
                     if (mappings.ContainsKey(item.Folder))
                     {
                         item.Folder = mappings[item.Folder];
@@ -3015,29 +3081,67 @@ namespace GDMENUCardManager.Core
                     }
                     else
                     {
-                        // Check if this folder is a child of any mapped folder
                         foreach (var mapping in mappings)
                         {
-                            var oldPath = mapping.Key;
-                            var newPath = mapping.Value;
-
-                            // Check if item.Folder starts with oldPath + backslash
-                            if (item.Folder.StartsWith(oldPath + "\\", StringComparison.Ordinal))
+                            if (item.Folder.StartsWith(mapping.Key + "\\", StringComparison.Ordinal))
                             {
-                                // Replace the old path prefix with the new path
-                                item.Folder = newPath + item.Folder.Substring(oldPath.Length);
+                                item.Folder = mapping.Value + item.Folder.Substring(mapping.Key.Length);
                                 updatedCount++;
-                                break; // Only apply one mapping per item
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // remap alt folders
+                for (int i = 0; i < item.AlternativeFolders.Count; i++)
+                {
+                    var altFolder = item.AlternativeFolders[i];
+                    if (string.IsNullOrWhiteSpace(altFolder)) continue;
+
+                    if (mappings.ContainsKey(altFolder))
+                    {
+                        item.AlternativeFolders[i] = mappings[altFolder];
+                        updatedCount++;
+                    }
+                    else
+                    {
+                        foreach (var mapping in mappings)
+                        {
+                            if (altFolder.StartsWith(mapping.Key + "\\", StringComparison.Ordinal))
+                            {
+                                item.AlternativeFolders[i] = mapping.Value + altFolder.Substring(mapping.Key.Length);
+                                updatedCount++;
+                                break;
                             }
                         }
                     }
                 }
             }
 
-            // Refresh the known folders list after mappings are applied
+            // post-apply conflict scrub
+            int conflictsRemoved = 0;
+            foreach (var item in ItemList)
+            {
+                if (item.AlternativeFolders.Count > 0)
+                {
+                    // remove alt folders that now match the primary folder
+                    if (!string.IsNullOrWhiteSpace(item.Folder))
+                        conflictsRemoved += item.AlternativeFolders.RemoveAll(af => af == item.Folder);
+
+                    // deduplicate alt folders
+                    var distinct = item.AlternativeFolders.Distinct(StringComparer.Ordinal).ToList();
+                    if (distinct.Count < item.AlternativeFolders.Count)
+                    {
+                        conflictsRemoved += item.AlternativeFolders.Count - distinct.Count;
+                        item.AlternativeFolders = distinct;
+                    }
+                }
+            }
+
             InitializeKnownFolders();
 
-            return updatedCount;
+            return (updatedCount, conflictsRemoved);
         }
 
         private async Task Uncompress(GdItem item, int folderNumber, string tempdir, IProgressWindow progress = null)
@@ -3283,9 +3387,6 @@ namespace GDMENUCardManager.Core
             return false;
         }
 
-        /// <summary>
-        /// Patches a disc image with region-free and/or VGA patches.
-        /// </summary>
         private async Task<PatchResult> PatchItemAsync(GdItem item, bool patchRegion, bool patchVga)
         {
             if (!patchRegion && !patchVga)
@@ -3296,14 +3397,29 @@ namespace GDMENUCardManager.Core
             if (!RegionPatcher.CanPatch(imagePath))
                 return new PatchResult { Success = true, Details = { "Format not supported for patching" } };
 
-            return await RegionPatcher.PatchImageAsync(imagePath, patchRegion, patchVga);
+            var result = await RegionPatcher.PatchImageAsync(imagePath, patchRegion, patchVga);
+
+            // Update in-memory Ip and cached region.txt to reflect the patched disc
+            if (result.Success && patchRegion && result.RegionPatchCount > 0 && item.Ip != null)
+            {
+                item.Ip.Region = "JUE";
+                item.Ip.Vga = patchVga ? true : item.Ip.Vga;
+
+                var regionPath = Path.Combine(item.FullFolderPath, Constants.RegionTextFile);
+                await Helper.WriteTextFileAsync(regionPath, "JUE");
+            }
+
+            if (result.Success && patchVga && result.VgaPatchCount > 0 && item.Ip != null)
+            {
+                item.Ip.Vga = true;
+
+                var vgaPath = Path.Combine(item.FullFolderPath, Constants.VgaTextFile);
+                await Helper.WriteTextFileAsync(vgaPath, "1");
+            }
+
+            return result;
         }
 
-        /// <summary>
-        /// Shrinks all existing GDI items on the SD card.
-        /// Only shrinks items that are already on the card (SdNumber > 0), not being copied,
-        /// are GDI format, and can be shrunk.
-        /// </summary>
         private async Task ShrinkExistingItemsAsync(string tempDirectory)
         {
             // Load blacklist if enabled
@@ -3446,10 +3562,6 @@ namespace GDMENUCardManager.Core
             }
         }
 
-        /// <summary>
-        /// Patches all existing items on the SD card that haven't been patched yet.
-        /// Only patches items that are already on the card (SdNumber > 0) and not being copied.
-        /// </summary>
         private async Task PatchExistingItemsAsync()
         {
             var itemsToPatch = ItemList.Where(x =>

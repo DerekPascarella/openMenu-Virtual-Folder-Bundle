@@ -280,5 +280,63 @@ namespace GDMENUCardManager
         }
 
         #endregion
+
+        #region Overwrite Tab
+
+        private async void OverwriteDats_Click(object sender, RoutedEventArgs e)
+        {
+            // Confirmation dialog
+            var confirmResult = MessageBox.Show(
+                "This will backup current DAT files and overwrite them with those from the SD card's openMenu disc image.\n\nContinue?",
+                "Confirm Overwrite",
+                MessageBoxButton.OKCancel,
+                MessageBoxImage.Warning);
+
+            if (confirmResult != MessageBoxResult.OK)
+                return;
+
+            // Show progress window
+            var progressWindow = new ProgressWindow();
+            progressWindow.Owner = this;
+            progressWindow.Title = "Overwriting DAT Files";
+            progressWindow.TextContent = "Extracting DATs from SD card...";
+            progressWindow.TotalItems = 100;
+            progressWindow.ProcessedItems = 50;
+            progressWindow.Show();
+
+            try
+            {
+                var result = await Task.Run(() => _manager.OverwriteDatsFromSdCard());
+
+                progressWindow.AllowClose();
+                progressWindow.Close();
+
+                if (!result.success)
+                {
+                    MessageBox.Show(result.errorMessage, "Overwrite Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+
+                MessageBox.Show("DAT files have been successfully overwritten with those from the SD card.",
+                    "Overwrite Complete", MessageBoxButton.OK, MessageBoxImage.Information);
+
+                // Close this window
+                this.Close();
+
+                // Reload
+                if (_reloadCallback != null)
+                {
+                    await _reloadCallback();
+                }
+            }
+            catch (Exception ex)
+            {
+                progressWindow.AllowClose();
+                progressWindow.Close();
+                MessageBox.Show($"An error occurred: {ex.Message}", "Overwrite Failed", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        #endregion
     }
 }

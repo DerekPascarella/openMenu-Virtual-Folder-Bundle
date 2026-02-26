@@ -181,7 +181,9 @@ INPT_KeyboardButtonPress(uint8_t kbtn) {
             break;
         }
     }
-    if (!currently_pressed) return false;
+    if (!currently_pressed) {
+        return false;
+    }
     for (int i = 0; i < INPT_MAX_KEYBOARD_KEYS; i++) {
         if (_last_kbd_buttons[i] == kbtn) {
             return false;

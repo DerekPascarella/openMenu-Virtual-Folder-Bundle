@@ -4,11 +4,11 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="320" d:DesignHeight="330"
         x:Class="GDMENUCardManager.DiscImageOptionsWindow"
-        Title="Disc Image Options" Height="330" Width="320"
+        Title="Disc Image Options" Width="320" SizeToContent="Height"
         WindowStartupLocation="CenterOwner" CanResize="False">
     <Grid Margin="15">
         <Grid.RowDefinitions>
-            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
@@ -34,7 +34,7 @@
             </HeaderedContentControl>
 
             <!-- Region-Free Patch Card -->
-            <HeaderedContentControl Margin="0 0 0 10">
+            <HeaderedContentControl Margin="0">
                 <HeaderedContentControl.Header>
                     <TextBlock Text="Region-Free Patch" FontWeight="Bold"/>
                 </HeaderedContentControl.Header>
@@ -54,8 +54,8 @@
 
         <!-- Save/Cancel Buttons -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 5 0 0">
-            <Button Content="Save" Width="80" Height="26" Margin="0 0 10 0" Click="SaveButton_Click"/>
-            <Button Content="Cancel" Width="80" Height="26" Click="CancelButton_Click"/>
+            <Button Content="Save" Width="80" Padding="15,8" Margin="0 0 10 0" Click="SaveButton_Click"/>
+            <Button Content="Cancel" Width="80" Padding="15,8" Click="CancelButton_Click"/>
         </StackPanel>
     </Grid>
 </Window>

@@ -15,11 +15,11 @@
 #include <dc/pvr.h>
 
 #include <backend/dat_format.h>
-#include "ui/draw_kos.h"
-#include "ui/draw_prototypes.h"
+#include <texture/serial_sanitize.h>
 #include "block_pool.h"
 #include "lru.h"
-#include <texture/serial_sanitize.h>
+#include "ui/draw_kos.h"
+#include "ui/draw_prototypes.h"
 
 #include "txr_manager.h"
 

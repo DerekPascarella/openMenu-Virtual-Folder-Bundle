@@ -357,6 +357,8 @@ namespace GDMENUCardManager.Core
 
 
             item.Ip = ip;
+            if (ip.SpecialDisc == SpecialDisc.BleemGame)
+                item.DiscType = "PSX";
             item.Name = ip.Name;
             item.ProductNumber = ip.ProductNumber;
 
@@ -589,7 +591,7 @@ namespace GDMENUCardManager.Core
                 try
                 {
                     if (! await Task.Run(() => opticalImage.Open(inputFilter)))
-                        throw new Exception("Can't load game file");
+                        throw new Exception("Unable to find or read file");
 
                     Partition partition;
                     string filename = "0GDTEX.PVR";
@@ -666,6 +668,7 @@ namespace GDMENUCardManager.Core
 
             var ext = Path.GetExtension(filePath).ToLower();
             string itemImageFile = null;
+            string dataFile = null;
 
             item.ImageFiles.Add(Path.GetFileName(filePath));
 
@@ -688,7 +691,6 @@ namespace GDMENUCardManager.Core
             else
             {
                 var imageNameWithoutExtension = Path.GetFileNameWithoutExtension(filePath);
-                string dataFile;
                 if (ext == ".ccd")
                 {
                     
@@ -722,10 +724,30 @@ namespace GDMENUCardManager.Core
 
 
             if (ip == null)
-                throw new Exception("Cant't read data from file");
+            {
+                if (ext == ".gdi")
+                    throw new Exception("Cant't read data from file");
+
+                // No KATANA header — not a DC game. Use filename as display name.
+                ip = new IpBin
+                {
+                    Name = Path.GetFileNameWithoutExtension(filePath),
+                    Disc = "1/1",
+                    ProductNumber = string.Empty
+                };
+
+                // Distinguish PSX from other non-DC discs (audio CDs, data discs, etc.)
+                // by searching for the ISO9660 PVD System Identifier "PLAYSTATION" at CD001+7.
+                if (dataFile != null && IsPlayStationDisc(dataFile))
+                    item.DiscType = "PSX";
+                else
+                    item.DiscType = "Other";
+            }
 
 
             item.Ip = ip;
+            if (ip.SpecialDisc == SpecialDisc.BleemGame)
+                item.DiscType = "PSX";
             item.Name = ip.Name;
             item.ProductNumber = ip.ProductNumber;
 
@@ -747,6 +769,52 @@ namespace GDMENUCardManager.Core
             return item;
         }
 
+        /// <summary>
+        /// Scans the raw disc image data file for an ISO9660 Primary Volume Descriptor
+        /// whose System Identifier field reads "PLAYSTATION", identifying the disc as PSX.
+        /// Searches for "CD001" (the mandatory ISO9660 Standard Identifier) and checks
+        /// that "PLAYSTATION" immediately follows at offset +7 (PVD byte 8).
+        /// Works regardless of sector format (MODE1/2048, MODE2/2352, cooked or raw).
+        /// </summary>
+        private static bool IsPlayStationDisc(string dataFilePath)
+        {
+            const long searchLimit = 50L * 1024 * 1024; // 50 MB — covers any audio pre-gap
+            const int bufferSize = 65536;
+            const int overlap = 17; // pattern spans 18 bytes max (i..i+17), so overlap = 17
+
+            try
+            {
+                using var fs = new FileStream(dataFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                var buf = new byte[bufferSize];
+                long pos = 0;
+
+                while (pos < searchLimit)
+                {
+                    fs.Position = pos;
+                    int read = fs.Read(buf, 0, bufferSize);
+                    if (read < 18) break; // not enough bytes for the full pattern
+
+                    for (int i = 0; i <= read - 18; i++)
+                    {
+                        // "CD001" at i, then version+unused at i+5,i+6, then System Identifier at i+7
+                        if (buf[i]   == 'C' && buf[i+1] == 'D' && buf[i+2] == '0' &&
+                            buf[i+3] == '0' && buf[i+4] == '1' &&
+                            buf[i+7] == 'P' && buf[i+8] == 'L' && buf[i+9]  == 'A' &&
+                            buf[i+10]== 'Y' && buf[i+11]== 'S' && buf[i+12] == 'T' &&
+                            buf[i+13]== 'A' && buf[i+14]== 'T' && buf[i+15] == 'I' &&
+                            buf[i+16]== 'O' && buf[i+17]== 'N')
+                            return true;
+                    }
+
+                    if (read < bufferSize) break; // reached end of file
+                    pos += bufferSize - overlap;   // slide window with overlap
+                }
+            }
+            catch { }
+
+            return false;
+        }
+
         private static async Task<string[]> GetGdiFileListAsync(string gdiFilePath)
         {
             var tracks = new List<string>();
@@ -766,6 +834,9 @@ namespace GDMENUCardManager.Core
             using (FileStream fs = new FileStream(filepath, FileMode.Open, FileAccess.Read))
             {
                 long headerOffset = GetHeaderOffset(fs);
+
+                if (headerOffset == -1)
+                    return null; // no KATANA header — not a DC disc
 
                 fs.Seek(headerOffset, SeekOrigin.Begin);
 

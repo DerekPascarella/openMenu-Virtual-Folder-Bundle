@@ -1,0 +1,34 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="450" d:DesignHeight="220"
+        x:Class="GDMENUCardManager.ManualUpdateDialog"
+        Title="Manual Update Required" SizeToContent="Height" Width="450"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner">
+  <Grid Margin="20">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <!-- Message -->
+    <StackPanel Grid.Row="0">
+      <TextBlock x:Name="ReasonText" TextWrapping="Wrap" Margin="0 0 0 10"/>
+
+      <TextBlock TextWrapping="Wrap" Margin="0 0 0 10" Text="To upgrade, download the release package from the GitHub repository:"/>
+
+      <Button x:Name="ReleasesLinkButton" Content="https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/releases"
+              Click="ReleasesLink_Click" Margin="0 0 0 0"
+              Background="Transparent" BorderBrush="Transparent" Foreground="Blue"
+              Padding="0" Cursor="Hand" HorizontalAlignment="Left"/>
+    </StackPanel>
+
+    <!-- Buttons -->
+    <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 15 0 0">
+      <Button Content="Skip This Version" Click="SkipButton_Click" Width="120" Height="28" Margin="0 0 10 0"/>
+      <Button Content="OK" Click="OkButton_Click" Width="90" Height="28" IsDefault="True"/>
+    </StackPanel>
+  </Grid>
+</Window>

@@ -238,7 +238,7 @@ draw_draw_sub_image(int x, int y, float width, float height, uint32_t color, voi
             case 1024: break;
             default:
                 /* printf("%s error tex size %d(%ld) %d(%ld)\n", __func__, context.txr.width, img->width,
-                       context.txr.height, img->height); */
+                   context.txr.height, img->height); */
                 return;
                 break;
         }
@@ -337,7 +337,7 @@ draw_draw_quad(int x, int y, float width, float height, uint32_t color) {
             case 1024: break;
             default:
                 /* printf("%s error tex size %d(%f) %d(%f)\n", __func__, context.txr.width, width, context.txr.height,
-                       height); */
+                   height); */
                 return;
                 break;
         }

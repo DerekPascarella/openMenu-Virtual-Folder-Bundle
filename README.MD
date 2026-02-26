@@ -39,6 +39,7 @@ To accommodate the new openMenu, a modified version of [GD MENU Card Manager](ht
     - [Virtual Folders (openMenu Only)](#virtual-folders-openmenu-only)
       - [Batch Folder Move and Rename (Windows Only)](#batch-folder-move-and-rename-windows-only)
       - [Batch Folder Assignment](#batch-folder-assignment)
+      - [Assigning Additional Folder Paths](#assigning-additional-folder-paths)
     - [Multi-Disc Games](#multi-disc-games)
     - [Disc Types (openMenu Only)](#disc-types-openmenu-only)
     - [Searching and Filtering](#searching-and-filtering)
@@ -56,6 +57,8 @@ To accommodate the new openMenu, a modified version of [GD MENU Card Manager](ht
   - [Using Cheats](#using-cheats)
     - [Per-Game Cheat Files](#per-game-cheat-files)
   - [Virtual VMU Device Support](#virtual-vmu-device-support)
+  - [Serial VMU Feature](#serial-vmu-feature)
+    - [Migration Tutorial](#migration-tutorial)
   - [Save/Load Manager](#saveload-manager)
   - [PlayStation Emulator Feature](#playstation-emulator-feature)
   - [Multi-Disc Launcher](#multi-disc-launcher)
@@ -73,7 +76,6 @@ To accommodate the new openMenu, a modified version of [GD MENU Card Manager](ht
     - [Popup Menus (All Modes)](#popup-menus-all-modes)
   - [Keyboard Support](#keyboard-support)
 - [Theming](#theming)
-  - [Installing Additional Themes](#installing-additional-themes)
   - [Theme Format](#theme-format)
     - [General](#general)
     - [Color Styling](#color-styling)
@@ -88,19 +90,43 @@ To accommodate the new openMenu, a modified version of [GD MENU Card Manager](ht
 
 ## Current Version
 
-The latest version of **openMenu Virtual Folder Bundle** is [1.4-ateam](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/releases/tag/1.4-ateam).
+The latest version of **openMenu Virtual Folder Bundle** is [1.5-ateam](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/releases/tag/1.5-ateam).
 
 ## Roadmap Ideas
 
-- Built-in virtual per-game VMU saving/loading with no external requirement except an inexpensive serial SD adapter.
 - New metadata format with optional openMenu popup window when a disc image is selected, showing screenshots, description, and more.
+- Support artwork assignment for openMenu folders.
+- Keep track of a recently played list in openMenu.
 - See [Dreamcast Now](https://dreamcast.online/now/) information directly from openMenu (DreamPi or BBA required).
-- Implement a housekeeping function in GD MENU Card Manager to help users easily identify gaps or issues with their disc image collection (e.g., duplicate serials, missing artwork, missing discs in multi-disc sets).
-- Support artwork assignment for folders.
 - Add drag-and-drop support to Linux version of GD MENU Card Manager.
+- Implement a housekeeping function in GD MENU Card Manager to help users easily identify gaps or issues with their disc image collection (e.g., duplicate serials, missing artwork, missing discs in multi-disc sets).
 
 ## Changelog
 
+- **Version 1.5-ateam (2026-02-26)**
+  - **openMenu**
+    - Serial VMU feature added, enabling per-game virtual VMUs using serial SD adapter (see [Issue 108](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/108)).
+    - Retro Fighters wireless controller/dongle stability greatly improved (see [Issue 121](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/121)).
+    - Disc images can now appear in more than just one folder (see [Issue 110](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/110)).
+    - Save/Load manager now performs live VMU device detection (see [Issue 107](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/107)).
+    - The "save" openMenu VMU LCD icon now sent to any VMU for 1.5s where read/write operations are occurring (see [Issue 118](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/118)).
+    - openMenu VMU LCD icon now sent live whenever a VMU is inserted (see [Issue 117](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/117)).
+    - New "Exit to BIOS" options to avoid issues with custom BIOS bootloader on some console revisions (see [Issue 122](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/122)).
+    - Endless/infinite scrolling added to all windows (see [Issue 109](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/109)).
+    - Save files labeled "future" can now be overwritten, as well as downgraded (see [Issue 105](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/105)).
+    - openMenu VMU LCD icons now correctly oriented on light gun (see [Issue 127](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/127)).
+  - **GD MENU Card Manager**
+    - Automatic updater added for seamless upgrades in the future (see [Issue 116](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/116)).
+    - Disc images can now be assigned to more than one folder (see [Issue 110](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/110)).
+    - New DAT Tools function added to overwrite local DATs with those from SD card's openMenu GDI (see [Issue 111](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/111)).
+    - Metadata file `region.txt` now generated and honored, correcting issues with PAL consoles using analog video cables and some Japanese games (see [Issue 112](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/112)).
+    - All "Disc Image Options" settings now remembered on next launch (see [Issue 113](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/113)).
+    - Disc image "Info" window fixes and enhancements (see [Issue 114](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/114)).
+    - SD card can no longer be saved in Card Manager if one or more disc images is missing a Serial ID (see [Issue 120](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/120)).
+    - macOS package fixed to allow editing of artwork/metadata DATs, as well as saving custom settings (see [Issue 123](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/123)).
+    - Fixed regression that prevented adding non-game disc images (e.g., audio CDs, VCDs) (see [Issue 124](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/124)).
+    - Enhanced automatic disc image type detection (see [Issue 125](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/125)).
+    - Card Manager now properly handles an SD card removed mid-session (see [Issue 126](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/126)).
 - **Version 1.4-ateam (2026-02-14)**
   - **openMenu**
     - Fixed crash when launching games or exiting to BIOS while using "DeepDream" themes (see [Issue 98](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/98)).
@@ -235,7 +261,7 @@ The latest version of **openMenu Virtual Folder Bundle** is [1.4-ateam](https://
   - megavolt85 for forking openMenu and adding new features
   - sbstnc for forking openMenu and adding a Docker development container
   - Sonik for his work on GD MENU Card Manager
-  - RazorX and Chris Daioglou for some good feature ideas
+  - RazorX, Chris Daioglou, and the testers for good ideas for new features
   - darc for [Redump2CDI](https://dreamcast.wiki/Redump2CDI), used for Redump CD-ROM CUE/BIN to CDI conversion
   - feyris-tan for [gdidrop](https://github.com/feyris-tan/gdidrop), code from which is used for Redump GD-ROM CUE/BIN to GDI conversion
   - All of the wonderful people in the Dreamcast scene
@@ -246,11 +272,12 @@ Many components of both openMenu and GD MENU Card Manager have been drastically 
 
 ### Changes Since openMenu v1.3.0
 
+Below represents all the changes brought with the initial release of **openMenu Virtual Folder Bundle**. Since then, many more changes have been made (see the [Changelog](#changelog) section).
+
 - New "Folders" Style mode, plus custom themes:
   - Virtual folder support includes eight levels of nested subfolders.
   - Complete subfolder path maximum length is 256 characters, including backslashes (e.g., `Games\JP\RPG`).
   - Maximum number of virtual folders supported per SD card is 1024.
-  - L Trigger + R Trigger is now a shortcut to go back one directory
 - Long entry names now supported (256 characters), along with marquee scrolling over those exceeding 49 characters.
 - Scroll mode improvements:
   - Jumping cursor fixed
@@ -265,6 +292,8 @@ Many components of both openMenu and GD MENU Card Manager have been drastically 
 - Credits updated to include additions from this author.
 
 ### Changes Since GD MENU Card Manager v2.0.1
+
+Below represents all the changes brought with the initial release of **openMenu Virtual Folder Bundle**. Since then, many more changes have been made (see the [Changelog](#changelog) section).
 
 - Game list column widths and window width adjusted for better visibility.
 - Version check in About window removed (with possibility of returning in the future).
@@ -295,7 +324,7 @@ Regardless of scenario, users follow these steps:
 
 ### Managing Artwork
 
-GD MENU Card Manager provides a streamlined artwork management system for adding cover art to games and other disc images. Artwork is stored in DAT files (e.g., Folders mode uses `BOX.DAT` for full-size cover art) located in the `tools\openMenu\menu_data` folder.
+GD MENU Card Manager provides a streamlined artwork management system for adding cover art to games and other disc images. Artwork is stored in DAT files (e.g., Folders mode uses `BOX.DAT` for full-size cover art) located in the `tools\openMenu\menu_data` folder (`~/Library/Application-Support/GDMENUCardManager/menu_data` on macOS).
 
 #### Artwork Assignment
 
@@ -314,7 +343,7 @@ To assign artwork to a game:
 **Important Notes:**
 - Artwork changes are held in memory until the user clicks **Save Changes** in the main window to write them to the DAT files.
 - The application automatically performs Serial ID translation to ensure artwork is filed under the correct serial that openMenu uses internally. This handles regional variants and problematic disc IDs automatically. Because of this, users may notice they're unable to store specific serials without GD MENU Card Manager automatically correcting them per openMenu's expected serials (e.g., NTSC-U "Nightmare Creatures 2" has ID `T9504M` but will be automatically changed to `T9504N`).
-- If `BOX.DAT` and `ICON.DAT` don't exist in the `tools\openMenu\menu_data` folder, the application will auto-generate minimal starter files.
+- If `BOX.DAT` and `ICON.DAT` don't exist in the `tools\openMenu\menu_data` folder (`~/Library/Application-Support/GDMENUCardManager/menu_data` on macOS), the application will auto-generate minimal starter files.
 - If a mismatch is detected between `BOX.DAT` and `ICON.DAT` (mismatched entry counts), the user will be prompted to auto-fix the issue.
 - All DAT modifications are backed up automatically to the `dat_backups` folder before changes are made.
 
@@ -342,18 +371,24 @@ The **DAT Tools** button opens a window providing three functions for managing a
 - Original files are backed up before clearing.
 - **Warning**: This action cannot be undone except by restoring from the backup.
 
+**Overwrite DATs with SD Card**
+- Overwrite application's local DAT files with `BOX.DAT`, `ICON.DAT`, and `META.DAT` from the SD card's current openMenu build in the `01` folder.
+- Original files are backed up before being replaced.
+
 #### Restoring DAT Files From Backup
 
-Automatic backups are saved to the `dat_backups` folder with timestamps. To restore:
+Automatic backups are saved to the `dat_backups` folder with timestamps (located in `~/Library/Application-Support/GDMENUCardManager` on macOS). To restore:
 
-1. Navigate to the `dat_backups` folder in the GD MENU Card Manager application directory.
+1. Navigate to the `dat_backups` folder in the GD MENU Card Manager application directory (`~/Library/Application-Support/GDMENUCardManager/dat_backups` on macOS).
 2. Find the backup folder with the desired timestamp.
 3. Copy the `BOX.DAT`, `ICON.DAT`, and `META.DAT` files from the backup, removing the timestamp from the file name.
-4. Paste them into `tools\openMenu\menu_data`, overwriting the current files.
+4. Paste them into `tools\openMenu\menu_data` (`~/Library/Application-Support/GDMENUCardManager/menu_data` on macOS), overwriting the current files.
 
 #### Restoring a New User's Personal DAT Files
 
-New users of **openMenu Virtual Folder Bundle** may wish to use their existing DAT files containing artwork and metadata. To do so, navigate to the `tools\openMenu\menu_data` folder in the original GD MENU Card Manager application folder and copy `BOX.DAT`, `ICON.DAT`, and `META.DAT` to the `tools\openMenu\menu_data` folder inside the **openMenu Virtual Folder Bundle**'s GD MENU Card Manager application folder, overwriting the defaults.
+New users of **openMenu Virtual Folder Bundle** on Windows and Linux may wish to use their existing DAT files containing artwork and metadata. To do so, navigate to the `tools\openMenu\menu_data` folder in the original GD MENU Card Manager application folder and copy `BOX.DAT`, `ICON.DAT`, and `META.DAT` to the `tools\openMenu\menu_data` folder inside the **openMenu Virtual Folder Bundle**'s GD MENU Card Manager application folder, overwriting the defaults.
+
+macOS users may take their old DATs and copy and paste them into `~/Library/Application-Support/GDMENUCardManager/menu_data`.
 
 Note that this restoration process is also applicable to users upgrading from a previous version of **openMenu Virtual Folder Bundle** to the latest version.
 
@@ -402,7 +437,7 @@ The Games List table displays all disc images currently on the SD card. Each col
 Games can be added in three ways:
 
 - Click the **Add** button (plus icon) and select one or more files from the file browser.
-- Drag and drop files directly onto the application window (Windows and macOs only).
+- Drag and drop files directly onto the application window (Windows and macOS only).
 - Add compressed archives (7Z, RAR, ZIP) containing supported disc images.
 
 Supported disc image formats: GDI, CDI, CCD, MDS, and CUE/BIN (Redump format).
@@ -427,7 +462,7 @@ Removed games are deleted from the SD card when **Save Changes** is clicked.
 
 #### Reordering Games
 
-Use the **Move Up** and **Move Down** buttons (arrow icons) to change the order of selected games, or drag them from place to place (Windows and MacOS only). The order determines how games appear in openMenu's "SD Card Order" sort mode and affects folder numbering on the SD card.
+Use the **Move Up** and **Move Down** buttons (arrow icons) to change the order of selected games, or drag them from place to place (Windows and macOS only). The order determines how games appear in openMenu's "SD Card Order" sort mode and affects folder numbering on the SD card.
 
 #### Editing Game Information
 
@@ -467,11 +502,17 @@ By selecting two or more rows in the **Games List** table, users can right-click
 
 To assign multiple games to the same folder, edit each game's Folder cell with the identical path.
 
+##### Assigning Additional Folder Paths
+
+openMenu is capable of displaying a single disc image in multiple folders. This is useful for those who may want alphabetized folders, as well as those organized by genre.
+
+Select a disc image in the **Games List** table, then right-click and select **Assign Additional Folder Paths**. Up to five additional folder paths can be assigned per disc image.
+
 #### Multi-Disc Games
 
 Edit the **Disc** column to specify disc numbering (e.g., `1/4` for disc one of four). openMenu's "Compact" multi-disc setting groups games with matching titles and sequential disc numbers into a single entry with a disc selection popup.
 
-It's important to note that in order for openMenu to correctly identify multiple discs are part of a single set, **they must share the same unique Serial value** when the SD card was authored.
+It's important to note that in order for openMenu to correctly identify that multiple discs are part of a single set, **they must share the same unique Serial value** when the SD card was authored.
 
 For arbitrary multi-disc collections, such as an MP3, Karaoke, or VCD player boot disc plus a collection of media discs, all associated discs must appear in sequential order so that the disc-swap button on the GDEMU PCB can cycle through them correctly (while also sharing the same Serial). Next, ensure they share a sequential disc number and count value, with 10 discs being the maximum. See the example below, where the first entry is the MP3 player boot disc itself and all subsequent entries are the discs containing MP3 files.
 
@@ -492,7 +533,7 @@ The **Type** column categorizes disc images:
 |------|-------------|
 | **Game** | Standard Dreamcast game (default). |
 | **Other** | Non-game discs (audio CDs, utilities). These skip the full boot sequence and return directly to the BIOS. |
-| **PSX** | PlayStation disc images for use with either the Bleem! or Bloom emulators (see the [PlayStation Emulator Feature](#playstation-emulator-feature) section). |
+| **PSX** | PlayStation disc images for use with either the Bleemcast! or Bloom emulators (see the [PlayStation Emulator Feature](#playstation-emulator-feature) section). |
 
 #### Searching and Filtering
 
@@ -622,7 +663,7 @@ openMenu's default behavior is to both VGA patch and region patch any and all la
 
 While hovered over a game in Folders view mode, press the X button to launch it with CodeBreaker for cheats. When in Grid, LineDesc, and Scroll view modes, press the B button.
 
-The cheat database is stored in GD MENU Card Manager's `tools\openMenu\menu_data\CHEATS\FCDCHEATS.BIN` folder, which is the [latest available version](https://www.dreamcast-talk.com/forum/viewtopic.php?t=17078).
+On Windows and Linux, the cheat database is stored in GD MENU Card Manager's `tools\openMenu\menu_data\CHEATS\FCDCHEATS.BIN` folder, which is the [latest available version](https://www.dreamcast-talk.com/forum/viewtopic.php?t=17078). Cheat editing isn't supported on macOS.
 
 #### Per-Game Cheat Files
 
@@ -638,10 +679,10 @@ To create a per-game cheat file, download the [XPDC Code Compiler](https://githu
 1. Launch Code Compiler and click **Import Save**, select `Binary Files (*.bin)` for "Files of type", then navigate to the `tools\openMenu\menu_data\CHEATS` folder and select the example `MK51178.BIN` file.
 2. In the tool's main window will be an example layout for an individual game's cheats. Use this format to compile a cheat code list for the desired game.
 3. Once complete, click **Browse File**, select `Binary Files (*.bin)` for "Files of type", then navigate to the `tools\openMenu\menu_data\CHEATS` folder, enter the game's unique Serial ID plus the `.bin` file extension (e.g., `HDR0005.BIN`), then click **Save**. A game's Serial ID can be found under the "Serial" column in GD MENU Card Manager.
-4. Click the **Compile Save** to write the new per-game cheat file to the `tools\openMenu\menu_data\CHEATS` folder.
+4. Click **Compile Save** to write the new per-game cheat file to the `tools\openMenu\menu_data\CHEATS` folder.
 5. Insert the GDEMU SD card into computer, launch GD MENU Card Manager, and click **Save Changes** to rebuild openMenu with the new cheat file.
 
-Note that this same method can be used to modify the global `FCDCHEATS.BIN` database file, and new codes are sometimes posted to cheat collection's [Dreamcast-Talk.com Forum Thread](https://www.dreamcast-talk.com/forum/viewtopic.php?t=17078). Users should be warned that a cheat database file may have size limits, and after a certain length entries for one or more games may disappear from the CodeBreaker menu.
+Note that this same method can be used to modify the global `FCDCHEATS.BIN` database file, and new codes are sometimes posted to the cheat collection's [Dreamcast-Talk.com Forum Thread](https://www.dreamcast-talk.com/forum/viewtopic.php?t=17078). Users should be warned that a cheat database file may have size limits, and after a certain length entries for one or more games may disappear from the CodeBreaker menu.
 
 ### Virtual VMU Device Support
 
@@ -649,13 +690,82 @@ openMenu supports sending Game IDs to virtual VMU devices like the VM2, VMUPro, 
 
 Note that unlike previous versions of openMenu, **openMenu Virtual Folder Bundle** has an option to transmit Game IDs to any and all virtual VMU devices connected to the console when launching disc images and when choosing "Send Game ID" when exiting to BIOS.
 
+Use the "Game ID" setting (see the [Settings Menu](#settings-menu) section) to turn transmission on or off.
+
+Note that the Serial VMU (see the [Serial VMU Feature](#serial-vmu-feature) section) and Game ID features are mutually exclusive, and enabling one will disable the other.
+
+### Serial VMU Feature
+
+**When the Serial VMU feature is enabled, users must save openMenu settings to serial SD card instead of VMU** (see the [Save/Load Manager](#saveload-manager) section).
+
+openMenu supports backing up and restoring VMU save data to and from a serial SD adapter (like the one [sold here](https://www.amazon.com/ALOEU-Adapter-Reader-Dreamcast-Dreamshell/dp/B0CSDNQ1HF)) on a per-game basis. When enabled, launching a game will automatically restore VMU data from the serial SD card before booting, and the next time openMenu starts it will back up any changes made during gameplay. This allows users to maintain persistent per-game VMUs without relying on excessive physical VMU storage.
+
+Over the years, it's been noted that the Dreamcast serial SD adapter is picky with SD card support. Users have reported success with cards like [this](https://www.amazon.com/dp/B00FQMWTGK), [this](https://www.amazon.com/dp/B004CZ0H1Q), and [this](https://www.amazon.com/dp/B094YW3MCL).
+
+On a FAT32-formatted serial SD card, individual per-game VMUs can be found in the `OPENMENU\SAVES` folder, where each game's unique Serial ID is used to create a dedicated folder (e.g., `OPENMENU\SAVES\MK5115450`). Inside this folder are the individual `.VMU` files for each slot, along with a `TITLE.TXT` file containing the full title of the game to which that Serial VMU belongs. These `.VMU` files can be modified using tools like [VMU Explorer](https://segaretro.org/VMU_Explorer).
+
+The "Serial VMU" setting (see the [Settings Menu](#settings-menu) section) specifies which controller port and socket to use for backup and restore operations (e.g., Port A Socket 1, Port B Socket 2, etc.). Set it to "Off" to disable the feature entirely.
+
+- **Restoring (game launch)**: When a game is launched (either directly, with cheats, or when exiting to BIOS), openMenu checks the serial SD card for a matching Serial VMU. If found, it is copied to the VMU in the configured port/socket before booting the game. If no Serial VMU exists, a blank VMU or a copy of the currently inserted physical VMU is prepared instead.
+- **Backing up (next boot)**: The next time openMenu starts, it detects that a game was previously launched with Serial VMU active and automatically backs up the physical VMU data from the configured port/socket to the serial SD card.
+- **Exit to BIOS**: When using "Exit to BIOS", openMenu offers to create a Serial VMU for that game, or restore that game's existing Serial VMU.
+
+When the "Serial VMU Multi-Slot" setting is turned on (see the [Settings Menu](#settings-menu) section), openMenu provides five save slots per game instead of one. A slot selector is displayed before any backup or restore operation, allowing the user to choose which slot to use. Each slot shows a timestamp indicating when it was last written to, or "EMPTY" if unused.
+
+With the "Serial VMU Multi-Slot" setting turned on, a custom display label can be given to each slot. On the serial SD card, navigate to the `OPENMENU\SAVES` folder and locate the dedicated folder for that game's Serial VMU (e.g., `OPENMENU\SAVES\MK5115450`). Next, find the `.VMU` file for a specific slot (e.g., `SLOT1.VMU`) and then create a `.TXT` file alongside it using the same base file name (e.g., `SLOT1.TXT`). Up to 28 characters are supported for custom slot labels, and anything exceeding that length will be automatically truncated when displayed. Note that slot labels can be defined ahead of time even when no `.VMU` file exists for it yet.
+
+When "Serial VMU Multi-Slot" is off, slot 1 is used silently with no prompt.
+
+For backup operations (returning to openMenu after playing a game), the slot selector pre-positions the cursor on the slot that was used when the game was last launched.
+
+Note that the Serial VMU and Game ID (see the [Virtual VMU Device Support](#virtual-vmu-device-support) section) features are mutually exclusive, and enabling one will disable the other.
+
+#### Migration Tutorial
+
+openMenu's Serial VMU feature makes the process of migrating from several physical VMUs simple.
+
+This guide walks through how to copy save files from physical VMUs onto the serial SD card using the Serial VMU feature. The basic idea is to use the Dreamcast BIOS as a middleman to copy saves from physical VMUs onto a single VMU that a user dedicates as their Serial VMU device.
+
+**What's Needed**
+
+- openMenu settings must be saved to serial SD card (not VMU).
+- A dedicated VMU to be used for everyday Serial VMU backups/restores
+- One or more additional VMUs containing save data to migrate
+- A serial SD adapter and FAT32 formatted SD card
+
+**Steps**
+
+1. Plug in both VMUs. The dedicated VMU should be in the port/socket configured in openMenu's "Serial VMU" setting (see the [Settings Menu](#settings-menu) section). The VMU with the save data to migrate should be in a different port or socket.
+
+2. In openMenu, highlight the game whose save data is to be migrated.
+
+3. Press the button mapped to "Exit to BIOS". When prompted, select the **Create/Restore Serial VMU + Exit to BIOS** option. This allows an easy return to openMenu afterward by choosing **Play** from the BIOS.
+
+4. As this will be the first time the game has been launched with the Serial VMU feature activated, a prompt will appear asking how to initialize the dedicated VMU. Choose "Start fresh and format VMU" unless there's a specific reason to leave the contents of this dedicated VMU intact.
+
+   If it's not the first time the game has been launched with the Serial VMU feature activated, allow openMenu to automatically load the serial SD card's Serial VMU, or choose the desired slot if the "Serial VMU Multi-Slot" setting is turned on.
+
+5. The Dreamcast BIOS will load. From here, choose **File** (the VMU icon on the main screen). Both the VMUs should be listed in their respective ports/sockets.
+
+6. Copy the save data from the secondary VMU to the dedicated VMU. To do so, open the secondary VMU and locate the desired save file. Once selected, press the A button, then choose "Copy" from the menu. For the target VMU, select the VMU dedicated to everyday Serial VMU backups/restores. Repeat this process for games that use more than one save file.
+
+7. Once the save data copying process is complete, return to openMenu by either choosing **Play** from the BIOS menu or power-cycling the console.
+
+8. In openMenu, the backup prompt will appear. openMenu remembers that the previous session exited to BIOS with this game's Serial VMU active. It will detect the save data now on the dedicated VMU and back it up to a Serial VMU on the serial SD card. One of two things will happen depending on whether the "Serial VMU Multi-Slot" setting is turned on or off:
+   - **On:** The user will be prompted to select one of five Serial VMU slots in which to store the backed up VMU contents.
+   - **Off:** The dedicated VMU will automatically be backed up to the default Serial VMU slot (Slot 1).
+
+At this point, save data migration is complete. In the future whenever this game is launched, its Serial VMU will either be automatically restored, or a prompt will appear asking the user to choose the Serial VMU slot from which to restore (dictated by the "Serial VMU Multi-Slot" setting).
+
+To perform a save file migration for another game, simply repeat the above steps.
+
 ### Save/Load Manager
 
 openMenu includes a Save/Load Manager for managing VMU configuration save files, including support for saving/loading settings to/from the serial SD adapter.
 
 Access it from the Settings menu by selecting "Save/Load".
 
-Note that when openMenu launches, it first scans for a serial SD card with valid openMenu settings saved to it. If found, those settings are automatically loaded and no VMU save file scan is performed. If a serial SD card with valid settings is not found, openMenu will automatically load saved settings from the first VMU that it finds (starting with Port A, Socket 1). If no valid settings are found, openMenu's default settings are used instead.
+Note that when openMenu launches, it first scans for a serial SD card with valid openMenu settings saved to it (i.e., an `OPENMENU\OPENMENU.CFG` file). If found, those settings are automatically loaded and no VMU save file scan is performed. If a serial SD card with valid settings is not found, openMenu will automatically load saved settings from the first VMU that it finds (starting with Port A, Socket 1). If no valid settings are found, openMenu's default settings are used instead.
 
 **Features:**
 
@@ -685,6 +795,10 @@ Note that when openMenu launches, it first scans for a serial SD card with valid
 
 openMenu features a built-in version of the Bleemcast! emulator for launching PlayStation discs. While this emulator's performance and compatibility aren't perfect, it will typically be capable of at least booting most retail PlayStation discs as well as specially formatted self-booting Bleemcast! discs.
 
+The following custom button combinations have been added to Bleemcast!:
+- **Restart emulator:** `A + B + X + Y + D-pad Down`
+- **Exit to menu**: `A + B + X + Y + Start`
+
 Support also exists for the work-in-progress [Bloom](https://github.com/pcercuei/bloom) emulator. Users can compile Bloom from source and then place `BLOOM.BIN` in the `tools\openMenu\menu_data` folder, after which launching a PlayStation disc will bring up a menu allowing for the selection between Bleemcast! and Bloom.
 
 It's important to note that Bloom is early in its development, and while it impressively places heavy emphasis on accuracy and compatibility, most games are not currently in a playable state.
@@ -693,7 +807,7 @@ To add PlayStation discs in CUE/BIN format to an SD card with GD MENU Card Manag
 
 ### Multi-Disc Launcher
 
-openMenu detects multi-disc sets by finding two or more entries with the same Serial and matching disc number/count values (e.g., `1/2`, `2/2`). It's important to note that in order for openMenu to correctly identify multiple discs are part of a single set, **they must share the same unique Serial value** when the SD card was authored. See more in the [Multi-Disc Games](#multi-disc-games) section.
+openMenu detects multi-disc sets by finding two or more entries with the same Serial and matching disc number/count values (e.g., `1/2`, `2/2`). It's important to note that in order for openMenu to correctly identify that multiple discs are part of a single set, **they must share the same unique Serial value** when the SD card was authored. See more in the [Multi-Disc Games](#multi-disc-games) section.
 
 If the Multi-Disc setting is on "Compact", multiple discs part of the same entry will only appear once in the menu and users will be provided with a launcher menu to decide which disc to boot. There's an additional degree of control over how multi-disc entries are treated, the details of which can be read about in the [Folders Mode Settings](#folders-mode-settings) section.
 
@@ -701,7 +815,7 @@ If the Multi-Disc setting is on "Compact", multiple discs part of the same entry
 
 This build of openMenu has enhanced "Exit to BIOS" options which are dynamically displayed based on the disc image type and the presence of a virtual VMU device like VM2, VMUPro, USB4MAPLE, and Pico2Maple.
 
-Furthermore, the "hidden 3D BIOS" can be enabled by turning the "Exit to 3D BIOS" setting on (see more in the [Available Options by Context](#available-options-by-context) section).
+Furthermore, there are additional "Exit to BIOS" settings users can explore (see more in the [Available Options by Context](#available-options-by-context) section).
 
 Note that region and VGA patching is not automatically applied when launching games from the BIOS. Instead, use [Disc Image Options](#disc-image-options) in GD MENU Card Manager to apply these patches directly to disc images.
 
@@ -742,12 +856,14 @@ Each view mode has its own set of available settings. Below is a breakdown of ea
 | **Style** | LineDesc, Grid3, Scroll, Folders | Changes the visual layout/view mode of openMenu. |
 | **Theme** | NTSC-U, NTSC-J, PAL, Custom... | Selects the color scheme and background artwork. Custom themes appear if present. |
 | **Aspect** | 4:3, 16:9 | Adjusts background artwork for standard or widescreen displays. |
-| **Exit to 3D BIOS** | Off, On | Enables 3D BIOS when selecting "Exit to BIOS". |
+| **Exit to BIOS** | Standard, Alternate, Alternate + 3D | "Standard" uses a standard method when exiting to BIOS, whereas "Alternate" uses a custom method that removes save file copy protection in the BIOS save manager. "Alternate + 3D" does the same while also enabling the "hidden" 3D BIOS feature. If users experience a freeze when exiting to BIOS with either "Alternate" setting, it's advised they use the "Standard" setting instead. |
 | **Sort** | Alphabetical, Name, Region, Genre, SD Card Order | Determines how the game list is sorted. "SD Card Order" matches physical folder order on SD card. |
 | **Filter** | All, Action, Racing, Simulation, Sports, Lightgun, Fighting, Shooter, Survival, Adventure, Platformer, RPG, Shmup, Strategy, Puzzle, Arcade, Music | Filters the game list to show only titles matching the selected genre. |
 | **Multi-Disc** | Show All, Compact | "Show All" displays every disc individually. "Compact" groups multi-disc games into a single entry. |
-| **VMU Time Sync** | Off, On | Use VMU date and time to set console date and time when openMenu boots (VM2 and VMUPro must be using a supported firmware) |
-| **VMU Game ID** | Send to All, Send to First, Off | If virtual VMU device like VM2, VMUPro, USB4MAPLE, or Pico2Maple detected, send Game ID to the first one detected (starting at the first controller port and first VMU socket), all detected, or turn off ID transmission altogether |
+| **VMU Time Sync** | Off, On | Use VMU date and time to set console date and time when openMenu boots (VM2 and VMUPro must be using a supported firmware). |
+| **VMU Game ID** | Send to All, Send to First, Off | If virtual VMU device like VM2, VMUPro, USB4MAPLE, or Pico2Maple detected, send Game ID to the first one detected (starting at the first controller port and first VMU socket), all detected, or turn off ID transmission altogether (see the [Virtual VMU Device Support](#virtual-vmu-device-support) section) |
+| **Serial VMU** | Off, On (A1), On (A2), On (B1), On (B2), On (C1), On (C2), On (D1), On (D2) | If serial SD card detected, use it to store per-game virtual VMUs in the specified Port and Socket. |
+| **Serial VMU Slots** | If Serial VMU is enabled, also enable up to five per-game slots, or leave off to default to one virtual VMU per game. |
 | **Boot Mode** | Full Boot, License Only, Animation Only, Fast Boot | Controls how the game is launched. "Full Boot" displays the complete boot sequence, "License Only" shows only the SEGA license screen, "Animation Only" plays only the Dreamcast boot animation, and "Fast Boot" skips all startup screens and launches the game immediately. Some titles may not function correctly in modes other than "Full Boot". DreamConn S users are generally advised to use "Full Boot" to ensure VMU synchronization completes before the game starts, which is required for certain games' automatic load features. |
 | **Save/Load** | N/A | Opens the [Save/Load Manager](#saveload-manager). |
 | **Apply** | N/A | Applies settings for current session only. |
@@ -758,7 +874,7 @@ Each view mode has its own set of available settings. Below is a breakdown of ea
 |---------|---------|-------------|
 | **Style** | LineDesc, Grid3, Scroll, Folders | Changes the visual layout/view mode of openMenu. |
 | **Theme** | GDMENU, Custom... | Selects the theme. Custom themes appear if `SCROLL_X` folders exist. |
-| **Exit to 3D BIOS** | Off, On | Enables 3D BIOS when selecting "Exit to BIOS". |
+| **Exit to BIOS** | Standard, Alternate, Alternate + 3D | "Standard" uses a standard method when exiting to BIOS, whereas "Alternate" uses a custom method that removes save file copy protection in the BIOS save manager. "Alternate + 3D" does the same while also enabling the "hidden" 3D BIOS feature. If users experience a freeze when exiting to BIOS with either "Alternate" setting, it's advised they use the "Standard" setting instead. |
 | **Sort** | Alphabetical, Name, Region, Genre, SD Card Order | Determines how the game list is sorted. "SD Card Order" matches physical folder order on SD card. |
 | **Filter** | All, Action, Racing, Simulation, Sports, Lightgun, Fighting, Shooter, Survival, Adventure, Platformer, RPG, Shmup, Strategy, Puzzle, Arcade, Music | Filters the game list to show only titles matching the selected genre. |
 | **Multi-Disc** | Show All, Compact | "Show All" displays every disc individually. "Compact" groups multi-disc games into a single entry. |
@@ -766,8 +882,10 @@ Each view mode has its own set of available settings. Below is a breakdown of ea
 | **Display Index Numbers** | Off, On | Shows or hides the index number next to each game entry. |
 | **Disc Details** | Show, Hide | Toggles display of disc information (region, VGA support, etc.) alongside game entries. |
 | **Marquee Speed** | Slow, Medium, Fast | Controls how quickly long game names scroll horizontally. |
-| **VMU Time Sync** | Off, On | Use VMU date and time to set console date and time when openMenu boots (VM2 and VMUPro must be using a supported firmware) |
-| **VMU Game ID** | Send to All, Send to First, Off | If virtual VMU device like VM2, VMUPro, USB4MAPLE, or Pico2Maple detected, send Game ID to the first one detected (starting at the first controller port and first VMU socket), all detected, or turn off ID transmission altogether |
+| **VMU Time Sync** | Off, On | Use VMU date and time to set console date and time when openMenu boots (VM2 and VMUPro must be using a supported firmware). |
+| **VMU Game ID** | Send to All, Send to First, Off | If virtual VMU device like VM2, VMUPro, USB4MAPLE, or Pico2Maple detected, send Game ID to the first one detected (starting at the first controller port and first VMU socket), all detected, or turn off ID transmission altogether (see the [Virtual VMU Device Support](#virtual-vmu-device-support) section) |
+| **Serial VMU** | Off, On (A1), On (A2), On (B1), On (B2), On (C1), On (C2), On (D1), On (D2) | If serial SD card detected, use it to store per-game virtual VMUs in the specified Port and Socket. |
+| **Serial VMU Multi-Slot** | If Serial VMU is enabled, also enable up to five per-game slots, or leave off to default to one virtual VMU per game. |
 | **Boot Mode** | Full Boot, License Only, Animation Only, Fast Boot | Controls how the game is launched. "Full Boot" displays the complete boot sequence, "License Only" shows only the SEGA license screen, "Animation Only" plays only the Dreamcast boot animation, and "Fast Boot" skips all startup screens and launches the game immediately. Some titles may not function correctly in modes other than "Full Boot". DreamConn S users are generally advised to use "Full Boot" to ensure VMU synchronization completes before the game starts, which is required for certain games' automatic load features. |
 | **Save/Load** | N/A | Opens the [Save/Load Manager](#saveload-manager). |
 | **Apply** | N/A | Applies settings for current session only. |
@@ -778,16 +896,18 @@ Each view mode has its own set of available settings. Below is a breakdown of ea
 |---------|---------|-------------|
 | **Style** | LineDesc, Grid3, Scroll, Folders | Changes the visual layout/view mode of openMenu. |
 | **Theme** | FoldersDefault, Custom... | Selects the theme. Custom themes appear if `FOLDERS_X` folders exist. |
-| **Exit to 3D BIOS** | Off, On | Enables 3D BIOS when selecting "Exit to BIOS". |
+| **Exit to BIOS** | Standard, Alternate, Alternate + 3D | "Standard" uses a standard method when exiting to BIOS, whereas "Alternate" uses a custom method that removes save file copy protection in the BIOS save manager. "Alternate + 3D" does the same while also enabling the "hidden" 3D BIOS feature. If users experience a freeze when exiting to BIOS with either "Alternate" setting, it's advised they use the "Standard" setting instead. |
 | **Sort** | Alphabetical, SD Card Order | Determines how the game list is sorted. "SD Card Order" uses a "seen first" routine that organizes disc images, virtual folders, and subfolders based on their SD card sequence. |
 | **Multi-Disc** | Show All, Compact | "Show All" displays every disc individually. "Compact" groups multi-disc games into a single entry. |
 | **Multi-Disc Grouping** | Anywhere, Same Folder Only | Only enabled if Multi-Disc option is set to "Compact". "Anywhere" will show all associated discs on SD card when opening multi-disc launcher. "Same Folder Only" will treat discs as part of their own multi-disc (or single disc) set when organized in different folders. |
 | **Artwork** | Off, On | Toggles display of box art/cover artwork. |
 | **Item Details** | Off, On | Toggles display of the item details read-out below the artwork. |
-| **Clock** | On (12-Hour), On (24-Hour), Off | Toggles display of the BIOS clock |
+| **Clock** | On (12-Hour), On (24-Hour), Off | Toggles display of the BIOS clock. |
 | **Marquee Speed** | Slow, Medium, Fast | Controls how quickly long game names scroll horizontally. |
-| **VMU Time Sync** | Off, On | Use VMU date and time to set console date and time when openMenu boots (VM2 and VMUPro must be using a supported firmware) |
-| **VMU Game ID** | Send to All, Send to First, Off | If virtual VMU device like VM2, VMUPro, USB4MAPLE, or Pico2Maple detected, send Game ID to the first one detected (starting at the first controller port and first VMU socket), all detected, or turn off ID transmission altogether |
+| **VMU Time Sync** | Off, On | Use VMU date and time to set console date and time when openMenu boots (VM2 and VMUPro must be using a supported firmware). |
+| **VMU Game ID** | Send to All, Send to First, Off | If virtual VMU device like VM2, VMUPro, USB4MAPLE, or Pico2Maple detected, send Game ID to the first one detected (starting at the first controller port and first VMU socket), all detected, or turn off ID transmission altogether (see the [Virtual VMU Device Support](#virtual-vmu-device-support) section) |
+| **Serial VMU** | Off, On (A1), On (A2), On (B1), On (B2), On (C1), On (C2), On (D1), On (D2) | If serial SD card detected, use it to store per-game virtual VMUs in the specified Port and Socket. |
+| **Serial VMU Multi-Slot** | If Serial VMU is enabled, also enable up to five per-game slots, or leave off to default to one virtual VMU per game. |
 | **Boot Mode** | Full Boot, License Only, Animation Only, Fast Boot | Controls how the game is launched. "Full Boot" displays the complete boot sequence, "License Only" shows only the SEGA license screen, "Animation Only" plays only the Dreamcast boot animation, and "Fast Boot" skips all startup screens and launches the game immediately. Some titles may not function correctly in modes other than "Full Boot". DreamConn S users are generally advised to use "Full Boot" to ensure VMU synchronization completes before the game starts, which is required for certain games' automatic load features. |
 | **Save/Load** | N/A | Opens the [Save/Load Manager](#saveload-manager). |
 | **Apply** | N/A | Applies settings for current session only. |
@@ -862,27 +982,13 @@ Thanks to [Xerxes3rd](https://github.com/DerekPascarella/openMenu-Virtual-Folder
 
 ## Theming
 
-### Installing Additional Themes
-
-[In this folder](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/raw/refs/heads/main/themes), a collection of additional **openMenu Virtual Folder Bundle** themes are available that have been created by the development and testing team.
-
-Depending on the version of **openMenu Virtual Folder Bundle** one is using, it's important to note that these additional themes may already be installed by default.
-
-To install a new theme, users must follow these simple steps.
-
-1. Navigate to the `tools\openMenu\menu_data\theme` folder.
-2. Identify the last `FOLDERS_X` theme folder.
-3. Create a new folder, iterating to the next available number (e.g., `FOLDERS_3`).
-4. Extract the contents of the theme ZIP file into the newly created `FOLDERS_X` folder.
-5. Insert GDEMU SD card into computer, open GD MENU Card Manager, and click **Save Changes**.
-
-Users may also be interested in [GDMenu & OpenMenu HD Theme Manager](https://segaxtreme.net/resources/gdmenu-openmenu-hd-theme-manager-all-in-one-package.61/).
+Windows users interested in additional custom themes should see [GDMenu & OpenMenu HD Theme Manager](https://segaxtreme.net/resources/gdmenu-openmenu-hd-theme-manager-all-in-one-package.61/).
 
 ### Theme Format
 
 A separate openMenu theme format was designed for the new "Folders" Style mode.
 
-To add a new theme, navigate to the `tools\openMenu\menu_data\theme` folder and create a folder named `FOLDERS_X`, where `X` is a number between zero and nine. Inside that folder, create a new file named `THEME.INI`.
+To add a new theme, navigate to the `tools\openMenu\menu_data\theme` folder (Windows and Linux only) and create a folder named `FOLDERS_X`, where `X` is a number between zero and nine. Inside that folder, create a new file named `THEME.INI`.
 
 See example and explanation of parameters below.
 
@@ -963,7 +1069,7 @@ clock_text_color=255,255,255
 
 - **list_x**: Horizontal position of game list (left edge)
 
-  _Example_: `12` (12 pixels from left screen edge)
+  _Example_: `13` (12 pixels from left screen edge)
 
 - **list_y**: Vertical position of game list (top of first item)
 
@@ -981,7 +1087,7 @@ clock_text_color=255,255,255
 
 - **artwork_x**: Horizontal position of box art/artwork (left edge)
 
-  _Example_: `415` (415 pixels from left screen edge)
+  _Example_: `416` (416 pixels from left screen edge)
 
 - **artwork_y**: Vertical position of box art/artwork (top edge)
 
@@ -1005,11 +1111,11 @@ clock_text_color=255,255,255
 
 - **clock_x**: Horizontal position of the clock's right edge (right-justified)
 
-  _Example_: `628` (clock text ends at 628 pixels from left)
+  _Example_: `623` (clock text ends at 623 pixels from left)
 
 - **clock_y**: Vertical position of clock text
 
-  _Example_: `24` (24 pixels from top screen edge)
+  _Example_: `36` (36 pixels from top screen edge)
 
 - **clock_text_color**: RGB color for clock text
 
@@ -1025,7 +1131,7 @@ Split a 640x480px background image across these two PNGs, noting that the bottom
 
 Next, open each PNG in [PVR Tool](https://www.romhacking.net/utilities/1463/).
 
-For `BG_L.PNG`, navigate to **Tools → Set Global Index** and use the value `1025`. Next, Navigate to **File → Save As**, using `565` for **Format**, `no palette` for **Palette**, only `Twiddle` for **Options**, and `BG_L.PVR` as the destination file name.
+For `BG_L.PNG`, navigate to **Tools → Set Global Index** and use the value `1025`. Next, navigate to **File → Save As**, using `565` for **Format**, `no palette` for **Palette**, only `Twiddle` for **Options**, and `BG_L.PVR` as the destination file name.
 
 For `BG_R.PNG`, navigate to **Tools → Set Global Index** and use the value `1026`. Next, Navigate to **File → Save As**, using `565` for **Format**, `no palette` for **Palette**, and `BG_R.PVR` as the destination file name.
 
@@ -1067,8 +1173,18 @@ This modified version is also licensed under GPL-3.0. For the full license text,
 
 ### Third-Party Components
 Both projects include additional third-party components with their own licenses:
-- DiscUtils (see `/GD MENU Card Manager/src/GDMENUCardManager.Core/DiscUtils/DiscUtils-LICENSE.txt`)
-- SevenZip library (LGPL v3)
+- Aaru Data Preservation Suite (LGPL v2.1) - Copyright © 2011–2021 Natalia Portillo; provides disc image parsing and CD sector decoding (see `/GD MENU Card Manager/src/GDMENUCardManager.Core/Aaru/`)
+- DiscUtils (MIT) - Copyright © 2008–2011 Kenneth Bell (see `/GD MENU Card Manager/src/GDMENUCardManager.Core/DiscUtils/DiscUtils-LICENSE.txt`)
+- SevenZipSharp (LGPL v3) - Copyright © 2009–2010 Markovtsev Vadim; managed .NET wrapper for 7-Zip, used by the Windows version (see `/GD MENU Card Manager/src/GDMENUCardManager/SevenZip/`)
+- 7-Zip native library (LGPL v2.1+) - Copyright © Igor Pavlov; archive extraction, used by the Windows version
+- libchdr (BSD 3-Clause) - native CHD disc image library from the MAME project (see `/GD MENU Card Manager/src/GDMENUCardManager.Core/runtimes/`)
+- Avalonia (MIT) - cross-platform .NET UI framework
+- MessageBox.Avalonia (MIT)
+- SharpCompress (MIT) - archive extraction used by the cross-platform version
+- SixLabors.ImageSharp (Six Labors Split License v1.0) - free for use in OSI-approved open-source projects
+- ClosedXML (MIT)
+- ByteSize (MIT)
+- gong-wpf-dragdrop (BSD 2-Clause) - Windows version only
 - Various libraries in `/openMenu/external/` with their respective licenses
 
 All original copyright notices and licenses for these components have been preserved.

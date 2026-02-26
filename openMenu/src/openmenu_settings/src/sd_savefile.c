@@ -6,20 +6,20 @@
 
 #ifdef _arch_dreamcast
 
+#include <errno.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <errno.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 #include <dc/sd.h>
-#include <kos/blockdev.h>
 #include <fat/fs_fat.h>
+#include <kos/blockdev.h>
 
-#include "sd_savefile.h"
 #include "openmenu_settings.h"
+#include "sd_savefile.h"
 
 /* State tracking */
 static bool sd_initialized = false;
@@ -31,12 +31,8 @@ static uint8_t sd_partition_type;
 static SD_STATUS sd_cached_status = SD_STATUS_NOT_PRESENT;
 static uint32_t sd_cached_version = 0;
 
-/*
- * Variable registration table - single source of truth.
- * This table must match the exact order of variables as registered
- * in setup_savefile() in openmenu_savefile.c to maintain compatibility.
- * Adding a new setting = adding one array entry here.
- */
+/* variable table - must match registration order in setup_savefile() (openmenu_savefile.c);
+ * add one entry per new setting */
 typedef struct sd_var_entry {
     uint8_t* var_ptr;       /* Pointer to sf_* variable */
     size_t size;            /* Size in bytes */
@@ -45,27 +41,29 @@ typedef struct sd_var_entry {
 
 /* Note: Order must match crayon variable registration order in openmenu_savefile.c */
 static sd_var_entry_t sd_variables[] = {
-    { NULL, 1, SFV_INITIAL },           /* sf_region */
-    { NULL, 1, SFV_INITIAL },           /* sf_aspect */
-    { NULL, 1, SFV_INITIAL },           /* sf_ui */
-    { NULL, 1, SFV_INITIAL },           /* sf_sort */
-    { NULL, 1, SFV_INITIAL },           /* sf_filter */
-    { NULL, 1, SFV_INITIAL },           /* sf_beep */
-    { NULL, 1, SFV_INITIAL },           /* sf_multidisc */
-    { NULL, 1, SFV_INITIAL },           /* sf_custom_theme */
-    { NULL, 1, SFV_INITIAL },           /* sf_custom_theme_num */
-    { NULL, 1, SFV_BIOS_3D },           /* sf_bios_3d */
-    { NULL, 1, SFV_SCROLL_ART },        /* sf_scroll_art */
-    { NULL, 1, SFV_SCROLL_INDEX },      /* sf_scroll_index */
-    { NULL, 1, SFV_FOLDERS_ART },       /* sf_folders_art */
-    { NULL, 1, SFV_MARQUEE_SPEED },     /* sf_marquee_speed */
-    { NULL, 1, SFV_DISC_DETAILS },      /* sf_disc_details */
-    { NULL, 1, SFV_FOLDERS_ITEM_DETAILS }, /* sf_folders_item_details */
-    { NULL, 1, SFV_CLOCK },             /* sf_clock */
-    { NULL, 1, SFV_MULTIDISC_GROUPING }, /* sf_multidisc_grouping */
-    { NULL, 1, SFV_VM2_SEND_ALL },      /* sf_vm2_send_all */
-    { NULL, 1, SFV_BOOT_MODE },         /* sf_boot_mode */
-    { NULL, 1, SFV_VMU_TIME_SYNC },     /* sf_vmu_time_sync */
+    {NULL, 1, SFV_INITIAL},              /* sf_region */
+    {NULL, 1, SFV_INITIAL},              /* sf_aspect */
+    {NULL, 1, SFV_INITIAL},              /* sf_ui */
+    {NULL, 1, SFV_INITIAL},              /* sf_sort */
+    {NULL, 1, SFV_INITIAL},              /* sf_filter */
+    {NULL, 1, SFV_INITIAL},              /* sf_beep */
+    {NULL, 1, SFV_INITIAL},              /* sf_multidisc */
+    {NULL, 1, SFV_INITIAL},              /* sf_custom_theme */
+    {NULL, 1, SFV_INITIAL},              /* sf_custom_theme_num */
+    {NULL, 1, SFV_BIOS_3D},              /* sf_bios_3d */
+    {NULL, 1, SFV_SCROLL_ART},           /* sf_scroll_art */
+    {NULL, 1, SFV_SCROLL_INDEX},         /* sf_scroll_index */
+    {NULL, 1, SFV_FOLDERS_ART},          /* sf_folders_art */
+    {NULL, 1, SFV_MARQUEE_SPEED},        /* sf_marquee_speed */
+    {NULL, 1, SFV_DISC_DETAILS},         /* sf_disc_details */
+    {NULL, 1, SFV_FOLDERS_ITEM_DETAILS}, /* sf_folders_item_details */
+    {NULL, 1, SFV_CLOCK},                /* sf_clock */
+    {NULL, 1, SFV_MULTIDISC_GROUPING},   /* sf_multidisc_grouping */
+    {NULL, 1, SFV_VM2_SEND_ALL},         /* sf_vm2_send_all */
+    {NULL, 1, SFV_BOOT_MODE},            /* sf_boot_mode */
+    {NULL, 1, SFV_VMU_TIME_SYNC},        /* sf_vmu_time_sync */
+    {NULL, 1, SFV_SERIAL_VMU},           /* sf_serial_vmu */
+    {NULL, 1, SFV_SERIAL_VMU_MULTISLOT}, /* sf_serial_vmu_multislot */
 };
 #define SD_VAR_COUNT (sizeof(sd_variables) / sizeof(sd_variables[0]))
 
@@ -93,6 +91,8 @@ sd_init_var_pointers(void) {
     sd_variables[18].var_ptr = sf_vm2_send_all;
     sd_variables[19].var_ptr = sf_boot_mode;
     sd_variables[20].var_ptr = sf_vmu_time_sync;
+    sd_variables[21].var_ptr = sf_serial_vmu;
+    sd_variables[22].var_ptr = sf_serial_vmu_multislot;
 }
 
 /* Calculate total data size for current version */
@@ -215,9 +215,7 @@ sd_savefile_available(void) {
 }
 
 SD_STATUS
-sd_savefile_get_status(void) {
-    return sd_cached_status;
-}
+sd_savefile_get_status(void) { return sd_cached_status; }
 
 uint32_t
 sd_savefile_get_version(void) {
@@ -244,7 +242,7 @@ sd_savefile_refresh_status(void) {
         int fd = open(SD_CONFIG_FILE, O_RDONLY);
         if (fd < 0) {
             if (attempt < max_attempts - 1) {
-                continue;  /* Retry */
+                continue; /* Retry */
             }
             /* Final attempt failed - can't open file */
             sd_cached_status = SD_STATUS_NO_FILE;
@@ -259,7 +257,7 @@ sd_savefile_refresh_status(void) {
 
         if (bytes_read < 0 || bytes_read != (ssize_t)sizeof(header)) {
             if (attempt < max_attempts - 1) {
-                continue;  /* Retry */
+                continue; /* Retry */
             }
             /* Final attempt failed - if previous status was known-good,
              * keep old status. Otherwise mark as invalid. */
@@ -270,10 +268,9 @@ sd_savefile_refresh_status(void) {
             return;
         }
 
-        if (header.magic[0] != 'O' || header.magic[1] != 'M' ||
-            header.magic[2] != 'C' || header.magic[3] != 'F') {
+        if (header.magic[0] != 'O' || header.magic[1] != 'M' || header.magic[2] != 'C' || header.magic[3] != 'F') {
             if (attempt < max_attempts - 1) {
-                continue;  /* Retry - might be transient serial read error */
+                continue; /* Retry - might be transient serial read error */
             }
             /* Final attempt failed - if previous status was known-good,
              * keep old status (transient error). Otherwise mark as invalid. */
@@ -294,7 +291,7 @@ sd_savefile_refresh_status(void) {
         } else {
             sd_cached_status = SD_STATUS_FUTURE;
         }
-        return;  /* Success - exit loop */
+        return; /* Success - exit loop */
     }
 }
 
@@ -311,7 +308,7 @@ sd_savefile_load(void) {
         int fd = open(SD_CONFIG_FILE, O_RDONLY);
         if (fd < 0) {
             if (attempt < max_attempts - 1) {
-                continue;  /* Retry */
+                continue; /* Retry */
             }
             return -1;
         }
@@ -322,42 +319,46 @@ sd_savefile_load(void) {
         if (hdr_bytes < 0 || hdr_bytes != (ssize_t)sizeof(header)) {
             close(fd);
             if (attempt < max_attempts - 1) {
-                continue;  /* Retry */
+                continue; /* Retry */
             }
             return -1;
         }
 
         /* Validate magic */
-        if (header.magic[0] != 'O' || header.magic[1] != 'M' ||
-            header.magic[2] != 'C' || header.magic[3] != 'F') {
+        if (header.magic[0] != 'O' || header.magic[1] != 'M' || header.magic[2] != 'C' || header.magic[3] != 'F') {
             close(fd);
             if (attempt < max_attempts - 1) {
-                continue;  /* Retry - might be transient read error */
+                continue; /* Retry - might be transient read error */
             }
             return -1;
-        }
-
-        /* Don't load from future versions */
-        if (header.version > SFV_CURRENT) {
-            close(fd);
-            return -1;  /* Not a transient error - don't retry */
         }
 
         /* Validate data size against expected size for that version */
         size_t expected_size = sd_calculate_data_size_for_version(header.version);
-        if (header.data_size != expected_size) {
-            close(fd);
-            if (attempt < max_attempts - 1) {
-                continue;  /* Retry - might be transient read error */
+        if (header.version > SFV_CURRENT) {
+            /* Future version may have extra data - just need at least our known vars */
+            if (header.data_size < expected_size) {
+                close(fd);
+                if (attempt < max_attempts - 1) {
+                    continue;
+                }
+                return -1;
             }
-            return -1;
+        } else {
+            if (header.data_size != expected_size) {
+                close(fd);
+                if (attempt < max_attempts - 1) {
+                    continue; /* Retry - might be transient read error */
+                }
+                return -1;
+            }
         }
 
         /* Allocate buffer for settings data */
         uint8_t* data = malloc(header.data_size);
         if (!data) {
             close(fd);
-            return -1;  /* Memory allocation failure - don't retry */
+            return -1; /* Memory allocation failure - don't retry */
         }
 
         /* Read settings data */
@@ -365,7 +366,7 @@ sd_savefile_load(void) {
             free(data);
             close(fd);
             if (attempt < max_attempts - 1) {
-                continue;  /* Retry */
+                continue; /* Retry */
             }
             return -1;
         }
@@ -376,7 +377,7 @@ sd_savefile_load(void) {
         if (calc_checksum != header.checksum) {
             free(data);
             if (attempt < max_attempts - 1) {
-                continue;  /* Retry - might be transient read error */
+                continue; /* Retry - might be transient read error */
             }
             return -1;
         }
@@ -395,16 +396,25 @@ sd_savefile_load(void) {
 
         free(data);
 
+        /* Reset obsoleted sf_bios_3d for pre-SFV_EXIT_BIOS saves */
+        if (header.version < SFV_EXIT_BIOS) {
+            sf_bios_3d[0] = BIOS_3D_STANDARD;
+        }
+
         /* Let settings_sanitize() handle defaults for any new variables */
         settings_sanitize();
 
         sd_cached_version = header.version;
-        sd_cached_status = (header.version == SFV_CURRENT) ? SD_STATUS_READY : SD_STATUS_OLD;
+        if (header.version > SFV_CURRENT) {
+            sd_cached_status = SD_STATUS_FUTURE;
+        } else {
+            sd_cached_status = (header.version == SFV_CURRENT) ? SD_STATUS_READY : SD_STATUS_OLD;
+        }
 
-        return 0;  /* Success */
+        return 0; /* Success */
     }
 
-    return -1;  /* All attempts failed */
+    return -1; /* All attempts failed */
 }
 
 int8_t

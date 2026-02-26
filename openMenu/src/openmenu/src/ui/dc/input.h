@@ -5,7 +5,7 @@
  * Path: d:\Dev\Dreamcast\UB_SHARE\gamejam\game\src\common
  * Created Date: Saturday, July 6th 2019, 6:23:18 pm
  * Author: Hayden Kowalchuk
- * 
+ *
  * Copyright (c) 2019 HaydenKow
  */
 

@@ -39,7 +39,7 @@ wait_cd_ready(gd_item* disc) {
     /* For non-game content (audio CDs, etc.), use minimal delay
      * since cdrom_reinit() will never succeed anyway */
     if (disc && !strcmp(disc->type, "other")) {
-        thd_sleep(100);  /* Just 100ms to let GDEMU switch images */
+        thd_sleep(100); /* Just 100ms to let GDEMU switch images */
         return;
     }
 
@@ -139,13 +139,18 @@ dreamcast_launch_disc(gd_item* disc) {
             uint8_t enable_3d;
         } bloader_cfg_t;
 
+        if (sf_bios_3d[0] == BIOS_3D_STANDARD) {
+            arch_menu();
+        }
+
+        /* Alternate or Alternate + 3D: use bloader */
         bloader_cfg_t* bloader_config = (bloader_cfg_t*)&bloader_data[bloader_size - sizeof(bloader_cfg_t)];
-        bloader_config->enable_wide = sf_aspect[0];
+        bloader_config->enable_wide = 0;
         maple_device_t* cont = maple_enum_type(0, MAPLE_FUNC_CONTROLLER);
         if (cont && !strncmp("Dreamcast Fishing Controller", cont->info.product_name, 28)) {
             bloader_config->enable_3d = 0;
         } else {
-            bloader_config->enable_3d = sf_bios_3d[0];
+            bloader_config->enable_3d = (sf_bios_3d[0] == BIOS_3D_ALTERNATE_3D) ? 1 : 0;
         }
 
         /* Exit to BIOS (don't send VM2 ID for non-game discs) */
@@ -177,7 +182,7 @@ dreamcast_launch_disc(gd_item* disc) {
 
     /* Only send game ID to VM2/VMU devices for actual games */
     if (strcmp(disc->type, "other") != 0) {
-        vm2_rescan();  /* Rescan to detect hot-swapped devices */
+        vm2_rescan(); /* Rescan to detect hot-swapped devices */
         vm2_send_id_to_all(disc->product, disc->name);
     }
 
@@ -267,7 +272,7 @@ dreamcast_launch_cb(gd_item* disc) {
 
     /* Only send game ID to VM2/VMU devices for actual games */
     if (strcmp(disc->type, "other") != 0) {
-        vm2_rescan();  /* Rescan to detect hot-swapped devices */
+        vm2_rescan(); /* Rescan to detect hot-swapped devices */
         vm2_send_id_to_all(disc->product, disc->name);
     }
 

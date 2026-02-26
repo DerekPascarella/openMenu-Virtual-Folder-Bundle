@@ -278,7 +278,7 @@ void __crayon_savefile_print_savedata(crayon_savefile_data_t* savedata);
 
 void crayon_savefile_buffer_to_savedata(crayon_savefile_data_t* data, uint8_t* buffer);
 
-// Returns 0 if a savefile on that device exists with no issues, -1 if there's an error/DNE/version is newer than latest
+// Returns 0 if a savefile on that device exists with no issues, -1 if there's an error/DNE
 int8_t crayon_savefile_check_savedata(crayon_savefile_details_t* details, int8_t save_device_id);
 
 // These functions will update the valid devices and/or the current savefile bitmaps

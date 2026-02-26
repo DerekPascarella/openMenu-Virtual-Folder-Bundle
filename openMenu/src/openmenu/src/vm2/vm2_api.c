@@ -120,6 +120,10 @@ wait_vm2:
 
 int
 check_vm2_present(maple_device_t* dev) {
+    if (!dev || !(dev->info.functions & MAPLE_FUNC_MEMCARD)) {
+        return 0;
+    }
+
     /* Clear the old buffer */
     memset(recv_buff, 0, 196);
 
@@ -130,7 +134,8 @@ check_vm2_present(maple_device_t* dev) {
     maple_alldevinfo_t* info = (maple_alldevinfo_t*)&recv_buff[4];
 
     if (!strncasecmp(info->extended, "VM2 by Dreamware", 16) || !strncasecmp(info->extended, "USB RP2040 EMU  ", 16)
-        || !strncasecmp(info->extended, "8BITMODS VMUPro ", 16) || !strncasecmp(info->extended, "Pico2Maple USBBT", 16)) {
+        || !strncasecmp(info->extended, "8BITMODS VMUPro ", 16)
+        || !strncasecmp(info->extended, "Pico2Maple USBBT", 16)) {
         return 1;
     }
 
@@ -140,6 +145,10 @@ check_vm2_present(maple_device_t* dev) {
 const char*
 get_vmu_type_name(maple_device_t* dev) {
     if (!dev) {
+        return "None";
+    }
+
+    if (!(dev->info.functions & MAPLE_FUNC_MEMCARD)) {
         return "None";
     }
 

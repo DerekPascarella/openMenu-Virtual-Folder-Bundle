@@ -83,7 +83,8 @@ namespace GDMENUCardManager.Core
             return Task.Run(() => File.ReadAllText(path));
         }
 
-        public static async Task CopyDirectoryAsync(string sourceDirName, string destDirName)
+        public static async Task CopyDirectoryAsync(string sourceDirName, string destDirName,
+            System.Collections.Generic.HashSet<string> excludeFiles = null)
         {
             // Get the subdirectories for the specified directory.
             DirectoryInfo dir = new DirectoryInfo(sourceDirName);
@@ -100,11 +101,12 @@ namespace GDMENUCardManager.Core
             {
                 FileInfo[] files = dir.GetFiles();
                 foreach (FileInfo file in files)
-                    file.CopyTo(Path.Combine(destDirName, file.Name), true);
+                    if (excludeFiles == null || !excludeFiles.Contains(file.Name))
+                        file.CopyTo(Path.Combine(destDirName, file.Name), true);
 
                 DirectoryInfo[] dirs = dir.GetDirectories();
                 foreach (DirectoryInfo folder in dirs)
-                    await CopyDirectoryAsync(Path.Combine(sourceDirName, folder.Name), Path.Combine(destDirName, folder.Name));
+                    await CopyDirectoryAsync(Path.Combine(sourceDirName, folder.Name), Path.Combine(destDirName, folder.Name), excludeFiles);
             });
         }
 

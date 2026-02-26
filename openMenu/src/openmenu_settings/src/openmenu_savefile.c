@@ -1,11 +1,11 @@
 #ifdef _arch_dreamcast
+#include <arch/irq.h>
+#include <arch/rtc.h>
 #include <crayon_savefile/peripheral.h>
+#include <dc/flashrom.h>
 #include <dc/maple.h>
 #include <dc/maple/vmu.h>
-#include <dc/flashrom.h>
 #include <dc/video.h>
-#include <arch/rtc.h>
-#include <arch/irq.h>
 #include <kos/thread.h>
 #include <stdlib.h>
 
@@ -17,15 +17,16 @@ debug_flash_sf(uint8_t r, uint8_t g, uint8_t b) {
     vid_clear(r, g, b);
     thd_sleep(300);
 }
-#define DFLASH_SF(r,g,b) debug_flash_sf(r,g,b)
+
+#define DFLASH_SF(r, g, b) debug_flash_sf(r, g, b)
 #else
-#define DFLASH_SF(r,g,b) ((void)0)
+#define DFLASH_SF(r, g, b) ((void)0)
 #endif
 
 #endif
 
-#include <stdbool.h>
 #include <crayon_savefile/savefile.h>
+#include <stdbool.h>
 
 #include "openmenu_savefile.h"
 #include "openmenu_settings.h"
@@ -33,41 +34,35 @@ debug_flash_sf(uint8_t r, uint8_t g, uint8_t b) {
 /* Images and such */
 #if __has_include("openmenu_lcd.h") && __has_include("openmenu_pal.h") && __has_include("openmenu_vmu.h")
 #include "openmenu_lcd.h"
-#include "openmenu_lcd_save_ok.h"
+#include "openmenu_lcd_access.h"
 #include "openmenu_pal.h"
 #include "openmenu_vmu.h"
 
-#define OPENMENU_ICON         (openmenu_icon)
-#define OPENMENU_LCD          (openmenu_lcd)
-#define OPENMENU_LCD_SAVE_OK  (openmenu_lcd_save_ok)
-#define OPENMENU_PAL          (openmenu_pal)
-#define OPENMENU_ICONS        (1)
+#define OPENMENU_ICON       (openmenu_icon)
+#define OPENMENU_LCD        (openmenu_lcd)
+#define OPENMENU_LCD_ACCESS (openmenu_lcd_access)
+#define OPENMENU_PAL        (openmenu_pal)
+#define OPENMENU_ICONS      (1)
 #else
-#define OPENMENU_ICON         (NULL)
-#define OPENMENU_LCD          (NULL)
-#define OPENMENU_LCD_SAVE_OK  (NULL)
-#define OPENMENU_PAL          (NULL)
-#define OPENMENU_ICONS        (0)
+#define OPENMENU_ICON       (NULL)
+#define OPENMENU_LCD        (NULL)
+#define OPENMENU_LCD_ACCESS (NULL)
+#define OPENMENU_PAL        (NULL)
+#define OPENMENU_ICONS      (0)
 #endif
 
 static crayon_savefile_details_t savefile_details;
 static bool savefile_was_migrated = false;
-static int8_t startup_device_id = -1;  /* Device we loaded settings from at startup */
-static bool loaded_from_sd = false;    /* True if settings were loaded from SD at startup */
+static int8_t startup_device_id = -1; /* Device we loaded settings from at startup */
+static bool loaded_from_sd = false;   /* True if settings were loaded from SD at startup */
 #ifdef _arch_dreamcast
 static uint8_t vmu_screens_bitmap = 0;
 
-/* Check if any VMU (memory card) is present in any slot.
- * This is used to skip VMU operations entirely when no VMU is connected,
- * avoiding potential hangs in maple device enumeration.
- *
- * We check both that the device pointer is non-NULL AND that dev->valid
- * is true, because maple_enum_type() might return a non-NULL pointer to
- * a device structure that contains stale/uninitialized data when no
- * actual device is present. */
+/* check if any VMU is connected; maple_enum_type() can return non-NULL for
+ * empty slots so we also check dev->valid */
 static bool
 has_any_vmu(void) {
-    thd_sleep(1000);  /* Allow maple bus to settle before enumeration */
+    thd_sleep(1000); /* Allow maple bus to settle before enumeration */
     for (int i = 0; i < 8; i++) {
         maple_device_t* dev = maple_enum_type(i, MAPLE_FUNC_MEMCARD);
         if (dev != NULL && dev->valid) {
@@ -90,7 +85,7 @@ savefile_defaults() {
     sf_multidisc_grouping[0] = MULTIDISC_GROUPING_ANYWHERE;
     sf_custom_theme[0] = THEME_OFF;
     sf_custom_theme_num[0] = THEME_0;
-    sf_bios_3d[0] = BIOS_3D_OFF;
+    sf_bios_3d[0] = BIOS_3D_STANDARD;
     sf_scroll_art[0] = SCROLL_ART_ON;
     sf_scroll_index[0] = SCROLL_INDEX_ON;
     sf_folders_art[0] = FOLDERS_ART_ON;
@@ -101,10 +96,12 @@ savefile_defaults() {
     sf_vm2_send_all[0] = VM2_SEND_ALL;
     sf_boot_mode[0] = BOOT_MODE_FULL;
     sf_vmu_time_sync[0] = VMU_TIME_SYNC_OFF;
+    sf_serial_vmu[0] = SERIAL_VMU_OFF;
+    sf_serial_vmu_multislot[0] = SERIAL_VMU_MULTISLOT_OFF;
 }
 
-//THIS IS USED BY THE CRAYON SAVEFILE DESERIALISER WHEN LOADING A SAVE FROM AN OLDER VERSION
-//THERE IS NO NEED TO CALL THIS MANUALLY
+// THIS IS USED BY THE CRAYON SAVEFILE DESERIALISER WHEN LOADING A SAVE FROM AN OLDER VERSION
+// THERE IS NO NEED TO CALL THIS MANUALLY
 int8_t
 update_savefile(void** loaded_variables, crayon_savefile_version_t loaded_version,
                 crayon_savefile_version_t latest_version) {
@@ -114,7 +111,7 @@ update_savefile(void** loaded_variables, crayon_savefile_version_t loaded_versio
     }
 
     if (loaded_version < SFV_BIOS_3D) {
-        sf_bios_3d[0] = BIOS_3D_OFF;
+        sf_bios_3d[0] = BIOS_3D_STANDARD;
     }
     if (loaded_version < SFV_SCROLL_ART) {
         sf_scroll_art[0] = SCROLL_ART_ON;
@@ -149,12 +146,19 @@ update_savefile(void** loaded_variables, crayon_savefile_version_t loaded_versio
     if (loaded_version < SFV_VMU_TIME_SYNC) {
         sf_vmu_time_sync[0] = VMU_TIME_SYNC_OFF;
     }
+    if (loaded_version < SFV_SERIAL_VMU) {
+        sf_serial_vmu[0] = SERIAL_VMU_OFF;
+    }
+    if (loaded_version < SFV_SERIAL_VMU_MULTISLOT) {
+        sf_serial_vmu_multislot[0] = SERIAL_VMU_MULTISLOT_OFF;
+    }
+    if (loaded_version < SFV_EXIT_BIOS) {
+        sf_bios_3d[0] = BIOS_3D_STANDARD;
+    }
     return 0;
 }
 
-/* Internal version that takes a flag to skip VMU LCD display.
- * When skip_vmu_lcd is true, we skip all maple device enumeration for LCD icons,
- * which avoids potential hangs when no VMU is present. */
+/* setup_savefile with optional LCD skip (avoids maple hang if no VMU connected) */
 static uint8_t
 setup_savefile_internal(crayon_savefile_details_t* details, bool skip_vmu_lcd) {
     uint8_t error;
@@ -162,7 +166,7 @@ setup_savefile_internal(crayon_savefile_details_t* details, bool skip_vmu_lcd) {
 #if defined(_arch_pc)
     crayon_savefile_set_base_path("saves/");
 #else
-    crayon_savefile_set_base_path(NULL); //Dreamcast ignores the parameter anyways
+    crayon_savefile_set_base_path(NULL); // Dreamcast ignores the parameter anyways
     // (Assumes "/vmu/") so it's still fine to do the method above for all platforms
 #endif
     error =
@@ -206,26 +210,29 @@ setup_savefile_internal(crayon_savefile_details_t* details, bool skip_vmu_lcd) {
                                  VAR_STILL_PRESENT);
     crayon_savefile_add_variable(details, &sf_scroll_art, sf_scroll_art_type, sf_scroll_art_length, SFV_SCROLL_ART,
                                  VAR_STILL_PRESENT);
-    crayon_savefile_add_variable(details, &sf_scroll_index, sf_scroll_index_type, sf_scroll_index_length, SFV_SCROLL_INDEX,
-                                 VAR_STILL_PRESENT);
+    crayon_savefile_add_variable(details, &sf_scroll_index, sf_scroll_index_type, sf_scroll_index_length,
+                                 SFV_SCROLL_INDEX, VAR_STILL_PRESENT);
     crayon_savefile_add_variable(details, &sf_folders_art, sf_folders_art_type, sf_folders_art_length, SFV_FOLDERS_ART,
                                  VAR_STILL_PRESENT);
-    crayon_savefile_add_variable(details, &sf_marquee_speed, sf_marquee_speed_type, sf_marquee_speed_length, SFV_MARQUEE_SPEED,
-                                 VAR_STILL_PRESENT);
-    crayon_savefile_add_variable(details, &sf_disc_details, sf_disc_details_type, sf_disc_details_length, SFV_DISC_DETAILS,
-                                 VAR_STILL_PRESENT);
-    crayon_savefile_add_variable(details, &sf_folders_item_details, sf_folders_item_details_type, sf_folders_item_details_length, SFV_FOLDERS_ITEM_DETAILS,
-                                 VAR_STILL_PRESENT);
-    crayon_savefile_add_variable(details, &sf_clock, sf_clock_type, sf_clock_length, SFV_CLOCK,
-                                 VAR_STILL_PRESENT);
-    crayon_savefile_add_variable(details, &sf_multidisc_grouping, sf_multidisc_grouping_type, sf_multidisc_grouping_length, SFV_MULTIDISC_GROUPING,
-                                 VAR_STILL_PRESENT);
-    crayon_savefile_add_variable(details, &sf_vm2_send_all, sf_vm2_send_all_type, sf_vm2_send_all_length, SFV_VM2_SEND_ALL,
-                                 VAR_STILL_PRESENT);
+    crayon_savefile_add_variable(details, &sf_marquee_speed, sf_marquee_speed_type, sf_marquee_speed_length,
+                                 SFV_MARQUEE_SPEED, VAR_STILL_PRESENT);
+    crayon_savefile_add_variable(details, &sf_disc_details, sf_disc_details_type, sf_disc_details_length,
+                                 SFV_DISC_DETAILS, VAR_STILL_PRESENT);
+    crayon_savefile_add_variable(details, &sf_folders_item_details, sf_folders_item_details_type,
+                                 sf_folders_item_details_length, SFV_FOLDERS_ITEM_DETAILS, VAR_STILL_PRESENT);
+    crayon_savefile_add_variable(details, &sf_clock, sf_clock_type, sf_clock_length, SFV_CLOCK, VAR_STILL_PRESENT);
+    crayon_savefile_add_variable(details, &sf_multidisc_grouping, sf_multidisc_grouping_type,
+                                 sf_multidisc_grouping_length, SFV_MULTIDISC_GROUPING, VAR_STILL_PRESENT);
+    crayon_savefile_add_variable(details, &sf_vm2_send_all, sf_vm2_send_all_type, sf_vm2_send_all_length,
+                                 SFV_VM2_SEND_ALL, VAR_STILL_PRESENT);
     crayon_savefile_add_variable(details, &sf_boot_mode, sf_boot_mode_type, sf_boot_mode_length, SFV_BOOT_MODE,
                                  VAR_STILL_PRESENT);
-    crayon_savefile_add_variable(details, &sf_vmu_time_sync, sf_vmu_time_sync_type, sf_vmu_time_sync_length, SFV_VMU_TIME_SYNC,
+    crayon_savefile_add_variable(details, &sf_vmu_time_sync, sf_vmu_time_sync_type, sf_vmu_time_sync_length,
+                                 SFV_VMU_TIME_SYNC, VAR_STILL_PRESENT);
+    crayon_savefile_add_variable(details, &sf_serial_vmu, sf_serial_vmu_type, sf_serial_vmu_length, SFV_SERIAL_VMU,
                                  VAR_STILL_PRESENT);
+    crayon_savefile_add_variable(details, &sf_serial_vmu_multislot, sf_serial_vmu_multislot_type,
+                                 sf_serial_vmu_multislot_length, SFV_SERIAL_VMU_MULTISLOT, VAR_STILL_PRESENT);
 
     if (crayon_savefile_solidify(details)) {
         return 1;
@@ -234,7 +241,6 @@ setup_savefile_internal(crayon_savefile_details_t* details, bool skip_vmu_lcd) {
     return 0;
 }
 
-/* Public wrapper - always tries to display VMU LCD icons */
 uint8_t
 setup_savefile(crayon_savefile_details_t* details) {
     return setup_savefile_internal(details, false);
@@ -260,9 +266,7 @@ savefile_init() {
     /* DEBUG: Dark Blue (0,0,128) = before setup_savefile_internal */
     DFLASH_SF(0, 0, 128);
 
-    /* Set up savefile structure - this allocates memory for sf_* variables.
-     * Skip VMU LCD display initially - we'll update it later if VMU is present
-     * and we end up using it. */
+    /* init savefile (skip VMU LCD for now, updated after VMU check below) */
     uint8_t setup_res = setup_savefile_internal(&savefile_details, true);
 
     /* DEBUG: Dark Yellow (128,128,0) = after setup_savefile_internal */
@@ -271,10 +275,7 @@ savefile_init() {
     /* DEBUG: Dark Cyan (0,128,128) = before sd_savefile_init */
     DFLASH_SF(0, 128, 128);
 
-    /* Initialize SD first - this is now the primary save location.
-     * If SD settings exist and load successfully, we skip VMU detection entirely,
-     * which works around potential hangs in maple device enumeration when no VMU
-     * is connected. */
+    /* init SD first; successful SD load skips VMU detection (avoids maple hang if no VMU) */
     sd_savefile_init();
 
     /* DEBUG: Dark Magenta (128,0,128) = after sd_savefile_init */
@@ -283,10 +284,10 @@ savefile_init() {
     /* Try SD card first (higher priority) */
     if (sd_savefile_available()) {
         SD_STATUS status = sd_savefile_get_status();
-        if (status == SD_STATUS_READY || status == SD_STATUS_OLD) {
+        if (status == SD_STATUS_READY || status == SD_STATUS_OLD || status == SD_STATUS_FUTURE) {
             if (sd_savefile_load() == 0) {
                 loaded_from_sd = true;
-                startup_device_id = -1;  /* Not a VMU */
+                startup_device_id = -1; /* Not a VMU */
 
                 /* SD load successful - still check for VMU for LCD icon and time sync */
                 /* DEBUG: Dark Red (128,0,0) = before has_any_vmu (SD path) */
@@ -306,7 +307,7 @@ savefile_init() {
                     /* DEBUG: Orange (255,128,0) = after has_any_vmu, no VMU (SD path) */
                     DFLASH_SF(255, 128, 0);
                 }
-                return;  /* Done - loaded from SD */
+                return; /* Done - loaded from SD */
             }
         }
     }
@@ -358,13 +359,13 @@ savefile_init() {
                     sync_rtc_from_vmu();
                 }
 
-                /* Now that we know VMU is present and working, show LCD icon */
+                /* VMU is present and valid, show LCD icon */
 #if OPENMENU_ICONS
                 vmu_screens_bitmap = crayon_peripheral_dreamcast_get_screens();
                 crayon_peripheral_vmu_display_icon(vmu_screens_bitmap, OPENMENU_LCD);
 #endif
 
-                return;  /* Done - loaded from VMU */
+                return; /* Done - loaded from VMU */
             }
             /* VMU device exists but no save file on it - show LCD icon anyway,
              * then fall through to defaults */
@@ -455,7 +456,7 @@ vmu_beep(int8_t save_device_id, uint32_t beep) {
 static void*
 vmu_icon_restore_thread(void* param) {
     (void)param;
-    thd_sleep(2000);  /* 2 seconds */
+    thd_sleep(1500); /* 1.5 seconds */
     crayon_peripheral_vmu_display_icon(vmu_screens_bitmap, OPENMENU_LCD);
     return NULL;
 }
@@ -504,31 +505,19 @@ calc_flashrom_crc(const uint8_t* buffer) {
     for (i = 0; i < 62; i++) {
         n ^= buffer[i] << 8;
         for (c = 0; c < 8; c++) {
-            if (n & 0x8000)
+            if (n & 0x8000) {
                 n = (n << 1) ^ 4129;
-            else
+            } else {
                 n = (n << 1);
+            }
         }
     }
     return (uint16_t)((~n) & 0xffff);
 }
 
-/**
- * Update the flashrom syscfg date field to match the given time.
- * This prevents the BIOS from prompting for date/time on next boot.
- *
- * The BIOS stores a "last set time" in flashrom partition 2 (BLOCK_1),
- * block ID 5 (SYSCFG). When the RTC differs significantly from this
- * stored time, the BIOS prompts the user to set the date/time.
- *
- * Safety notes:
- * - We write the bitmap FIRST (marking slot as used), then the block data.
- *   If block write fails, we lose one 64-byte slot but cause no corruption.
- * - We skip bitmap bit 0 because KOS's flashrom_get_block() never reads it.
- * - We verify the CRC before writing to catch any data corruption early.
- *
- * Returns: 0 on success, -1 on failure
- */
+/* update flashrom BLOCK_1/SYSCFG date so BIOS doesn't prompt for time on next boot.
+ * writes bitmap before block data; skips physical block 1 (KOS never reads it).
+ * returns 0 on success, -1 on failure */
 static int8_t
 update_flashrom_syscfg_date(time_t unix_time) {
     uint8_t buffer[64];
@@ -548,7 +537,7 @@ update_flashrom_syscfg_date(time_t unix_time) {
 
     /* Verify block_id is correct (should be 5 = FLASHROM_B1_SYSCFG) */
     if (buffer[0] != 0x05 || buffer[1] != 0x00) {
-        return -1;  /* Unexpected block structure */
+        return -1; /* Unexpected block structure */
     }
 
     /* Convert Unix time to DC epoch (seconds since Jan 1, 1950) */
@@ -568,7 +557,7 @@ update_flashrom_syscfg_date(time_t unix_time) {
     /* Verify our CRC calculation by reading it back */
     verify_crc = (uint16_t)buffer[62] | ((uint16_t)buffer[63] << 8);
     if (verify_crc != crc) {
-        return -1;  /* CRC storage failed somehow */
+        return -1; /* CRC storage failed somehow */
     }
 
     /* Get partition info */
@@ -623,8 +612,7 @@ update_flashrom_syscfg_date(time_t unix_time) {
     new_bitmap_byte = bitmap[first_unused / 8] & ~(0x80 >> (first_unused % 8));
 
     /* Write updated bitmap byte to flash - syscall returns 0 on success */
-    if (flashrom_write(start + size - bmcnt + (first_unused / 8),
-                       &new_bitmap_byte, 1) < 0) {
+    if (flashrom_write(start + size - bmcnt + (first_unused / 8), &new_bitmap_byte, 1) < 0) {
         /* Bitmap update failed - abort without writing block */
         goto cleanup;
     }
@@ -639,32 +627,35 @@ update_flashrom_syscfg_date(time_t unix_time) {
         goto cleanup;
     }
 
-    rv = 0;  /* Success */
+    rv = 0; /* Success */
 
 cleanup:
     free(bitmap);
     return rv;
 }
 
-/**
- * Sync Dreamcast RTC from first found VMU with clock capability.
- * Also updates the flashrom syscfg date to prevent BIOS time prompt.
- * Returns: 0 on success, -1 if no VMU found or sync failed
- */
+/* sync RTC from first VMU with clock; also updates flashrom SYSCFG date.
+ * returns 0 on success, -1 if no clock VMU found or sync failed */
 int8_t
 sync_rtc_from_vmu(void) {
     /* Find first VMU with clock capability */
     for (int i = 0; i < 8; i++) {
         maple_device_t* dev = maple_enum_type(i, MAPLE_FUNC_MEMCARD);
-        if (dev == NULL || !dev->valid) continue;
+        if (dev == NULL || !dev->valid) {
+            continue;
+        }
 
         /* Check if device has clock function */
-        if (!(dev->info.functions & MAPLE_FUNC_CLOCK)) continue;
+        if (!(dev->info.functions & MAPLE_FUNC_CLOCK)) {
+            continue;
+        }
 
         /* Try to get VMU time */
         time_t vmu_time;
         int result = vmu_get_datetime(dev, &vmu_time);
-        if (result != MAPLE_EOK || vmu_time == (time_t)-1) continue;
+        if (result != MAPLE_EOK || vmu_time == (time_t)-1) {
+            continue;
+        }
 
         /* Set Dreamcast RTC */
         if (rtc_set_unix_secs(vmu_time) == 0) {
@@ -672,10 +663,10 @@ sync_rtc_from_vmu(void) {
              * This is best-effort - if it fails, the time is still synced,
              * the user just might see the BIOS date/time screen on next boot. */
             update_flashrom_syscfg_date(vmu_time);
-            return 0;  /* Success */
+            return 0; /* Success */
         }
     }
-    return -1;  /* No suitable VMU found or sync failed */
+    return -1; /* No suitable VMU found or sync failed */
 }
 
 /* VMU_SYNC_DEBUG_START */
@@ -845,22 +836,29 @@ sync_rtc_from_vmu(void) {
 int8_t
 savefile_save() {
     settings_sanitize();
+
+#if defined(_arch_dreamcast) && OPENMENU_ICONS
+    /* Show access icon on target device before operation */
+    if (vmu_screens_bitmap != 0) {
+        uint8_t single_device = (1 << savefile_details.save_device_id) & vmu_screens_bitmap;
+        if (single_device) {
+            crayon_peripheral_vmu_display_icon(single_device, OPENMENU_LCD_ACCESS);
+        }
+    }
+#endif
+
     vmu_beep(savefile_details.save_device_id, 0x000065f0); // Turn on beep (if enabled)
     int8_t result = crayon_savefile_save_savedata(&savefile_details);
     vmu_beep(savefile_details.save_device_id, 0x00000000); // Turn off beep (if enabled)
 
 #if defined(_arch_dreamcast) && OPENMENU_ICONS
-    /* On successful save, show "SAVE OK" icon and spawn thread to restore after 2 seconds */
-    if (result == 0 && vmu_screens_bitmap != 0) {
-        crayon_peripheral_vmu_display_icon(vmu_screens_bitmap, OPENMENU_LCD_SAVE_OK);
+    if (vmu_screens_bitmap != 0) {
         thd_create(0, vmu_icon_restore_thread, NULL);
     }
 #endif
 
     return result;
 }
-
-/* ===== Save/Load Window Helper Functions ===== */
 
 int8_t
 savefile_get_device_status(int8_t device_id) {
@@ -880,6 +878,11 @@ savefile_refresh_device_info(void) {
     crayon_savefile_update_all_device_infos(&savefile_details);
 }
 
+void
+savefile_refresh_single_device_info(int8_t device_id) {
+    crayon_savefile_update_device_info(&savefile_details, device_id);
+}
+
 int8_t
 savefile_save_to_device(int8_t device_id) {
     int8_t old_device = savefile_details.save_device_id;
@@ -890,22 +893,29 @@ savefile_save_to_device(int8_t device_id) {
     }
 
     settings_sanitize();
-    vmu_beep(device_id, 0x000065f0);  /* Turn on beep */
-    int8_t result = crayon_savefile_save_savedata(&savefile_details);
-    vmu_beep(device_id, 0x00000000);  /* Turn off beep */
 
 #if defined(_arch_dreamcast) && OPENMENU_ICONS
-    if (result == 0 && vmu_screens_bitmap != 0) {
+    /* Show access icon on target device before operation */
+    if (vmu_screens_bitmap != 0) {
         uint8_t single_device = (1 << device_id) & vmu_screens_bitmap;
         if (single_device) {
-            crayon_peripheral_vmu_display_icon(single_device, OPENMENU_LCD_SAVE_OK);
-            thd_create(0, vmu_icon_restore_thread, NULL);
+            crayon_peripheral_vmu_display_icon(single_device, OPENMENU_LCD_ACCESS);
         }
     }
 #endif
 
+    vmu_beep(device_id, 0x000065f0); /* Turn on beep */
+    int8_t result = crayon_savefile_save_savedata(&savefile_details);
+    vmu_beep(device_id, 0x00000000); /* Turn off beep */
+
+#if defined(_arch_dreamcast) && OPENMENU_ICONS
+    if (vmu_screens_bitmap != 0) {
+        thd_create(0, vmu_icon_restore_thread, NULL);
+    }
+#endif
+
     if (result == 0) {
-        /* Update source tracking - saved settings match this device now */
+        /* track where current settings live */
         startup_device_id = device_id;
         loaded_from_sd = false;
     }
@@ -922,12 +932,28 @@ savefile_load_from_device(int8_t device_id) {
         return -1;
     }
 
+#if defined(_arch_dreamcast) && OPENMENU_ICONS
+    /* Show access icon on target device before operation */
+    if (vmu_screens_bitmap != 0) {
+        uint8_t single_device = (1 << device_id) & vmu_screens_bitmap;
+        if (single_device) {
+            crayon_peripheral_vmu_display_icon(single_device, OPENMENU_LCD_ACCESS);
+        }
+    }
+#endif
+
     savefile_was_migrated = false;
     int8_t result = crayon_savefile_load_savedata(&savefile_details);
 
+#if defined(_arch_dreamcast) && OPENMENU_ICONS
+    if (vmu_screens_bitmap != 0) {
+        thd_create(0, vmu_icon_restore_thread, NULL);
+    }
+#endif
+
     if (result == 0) {
         settings_sanitize();
-        /* Update source tracking - this device is now the "loaded" source */
+        /* track where current settings live */
         startup_device_id = device_id;
         loaded_from_sd = false;
     }
@@ -938,21 +964,6 @@ savefile_load_from_device(int8_t device_id) {
 int8_t
 savefile_get_startup_device_id(void) {
     return startup_device_id;
-}
-
-void
-savefile_show_success_icon(int8_t device_id) {
-#if defined(_arch_dreamcast) && OPENMENU_ICONS
-    if (vmu_screens_bitmap != 0) {
-        uint8_t single_device = (1 << device_id) & vmu_screens_bitmap;
-        if (single_device) {
-            crayon_peripheral_vmu_display_icon(single_device, OPENMENU_LCD_SAVE_OK);
-            thd_create(0, vmu_icon_restore_thread, NULL);
-        }
-    }
-#else
-    (void)device_id;
-#endif
 }
 
 uint32_t
@@ -968,8 +979,6 @@ savefile_get_device_free_blocks(int8_t device_id) {
     /* Convert bytes to 512-byte blocks */
     return free_bytes / 512;
 }
-
-/* ===== SD Card Support Functions ===== */
 
 bool
 savefile_was_loaded_from_sd(void) {
@@ -1009,7 +1018,7 @@ savefile_save_to_sd(void) {
     settings_sanitize();
     int8_t result = sd_savefile_save();
     if (result == 0) {
-        /* Update source tracking - saved settings match SD now */
+        /* track where current settings live */
         loaded_from_sd = true;
         startup_device_id = -1;
     }
@@ -1025,7 +1034,7 @@ savefile_load_from_sd(void) {
     int8_t result = sd_savefile_load();
     if (result == 0) {
         settings_sanitize();
-        /* Update source tracking - SD is now the "loaded" source */
+        /* track where current settings live */
         loaded_from_sd = true;
         startup_device_id = -1;
     }
@@ -1043,7 +1052,7 @@ savefile_refresh_sd_status(void) {
         /* sd_savefile_init() calls sd_savefile_refresh_status() internally,
          * so we don't need to call it again after successful init */
         if (sd_savefile_init() == 0) {
-            return;  /* Status already refreshed by init */
+            return; /* Status already refreshed by init */
         }
         /* Init failed, status is already set to NOT_PRESENT */
         return;
@@ -1054,7 +1063,6 @@ savefile_refresh_sd_status(void) {
 }
 
 /* COMPACTION_TEST_START */
-/* ===== COMPACTION TEST - DEBUG ONLY, REMOVE BEFORE RELEASE ===== */
 #ifdef _arch_dreamcast
 
 #include <stdio.h>
@@ -1062,9 +1070,9 @@ savefile_refresh_sd_status(void) {
 /* Compaction test state */
 static int ct_write_count = 0;
 static int ct_total_blocks = 0;
-static int ct_result = 0;  /* 0 = not done, 1 = no compaction, 2 = compaction detected */
+static int ct_result = 0; /* 0 = not done, 1 = no compaction, 2 = compaction detected */
 static const char* ct_status = "Not started";
-static char ct_debug_buf[64] = {0};  /* Debug info buffer */
+static char ct_debug_buf[64] = {0}; /* Debug info buffer */
 static uint8_t* ct_backup_data = NULL;
 static int ct_backup_start = 0;
 static int ct_backup_size = 0;
@@ -1078,7 +1086,9 @@ ct_count_free_blocks(int start, int size) {
     bmcnt = bmcnt / 8;
 
     uint8_t* bitmap = (uint8_t*)malloc(bmcnt);
-    if (!bitmap) return -1;
+    if (!bitmap) {
+        return -1;
+    }
 
     if (flashrom_read(start + size - bmcnt, bitmap, bmcnt) < 0) {
         free(bitmap);
@@ -1126,9 +1136,8 @@ compaction_test_init(void) {
     ct_status = "Backing up...";
     read_ret = flashrom_read(ct_backup_start, ct_backup_data, ct_backup_size);
     if (read_ret < 0) {
-        snprintf(ct_debug_buf, sizeof(ct_debug_buf),
-                 "read ret=%d start=%X sz=%d",
-                 read_ret, ct_backup_start, ct_backup_size);
+        snprintf(ct_debug_buf, sizeof(ct_debug_buf), "read ret=%d start=%X sz=%d", read_ret, ct_backup_start,
+                 ct_backup_size);
         ct_status = ct_debug_buf;
         free(ct_backup_data);
         ct_backup_data = NULL;
@@ -1169,7 +1178,7 @@ compaction_test_step(void) {
     if (flashrom_get_block(FLASHROM_PT_BLOCK_1, FLASHROM_B1_SYSCFG, buffer) < 0) {
         ct_status = "Read syscfg failed";
         ct_result = 1;
-        return 1;  /* Done with error */
+        return 1; /* Done with error */
     }
 
     /* Update date field with unique test value */
@@ -1225,7 +1234,7 @@ compaction_test_step(void) {
             ct_status = "NO compaction";
             ct_result = 1;
         }
-        return 1;  /* Done */
+        return 1; /* Done */
     }
 
     /* Update status */
@@ -1236,8 +1245,7 @@ compaction_test_step(void) {
     free(bitmap);
 
     /* Syscalls return 0 on success, -1 on failure */
-    if (flashrom_write(ct_backup_start + ct_backup_size - bmcnt + (first_unused / 8),
-                       &new_bm_byte, 1) < 0) {
+    if (flashrom_write(ct_backup_start + ct_backup_size - bmcnt + (first_unused / 8), &new_bm_byte, 1) < 0) {
         ct_status = "Bitmap write failed";
         ct_result = 1;
         return 1;
@@ -1251,7 +1259,7 @@ compaction_test_step(void) {
     }
 
     ct_write_count++;
-    return 0;  /* Continue */
+    return 0; /* Continue */
 }
 
 /* Restore partition from backup */
@@ -1299,22 +1307,65 @@ compaction_test_cleanup(void) {
 }
 
 /* Getters for UI */
-int compaction_test_get_write_count(void) { return ct_write_count; }
-int compaction_test_get_total_blocks(void) { return ct_total_blocks; }
-int compaction_test_get_result(void) { return ct_result; }
-const char* compaction_test_get_status(void) { return ct_status; }
+int
+compaction_test_get_write_count(void) {
+    return ct_write_count;
+}
+
+int
+compaction_test_get_total_blocks(void) {
+    return ct_total_blocks;
+}
+
+int
+compaction_test_get_result(void) {
+    return ct_result;
+}
+
+const char*
+compaction_test_get_status(void) {
+    return ct_status;
+}
 
 #else
 /* Non-Dreamcast stubs */
-int8_t compaction_test_init(void) { return -1; }
-int8_t compaction_test_step(void) { return -1; }
-int8_t compaction_test_restore(void) { return -1; }
-void compaction_test_cleanup(void) { }
-int compaction_test_get_write_count(void) { return 0; }
-int compaction_test_get_total_blocks(void) { return 0; }
-int compaction_test_get_result(void) { return 0; }
-const char* compaction_test_get_status(void) { return "N/A"; }
+int8_t
+compaction_test_init(void) {
+    return -1;
+}
+
+int8_t
+compaction_test_step(void) {
+    return -1;
+}
+
+int8_t
+compaction_test_restore(void) {
+    return -1;
+}
+
+void
+compaction_test_cleanup(void) {}
+
+int
+compaction_test_get_write_count(void) {
+    return 0;
+}
+
+int
+compaction_test_get_total_blocks(void) {
+    return 0;
+}
+
+int
+compaction_test_get_result(void) {
+    return 0;
+}
+
+const char*
+compaction_test_get_status(void) {
+    return "N/A";
+}
 #endif
 
-/* ===== END COMPACTION TEST ===== */
 /* COMPACTION_TEST_END */

@@ -122,8 +122,9 @@ namespace GDMENUCardManager
         public bool IsFilterActive
         {
             get { return _IsFilterActive; }
-            set { _IsFilterActive = value; RaisePropertyChanged(); }
+            set { _IsFilterActive = value; RaisePropertyChanged(); RaisePropertyChanged(nameof(IsNotFilterActive)); }
         }
+        public bool IsNotFilterActive => !IsFilterActive;
 
         private string _activeFilterText;
 
@@ -197,8 +198,39 @@ namespace GDMENUCardManager
                 }
             };
 
+            // Clean up any leftover staging data from a previous update attempt
+            UpdateManager.CleanupStaleStagingData();
+
             this.Opened += async (ss, ee) =>
             {
+                // macOS first-time setup: copy BOX.DAT, ICON.DAT, META.DAT from the bundle to
+                // ~/Library/Application Support/GDMENUCardManager/menu_data/ with a progress bar.
+                // This runs fully before anything else so the DAT files are in place before any
+                // card loading or artwork operations occur.
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
+                    && MacOsDataMigration.NeedsFirstTimeDatSetup())
+                {
+                    var progressWindow = new ProgressWindow();
+                    progressWindow.Title = "First-Time Setup";
+                    progressWindow.TotalItems = 3;
+                    progressWindow.TextContent = "Performing first-time setup...";
+                    progressWindow.Show(this);
+
+                    var progress = new Progress<(int current, int total, string name)>(p =>
+                    {
+                        progressWindow.ProcessedItems = p.current;
+                        progressWindow.TextContent =
+                            $"Performing first-time DAT copying to Application Support ({p.current} of {p.total}): {p.name}";
+                    });
+
+                    await Task.Run(() =>
+                        MacOsDataMigration.PerformFirstTimeDatCopy(
+                            AppDomain.CurrentDomain.BaseDirectory, progress));
+
+                    progressWindow.AllowClose();
+                    progressWindow.Close();
+                }
+
                 // If custom path is set, load from it instead of searching for drives
                 if (IsUsingCustomPath)
                 {
@@ -210,6 +242,9 @@ namespace GDMENUCardManager
                 }
                 // Defer column visibility update until DataGrid is fully loaded
                 await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() => UpdateFolderColumnVisibility(), Avalonia.Threading.DispatcherPriority.Loaded);
+
+                // Check for updates (non-blocking, silent on failure)
+                _ = CheckForUpdateAsync();
             };
 
             this.Closing += MainWindow_Closing;
@@ -232,11 +267,32 @@ namespace GDMENUCardManager
             if (bool.TryParse(ConfigurationManager.AppSettings["LockCheck"], out bool lockCheck))
                 Manager.EnableLockCheck = lockCheck;
 
+            // Disc Image Options
+            if (bool.TryParse(ConfigurationManager.AppSettings["EnableGDIShrink"], out bool gdiShrink))
+                Manager.EnableGDIShrink = gdiShrink;
+            if (bool.TryParse(ConfigurationManager.AppSettings["EnableGDIShrinkCompressed"], out bool gdiShrinkCompressed))
+                Manager.EnableGDIShrinkCompressed = gdiShrinkCompressed;
+            if (bool.TryParse(ConfigurationManager.AppSettings["EnableGDIShrinkBlackList"], out bool gdiShrinkBlackList))
+                Manager.EnableGDIShrinkBlackList = gdiShrinkBlackList;
+            if (bool.TryParse(ConfigurationManager.AppSettings["EnableGDIShrinkExisting"], out bool gdiShrinkExisting))
+                Manager.EnableGDIShrinkExisting = gdiShrinkExisting;
+            if (bool.TryParse(ConfigurationManager.AppSettings["EnableRegionPatch"], out bool regionPatch))
+                Manager.EnableRegionPatch = regionPatch;
+            if (bool.TryParse(ConfigurationManager.AppSettings["EnableRegionPatchExisting"], out bool regionPatchExisting))
+                Manager.EnableRegionPatchExisting = regionPatchExisting;
+            if (bool.TryParse(ConfigurationManager.AppSettings["EnableVgaPatch"], out bool vgaPatch))
+                Manager.EnableVgaPatch = vgaPatch;
+            if (bool.TryParse(ConfigurationManager.AppSettings["EnableVgaPatchExisting"], out bool vgaPatchExisting))
+                Manager.EnableVgaPatchExisting = vgaPatchExisting;
+
             var tempFolderConfig = ConfigurationManager.AppSettings["TempFolder"];
             if (!string.IsNullOrEmpty(tempFolderConfig) && Directory.Exists(tempFolderConfig))
                 TempFolder = tempFolderConfig;
             else
                 TempFolder = Path.GetTempPath();
+
+            // Update repo override (for testing)
+            UpdateManager.RepoOverride = ConfigurationManager.AppSettings["UpdateRepoOverride"];
 
             Title = "GD MENU Card Manager " + Constants.Version;
 
@@ -334,6 +390,14 @@ namespace GDMENUCardManager
                 if (assignFolderItem != null)
                 {
                     assignFolderItem.Header = isMultiple ? "Assign Folder Paths" : "Assign Folder Path";
+                }
+
+                var assignAltItem = menu.Items.OfType<MenuItem>()
+                    .FirstOrDefault(m => m.Name == "MenuItemAssignAltFolders");
+                if (assignAltItem != null)
+                {
+                    assignAltItem.Header = "Assign Additional Folder Paths";
+                    assignAltItem.IsEnabled = !isMultiple;
                 }
             }
         }
@@ -524,6 +588,23 @@ namespace GDMENUCardManager
             // Only record if we got a new value and it's different from old
             if (newValue != null && !Equals(oldValue, newValue))
             {
+                // check if Folder edit conflicts with an alt folder
+                if (propertyName == nameof(GdItem.Folder) && newValue is string newFolder)
+                {
+                    var trimmed = newFolder.Trim();
+                    if (!string.IsNullOrEmpty(trimmed) && item.AlternativeFolders.Contains(trimmed))
+                    {
+                        e.Cancel = true;
+                        Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
+                        {
+                            await MessageBoxManager.GetMessageBoxStandardWindow("Duplicate Folder Path",
+                                "This folder path is already assigned to this disc image as an additional folder path.",
+                                icon: MessageBox.Avalonia.Enums.Icon.Info).ShowDialog(this);
+                        });
+                        return;
+                    }
+                }
+
                 Manager.UndoManager.RecordChange(new PropertyEditOperation
                 {
                     Item = item,
@@ -603,6 +684,34 @@ namespace GDMENUCardManager
             TotalFilesLength = Converter.ByteSizeToStringConverter.UseBinaryString ? bsize.ToBinaryString() : bsize.ToString();
         }
 
+
+        private async Task CheckForUpdateAsync()
+        {
+            try
+            {
+                var result = await UpdateManager.CheckForUpdateAsync();
+                if (result.ManualUpdateRequired && !UpdateAvailableDialog.ShouldSkipVersion(result.LatestTag))
+                {
+                    var manualDialog = new ManualUpdateDialog(result.LatestTag, result.LatestVersion, result.ManualReason);
+                    await manualDialog.ShowDialog(this);
+                }
+                else if (result.UpdateAvailable && !UpdateAvailableDialog.ShouldSkipVersion(result.LatestTag))
+                {
+                    var dialog = new UpdateAvailableDialog(result.LatestTag, result.LatestVersion);
+                    await dialog.ShowDialog(this);
+
+                    if (dialog.UserWantsUpdate)
+                    {
+                        var wizard = new UpdateWizardWindow(result.LatestTag, result.LatestVersion);
+                        await wizard.ShowDialog(this);
+                    }
+                }
+            }
+            catch
+            {
+                // Silently ignore any update check errors
+            }
+        }
 
         private async Task LoadItemsFromCard()
         {
@@ -1035,6 +1144,25 @@ namespace GDMENUCardManager
             catch { }
         }
 
+        private void SaveDiscImageOptionsConfig()
+        {
+            try
+            {
+                var config = ConfigurationManager.OpenExeConfiguration(System.Configuration.ConfigurationUserLevel.None);
+                SetOrAddSetting(config, "EnableGDIShrink", Manager.EnableGDIShrink.ToString());
+                SetOrAddSetting(config, "EnableGDIShrinkCompressed", Manager.EnableGDIShrinkCompressed.ToString());
+                SetOrAddSetting(config, "EnableGDIShrinkBlackList", Manager.EnableGDIShrinkBlackList.ToString());
+                SetOrAddSetting(config, "EnableGDIShrinkExisting", Manager.EnableGDIShrinkExisting.ToString());
+                SetOrAddSetting(config, "EnableRegionPatch", Manager.EnableRegionPatch.ToString());
+                SetOrAddSetting(config, "EnableRegionPatchExisting", Manager.EnableRegionPatchExisting.ToString());
+                SetOrAddSetting(config, "EnableVgaPatch", Manager.EnableVgaPatch.ToString());
+                SetOrAddSetting(config, "EnableVgaPatchExisting", Manager.EnableVgaPatchExisting.ToString());
+                config.Save(System.Configuration.ConfigurationSaveMode.Modified);
+                ConfigurationManager.RefreshSection("appSettings");
+            }
+            catch { }
+        }
+
         private void SaveLockCheckConfig()
         {
             try
@@ -1171,6 +1299,25 @@ namespace GDMENUCardManager
         {
             if (IsFilterActive)
                 return;
+
+            var emptySerials = Manager.ItemList
+                .Where(x => x.Ip?.Name != "GDMENU" && x.Ip?.Name != "openMenu"
+                    && string.IsNullOrWhiteSpace(x.ProductNumber))
+                .ToList();
+
+            if (emptySerials.Count > 0)
+            {
+                var count = emptySerials.Count;
+                var msg = count == 1
+                    ? "1 disc image doesn't have a Serial ID assigned to it."
+                    : $"{count} disc images don't have Serial IDs assigned to them.";
+                msg += "\n\nA valid openMenu configuration requires all disc images are assigned a Serial ID.";
+                var msgBox = MessageBoxManager.GetMessageBoxStandardWindow("Missing Serial IDs",
+                    msg, MessageBox.Avalonia.Enums.ButtonEnum.Ok, MessageBox.Avalonia.Enums.Icon.Error);
+                await msgBox.ShowDialog(this);
+                return;
+            }
+
             await Save();
         }
 
@@ -1359,7 +1506,7 @@ namespace GDMENUCardManager
 
         private async void ButtonDiscImageOptions_Click(object sender, RoutedEventArgs e)
         {
-            var window = new DiscImageOptionsWindow();
+            var window = new DiscImageOptionsWindow(SaveDiscImageOptionsConfig);
             window.DataContext = this;
             await window.ShowDialog(this);
         }
@@ -1538,6 +1685,14 @@ namespace GDMENUCardManager
                 if (assignFolderItem != null)
                 {
                     assignFolderItem.Header = isMultiple ? "Assign Folder Paths" : "Assign Folder Path";
+                }
+
+                var assignAltItem = menu.Items.OfType<MenuItem>()
+                    .FirstOrDefault(m => m.Name == "MenuItemAssignAltFolders");
+                if (assignAltItem != null)
+                {
+                    assignAltItem.Header = "Assign Additional Folder Paths";
+                    assignAltItem.IsEnabled = !isMultiple;
                 }
 
                 // Disable context menu for menu entry (folder 01) by setting all items disabled
@@ -1781,6 +1936,20 @@ namespace GDMENUCardManager
             {
                 var folderPath = dialog.FolderPath?.Trim() ?? string.Empty;
 
+                // check if the new primary folder conflicts with any item's alt folders
+                if (!string.IsNullOrEmpty(folderPath))
+                {
+                    var conflicting = selectedItems.Where(item =>
+                        item.AlternativeFolders.Contains(folderPath)).ToList();
+                    if (conflicting.Count > 0)
+                    {
+                        await MessageBoxManager.GetMessageBoxStandardWindow("Duplicate Folder Path",
+                            "This folder path is already assigned to this disc image as an additional folder path.",
+                            icon: MessageBox.Avalonia.Enums.Icon.Info).ShowDialog(this);
+                        return;
+                    }
+                }
+
                 var undoOp = new MultiPropertyEditOperation("Assign Folder Path")
                 {
                     PropertyName = nameof(GdItem.Folder)
@@ -1799,6 +1968,46 @@ namespace GDMENUCardManager
                 if (undoOp.Edits.Count > 0)
                 {
                     Manager.UndoManager.RecordChange(undoOp);
+                }
+            }
+        }
+
+        private async void MenuItemAssignAltFolders_Click(object sender, RoutedEventArgs e)
+        {
+            dg1.CommitEdit();
+
+            if (MenuKindSelected != MenuKind.openMenu)
+            {
+                await MessageBoxManager.GetMessageBoxStandardWindow("Info",
+                    "Additional folder paths are only available in openMenu mode.",
+                    icon: MessageBox.Avalonia.Enums.Icon.Info).ShowDialog(this);
+                return;
+            }
+
+            var item = dg1.SelectedItems.Cast<GdItem>()
+                .FirstOrDefault(x => x.SdNumber != 1);
+
+            if (item == null)
+                return;
+
+            Manager.InitializeKnownFolders();
+            var dlg = new AssignAltFoldersWindow(item, Manager.KnownFolders);
+            var dlgResult = await dlg.ShowDialog<bool?>(this);
+
+            if (dlgResult == true)
+            {
+                var oldAltFolders = new List<string>(item.AlternativeFolders);
+                var newAltFolders = dlg.GetAltFolders();
+
+                if (!oldAltFolders.SequenceEqual(newAltFolders))
+                {
+                    item.AlternativeFolders = newAltFolders;
+                    Manager.UndoManager.RecordChange(new AltFoldersChangeOperation
+                    {
+                        Item = item,
+                        OldAltFolders = oldAltFolders,
+                        NewAltFolders = new List<string>(item.AlternativeFolders)
+                    });
                 }
             }
         }

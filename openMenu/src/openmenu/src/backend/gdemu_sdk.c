@@ -22,8 +22,7 @@
 
 #define ATAPI_CMD_PACKET     0xA0
 
-/* ATA-related registers. Some of these serve very different purposes when read
-   than they do when written (hence why some addresses are duplicated). */
+/* ATA-related registers; some addresses are shared between read and write paths */
 #define G1_ATA_ALTSTATUS     0xA05F7018 /* Read */
 #define G1_ATA_CTRL          0xA05F7018 /* Write */
 #define G1_ATA_DATA          0xA05F7080 /* Read/Write */

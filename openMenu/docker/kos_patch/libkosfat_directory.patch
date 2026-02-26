@@ -1,0 +1,22 @@
+diff --git a/addons/libkosfat/directory.c b/addons/libkosfat/directory.c
+--- a/addons/libkosfat/directory.c
++++ b/addons/libkosfat/directory.c
+@@ -284,7 +284,7 @@
+             memcpy(&longname_buf[fnlen], lent->name1, 10);
+             memcpy(&longname_buf[fnlen + 5], lent->name2, 12);
+             memcpy(&longname_buf[fnlen + 11], lent->name3, 4);
+-            longname_buf[fnlen + 14] = 0;
++            longname_buf[fnlen + 13] = 0;
+ 
+             /* XXXX: Calculate the checksum here. */
+ 
+@@ -1322,7 +1322,8 @@
+         /* Make things easier later... */
+         if(len % 13) {
+             ++dents;
+-            memset(longname_buf2 + len, 0, 13 * sizeof(uint16_t));
++            memset(longname_buf2 + len, 0xFF, 13 * sizeof(uint16_t));
++            longname_buf2[len] = 0x0000;
+         }
+ 
+         /* Come up with the short name the file will have. */

@@ -442,7 +442,7 @@ font_bmf_begin_draw(void) {
             case 1024: break;
             default:
                 /* printf("%s error tex size %d(%ld) %d(%ld)\n", __func__, tmp.txr.width, font_texture.width,
-                       tmp.txr.height, font_texture.height); */
+                   tmp.txr.height, font_texture.height); */
                 return;
                 break;
         }

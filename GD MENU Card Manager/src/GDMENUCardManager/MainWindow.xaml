@@ -22,6 +22,7 @@
             <conv:IsNotMenuItemConverter x:Key="IsNotMenuItem"/>
             <conv:ArtworkButtonLabelConverter x:Key="ArtworkButtonLabel"/>
             <conv:IsOpenMenuModeConverter x:Key="IsOpenMenuMode"/>
+            <conv:BoolAndMultiValueConverter x:Key="BoolAndConverter"/>
 
             <!--icons from materialdesignicons.com-->
             <Viewbox x:Key="ViewOpenFolder" x:Shared="False" Width="18" Height="18" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
@@ -181,13 +182,27 @@
                         </Button>
                     </Grid>
                     <Button DockPanel.Dock="Right" HorizontalAlignment="Right" Padding="10 5" Margin="10 0 0 0" Click="ButtonBatchFolderRename_Click"
-                            Visibility="{Binding MenuKindSelected, Converter={StaticResource IsOpenMenuMode}}" ToolTip="Easily rearrange and rename virtual folders"
-                            IsEnabled="{Binding IsNotFilterActive, Mode=OneWay}">Batch Folder Move and Rename</Button>
-                    <Button DockPanel.Dock="Right" HorizontalAlignment="Right" Padding="10 5" Click="ButtonDiscImageOptions_Click" ToolTip="Various disc image modification options">Disc Image Options</Button>
+                            Visibility="{Binding MenuKindSelected, Converter={StaticResource IsOpenMenuMode}}" ToolTip="Easily rearrange and rename virtual folders">
+                        <Button.IsEnabled>
+                            <MultiBinding Converter="{StaticResource BoolAndConverter}">
+                                <Binding Path="HasSdPath" Mode="OneWay"/>
+                                <Binding Path="IsNotFilterActive" Mode="OneWay"/>
+                            </MultiBinding>
+                        </Button.IsEnabled>
+                        Batch Folder Move and Rename</Button>
+                    <Button DockPanel.Dock="Right" HorizontalAlignment="Right" Padding="10 5" Click="ButtonDiscImageOptions_Click" ToolTip="Various disc image modification options"
+                            IsEnabled="{Binding HasSdPath, Mode=OneWay}">Disc Image Options</Button>
                     <Button DockPanel.Dock="Right" HorizontalAlignment="Right" Padding="10 5" Margin="0 0 10 0" Click="ButtonDatTools_Click"
-                            Visibility="{Binding MenuKindSelected, Converter={StaticResource IsOpenMenuMode}}" ToolTip="Various DAT file maintenance tasks">DAT Tools</Button>
-                    <Button DockPanel.Dock="Right" HorizontalAlignment="Right" Padding="10 5" Margin="0 0 10 0" Click="ButtonSort_Click" ToolTip="Sort list by folder path + title"
-                            IsEnabled="{Binding IsNotFilterActive, Mode=OneWay}">Sort List</Button>
+                            Visibility="{Binding MenuKindSelected, Converter={StaticResource IsOpenMenuMode}}" ToolTip="Various DAT file maintenance tasks"
+                            IsEnabled="{Binding HasSdPath, Mode=OneWay}">DAT Tools</Button>
+                    <Button DockPanel.Dock="Right" HorizontalAlignment="Right" Padding="10 5" Margin="0 0 10 0" Click="ButtonSort_Click" ToolTip="Sort list by folder path + title">
+                        <Button.IsEnabled>
+                            <MultiBinding Converter="{StaticResource BoolAndConverter}">
+                                <Binding Path="HasSdPath" Mode="OneWay"/>
+                                <Binding Path="IsNotFilterActive" Mode="OneWay"/>
+                            </MultiBinding>
+                        </Button.IsEnabled>
+                        Sort List</Button>
                 </DockPanel>
 
                 <DataGrid x:Name="dg1" ItemsSource="{Binding Manager.ItemList, Mode=OneTime}" AutoGenerateColumns="False" CanUserResizeRows="False" CanUserSortColumns="False" CanUserReorderColumns="False" CanUserAddRows="False" CanUserDeleteRows="{Binding IsBusy, Mode=OneWay, Converter={StaticResource BoolToInverseBool}}" dd:DragDrop.DropHandler="{Binding Path=., Mode=OneWay}" dd:DragDrop.IsDragSource="{Binding IsBusy, Mode=OneWay, Converter={StaticResource BoolToInverseBool}}" dd:DragDrop.IsDropTarget="{Binding IsBusy, Mode=OneWay, Converter={StaticResource BoolToInverseBool}}" PreviewKeyDown="DataGrid_PreviewKeyDown" BeginningEdit="DataGrid_BeginningEdit" CellEditEnding="DataGrid_CellEditEnding" Margin="0,0,0,8">
@@ -211,6 +226,7 @@
                                 </MenuItem>
                                 <Separator/>
                                 <MenuItem x:Name="MenuItemAssignFolder" Header="Assign Folder Path" Click="MenuItemAssignFolder_Click" CommandParameter="{Binding Path=., Mode=OneWay}"/>
+                                <MenuItem x:Name="MenuItemAssignAltFolders" Header="Assign Additional Folder Paths" Click="MenuItemAssignAltFolders_Click" CommandParameter="{Binding Path=., Mode=OneWay}"/>
                             </ContextMenu.Items>
                         </ContextMenu>
                     </DataGrid.Resources>

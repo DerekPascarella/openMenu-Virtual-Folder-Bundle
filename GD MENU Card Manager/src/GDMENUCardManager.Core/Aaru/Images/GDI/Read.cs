@@ -131,7 +131,9 @@ namespace Aaru.DiscImages
                             }
 
                         if((currentTrack.TrackFilter.GetDataForkLength() - currentTrack.Offset) % currentTrack.Bps != 0)
-                            throw new ImageNotSupportedException("Track size not a multiple of sector size");
+                            AaruConsole.DebugWriteLine("GDI plugin",
+                                "Warning: Track {0} size is not a multiple of sector size, truncating",
+                                currentTrack.Sequence);
 
                         currentTrack.Sectors =
                             (ulong)((currentTrack.TrackFilter.GetDataForkLength() - currentTrack.Offset) /

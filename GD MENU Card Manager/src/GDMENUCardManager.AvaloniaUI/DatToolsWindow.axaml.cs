@@ -6,6 +6,7 @@ using MessageBox.Avalonia;
 using MessageBox.Avalonia.Models;
 using System;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using GDMENUCardManager.Core;
 
@@ -22,6 +23,9 @@ namespace GDMENUCardManager
         private const int MaxPathDisplayLength = 50;
 
         // UI controls
+        private TextBlock TextImportInstructions;
+        private TextBlock TextClearInstructions;
+        private TextBlock TextOverwriteInstructions;
         private TextBlock TextImportSourcePath;
         private TextBlock TextExportTargetPath;
         private Button ButtonBeginImport;
@@ -42,6 +46,9 @@ namespace GDMENUCardManager
             _reloadCallback = reloadCallback;
 
             // Get references to UI controls
+            TextImportInstructions = this.FindControl<TextBlock>("TextImportInstructions");
+            TextClearInstructions = this.FindControl<TextBlock>("TextClearInstructions");
+            TextOverwriteInstructions = this.FindControl<TextBlock>("TextOverwriteInstructions");
             TextImportSourcePath = this.FindControl<TextBlock>("TextImportSourcePath");
             TextExportTargetPath = this.FindControl<TextBlock>("TextExportTargetPath");
             ButtonBeginImport = this.FindControl<Button>("ButtonBeginImport");
@@ -49,12 +56,57 @@ namespace GDMENUCardManager
             RadioImportMissing = this.FindControl<RadioButton>("RadioImportMissing");
             RadioImportAll = this.FindControl<RadioButton>("RadioImportAll");
 
+            SetPlatformSpecificText();
+
             this.KeyUp += (s, e) => { if (e.Key == Avalonia.Input.Key.Escape) Close(); };
         }
 
         private void InitializeComponent()
         {
             AvaloniaXamlLoader.Load(this);
+        }
+
+        private void SetPlatformSpecificText()
+        {
+            bool isMacOS = RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
+            bool isLinux = RuntimeInformation.IsOSPlatform(OSPlatform.Linux);
+
+            if (!isMacOS && !isLinux)
+                return; // Windows: keep XAML defaults
+
+            string datFolder = isMacOS
+                ? "\"~/Library/Application Support/GDMENUCardManager/menu_data\""
+                : "\"tools/openMenu/menu_data\"";
+
+            string backupFolder = isMacOS
+                ? "\"~/Library/Application Support/GDMENUCardManager/dat_backups\""
+                : "\"dat_backups\"";
+
+            TextImportInstructions.Text =
+                $"Before this process is initiated, the DATs that currently reside in {datFolder} will be backed up to the {backupFolder} folder.\n\n" +
+                "Use \"Choose DAT Folder\" to select a folder containing either BOX.DAT or META.DAT (or both), as ICON.DAT will be automatically generated from BOX.DAT.\n\n" +
+                "Decide if only entries missing from the current DATs should be imported, or if all entries should be imported, overwriting anything currently existing. Then, click \"Begin Import\" to perform this operation.\n\n" +
+                "Please note that any unsaved artwork changes from this session will also be included.";
+
+            TextClearInstructions.Text =
+                "Doing so will discard any unsaved artwork changes from Games List, as well as remove all saved entries.\n\n" +
+                $"Before this process is initiated, the DATs that currently reside in {datFolder} will be backed up to the {backupFolder} folder.\n\n" +
+                "Click \"Clear DATs\" to perform this operation.";
+
+            if (isMacOS)
+            {
+                TextOverwriteInstructions.Text =
+                    "The DAT files in \"~/Library/Application Support/GDMENUCardManager/menu_data\" are used each time openMenu is rebuilt and saved to the GDEMU SD card.\n\n" +
+                    "On macOS, these DAT files reside in Application Support and are never overwritten by app updates, so in most cases this operation is not needed. Your artwork and metadata persist automatically across GD MENU Card Manager updates.\n\n" +
+                    "However, if you are setting up on a new Mac or have otherwise lost your Application Support data, this tool can restore your DAT files directly from your SD card's existing openMenu disc image.";
+            }
+            else // Linux
+            {
+                TextOverwriteInstructions.Text =
+                    "The DAT files in the \"tools/openMenu/menu_data\" folder are used each time openMenu is rebuilt and saved to the GDEMU SD card.\n\n" +
+                    "However, there are several scenarios where a user may wish to immediately overwrite those with the DAT files that were used to generate their SD card's openMenu. For example, a user upgrading from a previous version of openMenu Virtual Folder Bundle will likely already have custom artwork.\n\n" +
+                    "While such users can easily copy the DAT files from their previous version of GD MENU Card Manager's \"tools/openMenu/menu_data\" folder into the current version's \"menu_data\" folder, the tool here can perform this automatically using the SD card itself as the source.";
+            }
         }
 
         /// <summary>
@@ -312,6 +364,70 @@ namespace GDMENUCardManager
                 progressWindow.AllowClose();
                 progressWindow.Close();
                 await ShowError("Clear Failed", $"An error occurred: {ex.Message}");
+            }
+        }
+
+        #endregion
+
+        #region Overwrite Tab
+
+        private async void OverwriteDats_Click(object sender, RoutedEventArgs e)
+        {
+            // Confirmation dialog
+            var confirmResult = await MessageBoxManager.GetMessageBoxCustomWindow(new MessageBox.Avalonia.DTO.MessageBoxCustomParams
+            {
+                ContentTitle = "Confirm Overwrite",
+                ContentMessage = "This will backup current DAT files and overwrite them with those from the SD card's openMenu disc image.\n\nContinue?",
+                Icon = MessageBox.Avalonia.Enums.Icon.Warning,
+                ShowInCenter = true,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                ButtonDefinitions = new ButtonDefinition[]
+                {
+                    new ButtonDefinition { Name = "Continue" },
+                    new ButtonDefinition { Name = "Cancel" }
+                }
+            }).ShowDialog(this);
+
+            if (confirmResult != "Continue")
+                return;
+
+            // Show progress window
+            var progressWindow = new ProgressWindow();
+            progressWindow.Title = "Overwriting DAT Files";
+            progressWindow.TextContent = "Extracting DATs from SD card...";
+            progressWindow.TotalItems = 100;
+            progressWindow.ProcessedItems = 50;
+
+            _ = progressWindow.ShowDialog(this);
+
+            try
+            {
+                var result = await Task.Run(() => _manager.OverwriteDatsFromSdCard());
+
+                progressWindow.AllowClose();
+                progressWindow.Close();
+
+                if (!result.success)
+                {
+                    await ShowError("Overwrite Failed", result.errorMessage);
+                    return;
+                }
+
+                await ShowInfo("Overwrite Complete", "DAT files have been successfully overwritten with those from the SD card.");
+
+                // Close this window and reload
+                this.Close();
+
+                if (_reloadCallback != null)
+                {
+                    await _reloadCallback();
+                }
+            }
+            catch (Exception ex)
+            {
+                progressWindow.AllowClose();
+                progressWindow.Close();
+                await ShowError("Overwrite Failed", $"An error occurred: {ex.Message}");
             }
         }
 

@@ -5,14 +5,14 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:conv="clr-namespace:GDMENUCardManager.Converter"
         mc:Ignorable="d"
-        Title="Disc Image Options" Height="520" Width="320"
+        Title="Disc Image Options" Width="320" SizeToContent="Height"
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
     <Window.Resources>
         <conv:BoolToVisibleOrCollapsedConverter x:Key="BoolToVisibleOrCollapsed"/>
     </Window.Resources>
     <Grid Margin="15">
         <Grid.RowDefinitions>
-            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
@@ -66,7 +66,7 @@
             </GroupBox>
 
             <!-- Region-Free Patch Card -->
-            <GroupBox Margin="0 0 0 10">
+            <GroupBox Margin="0">
                 <GroupBox.Header>
                     <TextBlock Text="Region-Free Patch" FontWeight="Bold"/>
                 </GroupBox.Header>
@@ -86,8 +86,8 @@
 
         <!-- Save/Cancel Buttons -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 5 0 0">
-            <Button Content="Save" Width="80" Height="26" Margin="0 0 10 0" Click="SaveButton_Click" IsDefault="True"/>
-            <Button Content="Cancel" Width="80" Height="26" Click="CancelButton_Click" IsCancel="True"/>
+            <Button Content="Save" Width="80" Padding="15,8" Margin="0 0 10 0" Click="SaveButton_Click" IsDefault="True"/>
+            <Button Content="Cancel" Width="80" Padding="15,8" Click="CancelButton_Click" IsCancel="True"/>
         </StackPanel>
     </Grid>
 </Window>

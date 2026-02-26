@@ -21,19 +21,19 @@
 #include <backend/gd_item.h>
 #include <backend/gd_list.h>
 #include <openmenu_debug.h>
-#include <openmenu_settings.h>
 #include <openmenu_savefile.h>
+#include <openmenu_settings.h>
 #include "dc/input.h"
 #include "texture/txr_manager.h"
 #include "ui/draw_prototypes.h"
 #include "ui/font_prototypes.h"
+#include "ui/theme_manager.h"
 #include "ui/ui_common.h"
 #include "ui/ui_menu_credits.h"
-#include "ui/theme_manager.h"
 
 #include "ui/ui_folders.h"
 
-#define UNUSED __attribute__((unused))
+#define UNUSED         __attribute__((unused))
 
 /* Keyboard scancodes for quick-jump (from KOS keyboard.h) */
 #define KBD_KEY_A      0x04
@@ -54,42 +54,42 @@ extern image img_dir_boxart;
 static theme_scroll default_theme = {"THEME/FOLDERS/BG_L.PVR",
                                      "THEME/FOLDERS/BG_R.PVR",
                                      "FoldersDefault",
-                                     {COLOR_WHITE,                        /* text_color: 255,255,255 */
-                                      PVR_PACK_ARGB(255, 207, 62, 17),    /* highlight_color: 207,62,17 */
-                                      COLOR_WHITE,                        /* menu_text_color: 255,255,255 */
-                                      PVR_PACK_ARGB(255, 207, 62, 17),    /* menu_highlight_color: 207,62,17 */
-                                      COLOR_BLACK,                        /* menu_bkg_color: 0,0,0 */
-                                      COLOR_WHITE,                        /* menu_bkg_border_color: 255,255,255 */
-                                      COLOR_WHITE},                       /* icon_color */
+                                     {COLOR_WHITE,                     /* text_color: 255,255,255 */
+                                      PVR_PACK_ARGB(255, 207, 62, 17), /* highlight_color: 207,62,17 */
+                                      COLOR_WHITE,                     /* menu_text_color: 255,255,255 */
+                                      PVR_PACK_ARGB(255, 207, 62, 17), /* menu_highlight_color: 207,62,17 */
+                                      COLOR_BLACK,                     /* menu_bkg_color: 0,0,0 */
+                                      COLOR_WHITE,                     /* menu_bkg_border_color: 255,255,255 */
+                                      COLOR_WHITE},                    /* icon_color */
                                      "FONT/GDMNUFNT.PVR",
-                                     PVR_PACK_ARGB(255, 75, 75, 75),      /* cursor_color: 75,75,75 */
-                                     PVR_PACK_ARGB(255, 207, 62, 17),     /* multidisc_color: 207,62,17 */
-                                     COLOR_BLACK,                         /* menu_title_color: 0,0,0 */
-                                     404,                                 /* cursor_width (calculated dynamically) */
-                                     20,                                  /* cursor_height */
-                                     18,                                  /* items_per_page (list_count) */
-                                     3,                                   /* pos_gameslist_x */
-                                     14,                                  /* pos_gameslist_y */
-                                     424,                                 /* pos_gameinfo_x */
-                                     85,                                  /* pos_gameinfo_region_y */
-                                     109,                                 /* pos_gameinfo_vga_y */
-                                     133,                                 /* pos_gameinfo_disc_y */
-                                     157,                                 /* pos_gameinfo_date_y */
-                                     181,                                 /* pos_gameinfo_version_y */
-                                     420,                                 /* pos_gametxr_x */
-                                     213,                                 /* pos_gametxr_y */
-                                     13,                                  /* list_x */
-                                     68,                                  /* list_y */
-                                     416,                                 /* artwork_x */
-                                     215,                                 /* artwork_y */
-                                     210,                                 /* artwork_size */
-                                     49,                                  /* list_marquee_threshold */
-                                     521,                                 /* item_details_x */
-                                     430,                                 /* item_details_y */
-                                     COLOR_BLACK,                         /* item_details_text_color: 0,0,0 */
-                                     623,                                 /* clock_x */
-                                     36,                                  /* clock_y */
-                                     COLOR_WHITE};                        /* clock_text_color: 255,255,255 */
+                                     PVR_PACK_ARGB(255, 75, 75, 75),  /* cursor_color: 75,75,75 */
+                                     PVR_PACK_ARGB(255, 207, 62, 17), /* multidisc_color: 207,62,17 */
+                                     COLOR_BLACK,                     /* menu_title_color: 0,0,0 */
+                                     404,                             /* cursor_width (calculated dynamically) */
+                                     20,                              /* cursor_height */
+                                     18,                              /* items_per_page (list_count) */
+                                     3,                               /* pos_gameslist_x */
+                                     14,                              /* pos_gameslist_y */
+                                     424,                             /* pos_gameinfo_x */
+                                     85,                              /* pos_gameinfo_region_y */
+                                     109,                             /* pos_gameinfo_vga_y */
+                                     133,                             /* pos_gameinfo_disc_y */
+                                     157,                             /* pos_gameinfo_date_y */
+                                     181,                             /* pos_gameinfo_version_y */
+                                     420,                             /* pos_gametxr_x */
+                                     213,                             /* pos_gametxr_y */
+                                     13,                              /* list_x */
+                                     68,                              /* list_y */
+                                     416,                             /* artwork_x */
+                                     215,                             /* artwork_y */
+                                     210,                             /* artwork_size */
+                                     49,                              /* list_marquee_threshold */
+                                     521,                             /* item_details_x */
+                                     430,                             /* item_details_y */
+                                     COLOR_BLACK,                     /* item_details_text_color: 0,0,0 */
+                                     623,                             /* clock_x */
+                                     36,                              /* clock_y */
+                                     COLOR_WHITE};                    /* clock_text_color: 255,255,255 */
 
 static theme_scroll* cur_theme = NULL;
 static theme_scroll* custom = NULL;
@@ -107,6 +107,7 @@ static int current_selected_item = 0;
 static int current_starting_index = 0;
 static int navigate_timeout = INPUT_TIMEOUT_INITIAL;
 static enum draw_state draw_current = DRAW_UI;
+static bool serial_vmu_boot_checked = false;
 
 static bool direction_last = false;
 static bool direction_current = false;
@@ -118,7 +119,7 @@ static char cusor_step = -5;
 
 /* Marquee scrolling state */
 #define MARQUEE_INITIAL_PAUSE_FRAMES 60
-#define MARQUEE_END_PAUSE_FRAMES 90
+#define MARQUEE_END_PAUSE_FRAMES     90
 
 typedef enum {
     MARQUEE_STATE_INITIAL_PAUSE,
@@ -145,12 +146,12 @@ get_marquee_speed_frames(void) {
 }
 
 /* Display constants */
-#define ITEM_SPACING 21
-#define CURSOR_HEIGHT 20
+#define ITEM_SPACING    21
+#define CURSOR_HEIGHT   20
 #define FONT_CHAR_WIDTH 8
-#define X_ADJUST_TEXT 4
-#define Y_ADJUST_TEXT 4
-#define Y_ADJUST_CRSR 3
+#define X_ADJUST_TEXT   4
+#define Y_ADJUST_TEXT   4
+#define Y_ADJUST_CRSR   3
 
 /* Helper functions */
 
@@ -263,14 +264,13 @@ draw_gamelist(void) {
 
         /* Draw cursor for selected item */
         if (is_selected) {
-            uint32_t cursor_color = (cur_theme->cursor_color & 0x00FFFFFF) |
-                                    PVR_PACK_ARGB(cusor_alpha, 0, 0, 0);
+            uint32_t cursor_color = (cur_theme->cursor_color & 0x00FFFFFF) | PVR_PACK_ARGB(cusor_alpha, 0, 0, 0);
             int list_x = cur_theme->list_x ? cur_theme->list_x : 12;
             int list_y = cur_theme->list_y ? cur_theme->list_y : 68;
             int marquee_threshold = cur_theme->list_marquee_threshold ? cur_theme->list_marquee_threshold : 49;
             int cursor_width = (X_ADJUST_TEXT * 2) + (marquee_threshold * FONT_CHAR_WIDTH);
-            draw_draw_quad(list_x, list_y + Y_ADJUST_TEXT + (i * ITEM_SPACING) - Y_ADJUST_CRSR,
-                          cursor_width, CURSOR_HEIGHT, cursor_color);
+            draw_draw_quad(list_x, list_y + Y_ADJUST_TEXT + (i * ITEM_SPACING) - Y_ADJUST_CRSR, cursor_width,
+                           CURSOR_HEIGHT, cursor_color);
 
             /* Set highlight color for text (only show multidisc color if product code exists) */
             if (hide_multidisc && (disc_set > 1) && item->product[0] != '\0') {
@@ -304,37 +304,29 @@ draw_gamelist(void) {
                         char display_buf[128];
                         snprintf(display_buf, sizeof(display_buf), "[%s]", &inner_start[marquee_offset]);
 
-                        font_bmp_draw_main(list_x + X_ADJUST_TEXT,
-                                           list_y + Y_ADJUST_TEXT + (i * ITEM_SPACING),
+                        font_bmp_draw_main(list_x + X_ADJUST_TEXT, list_y + Y_ADJUST_TEXT + (i * ITEM_SPACING),
                                            display_buf);
 
                         inner_start[marquee_offset + inner_threshold] = saved_char;
                     } else {
                         /* Folder name fits within threshold */
-                        font_bmp_draw_main(list_x + X_ADJUST_TEXT,
-                                           list_y + Y_ADJUST_TEXT + (i * ITEM_SPACING),
-                                           buffer);
+                        font_bmp_draw_main(list_x + X_ADJUST_TEXT, list_y + Y_ADJUST_TEXT + (i * ITEM_SPACING), buffer);
                     }
                 } else {
                     /* Malformed bracket - display as-is */
-                    font_bmp_draw_main(list_x + X_ADJUST_TEXT,
-                                       list_y + Y_ADJUST_TEXT + (i * ITEM_SPACING),
-                                       buffer);
+                    font_bmp_draw_main(list_x + X_ADJUST_TEXT, list_y + Y_ADJUST_TEXT + (i * ITEM_SPACING), buffer);
                 }
             } else if (name_len > cur_theme->list_marquee_threshold) {
                 /* Non-folder long name - normal marquee */
                 marquee_update_animation(name_len);
                 char saved_char = buffer[marquee_offset + cur_theme->list_marquee_threshold];
                 buffer[marquee_offset + cur_theme->list_marquee_threshold] = '\0';
-                font_bmp_draw_main(list_x + X_ADJUST_TEXT,
-                                   list_y + Y_ADJUST_TEXT + (i * ITEM_SPACING),
+                font_bmp_draw_main(list_x + X_ADJUST_TEXT, list_y + Y_ADJUST_TEXT + (i * ITEM_SPACING),
                                    &buffer[marquee_offset]);
                 buffer[marquee_offset + cur_theme->list_marquee_threshold] = saved_char;
             } else {
                 /* Short name - display normally */
-                font_bmp_draw_main(list_x + X_ADJUST_TEXT,
-                                   list_y + Y_ADJUST_TEXT + (i * ITEM_SPACING),
-                                   buffer);
+                font_bmp_draw_main(list_x + X_ADJUST_TEXT, list_y + Y_ADJUST_TEXT + (i * ITEM_SPACING), buffer);
             }
         } else {
             /* Normal text color */
@@ -357,9 +349,7 @@ draw_gamelist(void) {
             /* Draw item text */
             int list_x = cur_theme->list_x ? cur_theme->list_x : 12;
             int list_y = cur_theme->list_y ? cur_theme->list_y : 68;
-            font_bmp_draw_main(list_x + X_ADJUST_TEXT,
-                               list_y + Y_ADJUST_TEXT + (i * ITEM_SPACING),
-                               buffer);
+            font_bmp_draw_main(list_x + X_ADJUST_TEXT, list_y + Y_ADJUST_TEXT + (i * ITEM_SPACING), buffer);
         }
     }
 
@@ -452,15 +442,14 @@ draw_item_details(void) {
             int num_games = 0;
             if (list_folder_get_stats(folder_name, &num_subfolders, &num_games) == 0) {
                 if (num_subfolders > 0 && num_games > 0) {
-                    snprintf(details_line, sizeof(details_line), "%d %s, %d %s",
-                             num_subfolders, num_subfolders == 1 ? "SUBFOLDER" : "SUBFOLDERS",
-                             num_games, num_games == 1 ? "DISC" : "DISCS");
+                    snprintf(details_line, sizeof(details_line), "%d %s, %d %s", num_subfolders,
+                             num_subfolders == 1 ? "SUBFOLDER" : "SUBFOLDERS", num_games,
+                             num_games == 1 ? "DISC" : "DISCS");
                 } else if (num_subfolders > 0) {
-                    snprintf(details_line, sizeof(details_line), "%d %s",
-                             num_subfolders, num_subfolders == 1 ? "SUBFOLDER" : "SUBFOLDERS");
+                    snprintf(details_line, sizeof(details_line), "%d %s", num_subfolders,
+                             num_subfolders == 1 ? "SUBFOLDER" : "SUBFOLDERS");
                 } else if (num_games > 0) {
-                    snprintf(details_line, sizeof(details_line), "%d %s",
-                             num_games, num_games == 1 ? "DISC" : "DISCS");
+                    snprintf(details_line, sizeof(details_line), "%d %s", num_games, num_games == 1 ? "DISC" : "DISCS");
                 } else {
                     snprintf(details_line, sizeof(details_line), "EMPTY");
                 }
@@ -485,11 +474,11 @@ draw_item_details(void) {
          * - "Same Folder Only": always show local disc count */
         int effective_total = total_discs;
         if (total_discs > 1 && sf_multidisc[0] == MULTIDISC_HIDE) {
-            const char* folder_filter = NULL;
-            if (sf_multidisc_grouping[0] == MULTIDISC_GROUPING_SAME_FOLDER || !list_folder_is_root()) {
-                folder_filter = item->folder;
+            if (sf_multidisc_grouping[0] == MULTIDISC_GROUPING_ANYWHERE && list_folder_is_root()) {
+                effective_total = list_count_multidisc_filtered(item->product, NULL);
+            } else {
+                effective_total = list_count_multidisc_in_folder(item->product);
             }
-            effective_total = list_count_multidisc_filtered(item->product, folder_filter);
         }
 
         if (effective_total <= 1) {
@@ -515,7 +504,8 @@ draw_item_details(void) {
     int text_width = strlen(details_line) * FONT_CHAR_WIDTH;
     int centered_x = details_x - (text_width / 2);
 
-    uint32_t text_color = cur_theme->item_details_text_color ? cur_theme->item_details_text_color : cur_theme->colors.text_color;
+    uint32_t text_color =
+        cur_theme->item_details_text_color ? cur_theme->item_details_text_color : cur_theme->colors.text_color;
     font_bmp_begin_draw();
     font_bmp_set_color(text_color);
     font_bmp_draw_main(centered_x, details_y, details_line);
@@ -539,7 +529,7 @@ draw_clock(void) {
 #else
     now = time(NULL);
 #endif
-    struct tm *t = localtime(&now);
+    struct tm* t = localtime(&now);
     if (!t) {
         return;
     }
@@ -548,16 +538,16 @@ draw_clock(void) {
     if (sf_clock[0] == CLOCK_12HOUR) {
         /* 12-hour format with AM/PM */
         int hour12 = t->tm_hour % 12;
-        if (hour12 == 0) hour12 = 12;
-        const char *ampm = (t->tm_hour < 12) ? "AM" : "PM";
-        snprintf(clock_buf, sizeof(clock_buf), "%04d-%02d-%02d %02d:%02d:%02d %s",
-                 t->tm_year + 1900, t->tm_mon + 1, t->tm_mday,
-                 hour12, t->tm_min, t->tm_sec, ampm);
+        if (hour12 == 0) {
+            hour12 = 12;
+        }
+        const char* ampm = (t->tm_hour < 12) ? "AM" : "PM";
+        snprintf(clock_buf, sizeof(clock_buf), "%04d-%02d-%02d %02d:%02d:%02d %s", t->tm_year + 1900, t->tm_mon + 1,
+                 t->tm_mday, hour12, t->tm_min, t->tm_sec, ampm);
     } else {
         /* 24-hour format */
-        snprintf(clock_buf, sizeof(clock_buf), "%04d-%02d-%02d %02d:%02d:%02d",
-                 t->tm_year + 1900, t->tm_mon + 1, t->tm_mday,
-                 t->tm_hour, t->tm_min, t->tm_sec);
+        snprintf(clock_buf, sizeof(clock_buf), "%04d-%02d-%02d %02d:%02d:%02d", t->tm_year + 1900, t->tm_mon + 1,
+                 t->tm_mday, t->tm_hour, t->tm_min, t->tm_sec);
     }
 
     /* Draw clock right-justified (clock_x is right edge) */
@@ -582,7 +572,7 @@ draw_vmu_sync_debug(void) {
 
     /* Draw debug info at bottom of screen */
     font_bmp_begin_draw();
-    font_bmp_set_color(PVR_PACK_ARGB(255, 255, 255, 0));  /* Yellow text */
+    font_bmp_set_color(PVR_PACK_ARGB(255, 255, 255, 0)); /* Yellow text */
 
     /* Draw header and five lines of debug info */
     font_bmp_draw_main(10, 375, "--- VMU TIME SYNC DEBUG (0=OK, -999=not called) ---");
@@ -677,17 +667,16 @@ run_cb(void) {
 
     /* Only show multidisc chooser if product code exists */
     if (hide_multidisc && (disc_set > 1) && item->product[0] != '\0') {
-        /* Apply grouping filter:
-         * - "Anywhere" at root level: show all discs from all folders
-         * - "Anywhere" in subfolders: show only local discs
-         * - "Same Folder Only": always show only local discs */
-        const char* folder_filter = NULL;
+        /* Grouping: "Anywhere" at root searches all, otherwise current folder */
 #ifndef STANDALONE_BINARY
-        if (sf_multidisc_grouping[0] == MULTIDISC_GROUPING_SAME_FOLDER || !list_folder_is_root()) {
-            folder_filter = item->folder;
+        if (sf_multidisc_grouping[0] == MULTIDISC_GROUPING_ANYWHERE && list_folder_is_root()) {
+            list_set_multidisc(item->product);
+        } else {
+            list_set_multidisc_in_folder(item->product);
         }
+#else
+        list_set_multidisc(item->product);
 #endif
-        list_set_multidisc_filtered(item->product, folder_filter);
 
         /* Check if multiple discs remain after filtering */
         if (list_multidisc_length() > 1) {
@@ -703,7 +692,14 @@ run_cb(void) {
     }
 
     /* printf("run_cb: Launching CB\n"); */
-    dreamcast_launch_cb(item);
+    if (sf_serial_vmu[0] != SERIAL_VMU_OFF) {
+        set_cur_game_item(item);
+        draw_current = DRAW_SERIAL_VMU;
+        serial_vmu_setup(&draw_current, &cur_theme->colors, &navigate_timeout, cur_theme->menu_title_color);
+        serial_vmu_start_restore(item, SERIAL_VMU_LAUNCH_CB);
+    } else {
+        dreamcast_launch_cb(item);
+    }
 }
 
 static void
@@ -745,7 +741,7 @@ menu_accept(void) {
             char folder_name[256];
             const char* start = item->name;
             if (start[0] == '[') {
-                start++;  /* Skip opening bracket */
+                start++; /* Skip opening bracket */
             }
             strncpy(folder_name, start, 255);
             folder_name[255] = '\0';
@@ -780,17 +776,16 @@ menu_accept(void) {
 
     /* Show multidisc chooser menu if needed (only if product code exists) */
     if (hide_multidisc && (disc_set > 1) && item->product[0] != '\0') {
-        /* Apply grouping filter:
-         * - "Anywhere" at root level: show all discs from all folders
-         * - "Anywhere" in subfolders: show only local discs
-         * - "Same Folder Only": always show only local discs */
-        const char* folder_filter = NULL;
+        /* Grouping: "Anywhere" at root searches all, otherwise current folder */
 #ifndef STANDALONE_BINARY
-        if (sf_multidisc_grouping[0] == MULTIDISC_GROUPING_SAME_FOLDER || !list_folder_is_root()) {
-            folder_filter = item->folder;
+        if (sf_multidisc_grouping[0] == MULTIDISC_GROUPING_ANYWHERE && list_folder_is_root()) {
+            list_set_multidisc(item->product);
+        } else {
+            list_set_multidisc_in_folder(item->product);
         }
+#else
+        list_set_multidisc(item->product);
 #endif
-        list_set_multidisc_filtered(item->product, folder_filter);
 
         /* Check if multiple discs remain after filtering */
         if (list_multidisc_length() > 1) {
@@ -806,16 +801,30 @@ menu_accept(void) {
     /* Launch game */
     if (!strcmp(item->type, "psx")) {
         if (is_bloom_available()) {
-            /* Show PSX launcher choice popup */
+            /* Show PSX launcher choice popup (Serial VMU intercept happens in PSX launcher accept) */
             set_cur_game_item(item);
             draw_current = DRAW_PSX_LAUNCHER;
             popup_setup(&draw_current, &cur_theme->colors, &navigate_timeout, cur_theme->menu_title_color);
         } else {
             /* No Bloom available, launch directly with Bleem */
-            bleem_launch(item);
+            if (sf_serial_vmu[0] != SERIAL_VMU_OFF && strcmp(item->type, "other") != 0) {
+                set_cur_game_item(item);
+                draw_current = DRAW_SERIAL_VMU;
+                serial_vmu_setup(&draw_current, &cur_theme->colors, &navigate_timeout, cur_theme->menu_title_color);
+                serial_vmu_start_restore(item, SERIAL_VMU_LAUNCH_BLEEM);
+            } else {
+                bleem_launch(item);
+            }
         }
     } else {
-        dreamcast_launch_disc(item);
+        if (sf_serial_vmu[0] != SERIAL_VMU_OFF && strcmp(item->type, "other") != 0) {
+            set_cur_game_item(item);
+            draw_current = DRAW_SERIAL_VMU;
+            serial_vmu_setup(&draw_current, &cur_theme->colors, &navigate_timeout, cur_theme->menu_title_color);
+            serial_vmu_start_restore(item, SERIAL_VMU_LAUNCH_DC);
+        } else {
+            dreamcast_launch_disc(item);
+        }
     }
 }
 
@@ -989,25 +998,14 @@ handle_input_ui(enum control input) {
             direction_current = true;
             menu_increment(5);
             break;
-        case A:
-            menu_accept();
-            break;
-        case B:
-            menu_go_back();
-            break;
-        case X:
-            menu_cb();
-            break;
-        case Y:
-            menu_exit();
-            break;
-        case START:
-            menu_settings();
-            break;
+        case A: menu_accept(); break;
+        case B: menu_go_back(); break;
+        case X: menu_cb(); break;
+        case Y: menu_exit(); break;
+        case START: menu_settings(); break;
 
         case NONE:
-        default:
-            break;
+        default: break;
     }
 
     /* Keyboard quick-jump: Shift+Letter/Number */
@@ -1073,9 +1071,7 @@ FUNCTION(UI_NAME, setup) {
     marquee_last_selected = -1;
 }
 
-FUNCTION(UI_NAME, drawOP) {
-    draw_bg_layers();
-}
+FUNCTION(UI_NAME, drawOP) { draw_bg_layers(); }
 
 FUNCTION(UI_NAME, drawTR) {
     /* Always draw the game list, artwork, and item details first */
@@ -1084,8 +1080,14 @@ FUNCTION(UI_NAME, drawTR) {
     draw_item_details();
     draw_clock();
 #if DEBUG_VMU_SYNC
-    draw_vmu_sync_debug();  /* Enable DEBUG_VMU_SYNC in openmenu_debug.h */
+    draw_vmu_sync_debug(); /* Enable DEBUG_VMU_SYNC in openmenu_debug.h */
 #endif
+
+    /* Check for pending Serial VMU backup on first frame */
+    if (!serial_vmu_boot_checked && draw_current == DRAW_UI) {
+        serial_vmu_boot_checked = true;
+        serial_vmu_check_boot_backup(&draw_current, &cur_theme->colors, &navigate_timeout, cur_theme->menu_title_color);
+    }
 
     /* Then draw popups on top */
     switch (draw_current) {
@@ -1116,6 +1118,10 @@ FUNCTION(UI_NAME, drawTR) {
             draw_compaction_test_tr();
         } break;
         /* COMPACTION_TEST_END */
+        case DRAW_SERIAL_VMU: {
+            draw_serial_vmu_op();
+            draw_serial_vmu_tr();
+        } break;
         default:
         case DRAW_UI: {
             /* Game list and artwork already drawn above */
@@ -1156,6 +1162,9 @@ FUNCTION_INPUT(UI_NAME, handle_input) {
             handle_input_compaction_test(input_current);
         } break;
         /* COMPACTION_TEST_END */
+        case DRAW_SERIAL_VMU: {
+            handle_input_serial_vmu(input_current);
+        } break;
         default:
         case DRAW_UI: {
             handle_input_ui(input_current);

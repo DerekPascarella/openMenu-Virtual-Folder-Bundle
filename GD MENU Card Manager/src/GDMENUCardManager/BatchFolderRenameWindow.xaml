@@ -19,6 +19,7 @@
         <TextBlock Grid.Row="0" Margin="0,0,0,10" TextWrapping="Wrap">
             <Run FontWeight="Bold">Folder Hierarchy</Run>
             <LineBreak/>
+            <LineBreak/>
             Double-click to rename folders. Drag folders to reparent them. Changes apply when you click Save.
         </TextBlock>
 
@@ -67,11 +68,11 @@
         </Border>
 
         <Grid Grid.Row="2" Margin="0,10,0,0">
-            <Button HorizontalAlignment="Left" Content="Undo Last Change" Width="130" Height="30"
+            <Button HorizontalAlignment="Left" Content="Undo Last Change" Width="130" Padding="15,8"
                     Click="UndoButton_Click" IsEnabled="{Binding CanUndo}"/>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button Content="Save" Width="80" Height="30" Margin="0,0,10,0" Click="SaveButton_Click" IsDefault="True"/>
-                <Button Content="Cancel" Width="80" Height="30" Click="CancelButton_Click" IsCancel="True"/>
+                <Button Content="Save" Width="80" Padding="15,8" Margin="0,0,10,0" Click="SaveButton_Click" IsDefault="True"/>
+                <Button Content="Cancel" Width="80" Padding="15,8" Click="CancelButton_Click" IsCancel="True"/>
             </StackPanel>
         </Grid>
     </Grid>

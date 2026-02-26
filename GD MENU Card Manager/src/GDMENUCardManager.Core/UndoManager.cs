@@ -507,4 +507,57 @@ namespace GDMENUCardManager.Core
             ApplyFilter?.Invoke(FilterText);
         }
     }
+
+    public class AltFoldersChangeOperation : UndoOperation
+    {
+        public GdItem Item { get; set; }
+        public List<string> OldAltFolders { get; set; }
+        public List<string> NewAltFolders { get; set; }
+
+        public override string Description => "Assign Additional Folder Paths";
+
+        public override void Undo()
+        {
+            Item.AlternativeFolders = new List<string>(OldAltFolders);
+        }
+
+        public override void Redo()
+        {
+            Item.AlternativeFolders = new List<string>(NewAltFolders);
+        }
+    }
+
+    public class BatchFolderRenameOperation : UndoOperation
+    {
+        public class ItemSnapshot
+        {
+            public GdItem Item { get; set; }
+            public string OldFolder { get; set; }
+            public string NewFolder { get; set; }
+            public List<string> OldAltFolders { get; set; }
+            public List<string> NewAltFolders { get; set; }
+        }
+
+        public List<ItemSnapshot> Snapshots { get; set; } = new List<ItemSnapshot>();
+
+        public override string Description => "Batch Folder Rename";
+
+        public override void Undo()
+        {
+            foreach (var s in Snapshots)
+            {
+                s.Item.Folder = s.OldFolder;
+                s.Item.AlternativeFolders = new List<string>(s.OldAltFolders);
+            }
+        }
+
+        public override void Redo()
+        {
+            foreach (var s in Snapshots)
+            {
+                s.Item.Folder = s.NewFolder;
+                s.Item.AlternativeFolders = new List<string>(s.NewAltFolders);
+            }
+        }
+    }
 }

@@ -15,6 +15,7 @@ namespace GDMENUCardManager
         private bool _originalEnableRegionPatch;
         private bool _originalEnableRegionPatchExisting;
         private bool _saved;
+        private readonly Action _saveConfigCallback;
 
         public DiscImageOptionsWindow()
         {
@@ -24,6 +25,11 @@ namespace GDMENUCardManager
 #endif
             this.Opened += DiscImageOptionsWindow_Opened;
             this.Closing += DiscImageOptionsWindow_Closing;
+        }
+
+        public DiscImageOptionsWindow(Action saveConfigCallback) : this()
+        {
+            _saveConfigCallback = saveConfigCallback;
         }
 
         private void InitializeComponent()
@@ -66,6 +72,7 @@ namespace GDMENUCardManager
         private void SaveButton_Click(object sender, RoutedEventArgs e)
         {
             _saved = true;
+            _saveConfigCallback?.Invoke();
             Close();
         }
 

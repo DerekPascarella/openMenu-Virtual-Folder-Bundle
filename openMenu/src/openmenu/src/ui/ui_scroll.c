@@ -26,7 +26,7 @@
 
 #include "ui/ui_scroll.h"
 
-#define UNUSED __attribute__((unused))
+#define UNUSED         __attribute__((unused))
 
 /* Keyboard scancodes for quick-jump (from KOS keyboard.h) */
 #define KBD_KEY_A      0x04
@@ -114,8 +114,8 @@ static const theme_scroll default_theme = {"THEME/SCROLL/BG_L.PVR",
                                            0,
                                            0,
                                            49,
-                                           0,    /* item_details_x (unused in Scroll) */
-                                           0};   /* item_details_y (unused in Scroll) */
+                                           0,  /* item_details_x (unused in Scroll) */
+                                           0}; /* item_details_y (unused in Scroll) */
 
 static theme_scroll* cur_theme = NULL;
 static theme_scroll* custom = NULL;
@@ -144,9 +144,9 @@ static uint8_t cusor_alpha = 255;
 static char cusor_step = -5;
 
 /* Marquee scrolling state */
-#define MARQUEE_DISPLAY_WIDTH 49
+#define MARQUEE_DISPLAY_WIDTH        49
 #define MARQUEE_INITIAL_PAUSE_FRAMES 60
-#define MARQUEE_END_PAUSE_FRAMES 90
+#define MARQUEE_END_PAUSE_FRAMES     90
 
 typedef enum {
     MARQUEE_STATE_INITIAL_PAUSE,
@@ -193,6 +193,7 @@ static int current_selected_item = 0;
 static int current_starting_index = 0;
 static int navigate_timeout = INPUT_TIMEOUT_INITIAL;
 static enum draw_state draw_current = DRAW_UI;
+static bool serial_vmu_boot_checked = false;
 
 static bool direction_last = false;
 static bool direction_current = false;
@@ -336,13 +337,11 @@ draw_gamelist(void) {
                 char saved_char = buffer[marquee_offset + MARQUEE_DISPLAY_WIDTH];
                 buffer[marquee_offset + MARQUEE_DISPLAY_WIDTH] = '\0';
                 font_bmp_draw_main(cur_theme->pos_gameslist_x + X_ADJUST_TEXT,
-                                   cur_theme->pos_gameslist_y + Y_ADJUST_TEXT + (i * 21),
-                                   &buffer[marquee_offset]);
+                                   cur_theme->pos_gameslist_y + Y_ADJUST_TEXT + (i * 21), &buffer[marquee_offset]);
                 buffer[marquee_offset + MARQUEE_DISPLAY_WIDTH] = saved_char;
             } else {
                 font_bmp_draw_main(cur_theme->pos_gameslist_x + X_ADJUST_TEXT,
-                                   cur_theme->pos_gameslist_y + Y_ADJUST_TEXT + (i * 21),
-                                   buffer);
+                                   cur_theme->pos_gameslist_y + Y_ADJUST_TEXT + (i * 21), buffer);
             }
         } else {
             font_bmp_set_color(cur_theme->colors.text_color);
@@ -353,8 +352,7 @@ draw_gamelist(void) {
             }
 
             font_bmp_draw_main(cur_theme->pos_gameslist_x + X_ADJUST_TEXT,
-                               cur_theme->pos_gameslist_y + Y_ADJUST_TEXT + (i * 21),
-                               buffer);
+                               cur_theme->pos_gameslist_y + Y_ADJUST_TEXT + (i * 21), buffer);
         }
     }
 }
@@ -539,7 +537,14 @@ run_cb(void) {
         return;
     }
 
-    dreamcast_launch_cb(list_current[current_selected_item]);
+    if (sf_serial_vmu[0] != SERIAL_VMU_OFF) {
+        set_cur_game_item(list_current[current_selected_item]);
+        draw_current = DRAW_SERIAL_VMU;
+        serial_vmu_setup(&draw_current, &cur_theme->colors, &navigate_timeout, cur_theme->menu_title_color);
+        serial_vmu_start_restore(list_current[current_selected_item], SERIAL_VMU_LAUNCH_CB);
+    } else {
+        dreamcast_launch_cb(list_current[current_selected_item]);
+    }
 }
 
 static void
@@ -588,16 +593,30 @@ menu_accept(void) {
 
     if (!strcmp(list_current[current_selected_item]->type, "psx")) {
         if (is_bloom_available()) {
-            /* Show PSX launcher choice popup */
+            /* Show PSX launcher choice popup (Serial VMU intercept happens in PSX launcher accept) */
             set_cur_game_item(list_current[current_selected_item]);
             draw_current = DRAW_PSX_LAUNCHER;
             popup_setup(&draw_current, &cur_theme->colors, &navigate_timeout, cur_theme->colors.text_color);
         } else {
             /* No Bloom available, launch directly with Bleem */
-            bleem_launch(list_current[current_selected_item]);
+            if (sf_serial_vmu[0] != SERIAL_VMU_OFF && strcmp(list_current[current_selected_item]->type, "other") != 0) {
+                set_cur_game_item(list_current[current_selected_item]);
+                draw_current = DRAW_SERIAL_VMU;
+                serial_vmu_setup(&draw_current, &cur_theme->colors, &navigate_timeout, cur_theme->menu_title_color);
+                serial_vmu_start_restore(list_current[current_selected_item], SERIAL_VMU_LAUNCH_BLEEM);
+            } else {
+                bleem_launch(list_current[current_selected_item]);
+            }
         }
     } else {
-        dreamcast_launch_disc(list_current[current_selected_item]);
+        if (sf_serial_vmu[0] != SERIAL_VMU_OFF && strcmp(list_current[current_selected_item]->type, "other") != 0) {
+            set_cur_game_item(list_current[current_selected_item]);
+            draw_current = DRAW_SERIAL_VMU;
+            serial_vmu_setup(&draw_current, &cur_theme->colors, &navigate_timeout, cur_theme->menu_title_color);
+            serial_vmu_start_restore(list_current[current_selected_item], SERIAL_VMU_LAUNCH_DC);
+        } else {
+            dreamcast_launch_disc(list_current[current_selected_item]);
+        }
     }
 }
 
@@ -614,7 +633,8 @@ menu_exit(void) {
     set_cur_game_item(list_current[current_selected_item]);
 
     draw_current = DRAW_EXIT;
-    exit_menu_setup(&draw_current, &cur_theme->colors, &navigate_timeout, cur_theme->colors.text_color, 0 /* not a folder */);
+    exit_menu_setup(&draw_current, &cur_theme->colors, &navigate_timeout, cur_theme->colors.text_color,
+                    0 /* not a folder */);
 }
 
 /* Quick-jump: check for Shift+Key and jump to first matching item */
@@ -692,7 +712,7 @@ handle_keyboard_quickjump(void) {
 FUNCTION(UI_NAME, init) {
     texman_clear();
     /* @Note: these exist but do we really care? Naturally this will happen
-   * without forcing it and old data doesn't matter */
+     * without forcing it and old data doesn't matter */
     txr_empty_small_pool();
     txr_empty_large_pool();
     if (sf_custom_theme[0]) {
@@ -814,6 +834,9 @@ FUNCTION_INPUT(UI_NAME, handle_input) {
             handle_input_compaction_test(input_current);
         } break;
         /* COMPACTION_TEST_END */
+        case DRAW_SERIAL_VMU: {
+            handle_input_serial_vmu(input_current);
+        } break;
         default:
         case DRAW_UI: {
             handle_input_ui(input_current);
@@ -871,6 +894,12 @@ FUNCTION(UI_NAME, drawTR) {
     draw_gameinfo();
     draw_gameart();
 
+    /* Check for pending Serial VMU backup on first frame */
+    if (!serial_vmu_boot_checked && draw_current == DRAW_UI) {
+        serial_vmu_boot_checked = true;
+        serial_vmu_check_boot_backup(&draw_current, &cur_theme->colors, &navigate_timeout, cur_theme->menu_title_color);
+    }
+
     switch (draw_current) {
         case DRAW_MENU: {
             /* Menu on top */
@@ -904,6 +933,10 @@ FUNCTION(UI_NAME, drawTR) {
             draw_compaction_test_tr();
         } break;
         /* COMPACTION_TEST_END */
+        case DRAW_SERIAL_VMU: {
+            draw_serial_vmu_op();
+            draw_serial_vmu_tr();
+        } break;
         default:
         case DRAW_UI: {
             /* always drawn */

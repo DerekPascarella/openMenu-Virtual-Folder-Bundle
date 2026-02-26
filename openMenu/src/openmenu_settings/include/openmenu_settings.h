@@ -87,6 +87,14 @@ extern uint8_t* sf_vmu_time_sync;
 #define sf_vmu_time_sync_type   CRAYON_TYPE_UINT8
 #define sf_vmu_time_sync_length 1
 
+extern uint8_t* sf_serial_vmu;
+#define sf_serial_vmu_type   CRAYON_TYPE_UINT8
+#define sf_serial_vmu_length 1
+
+extern uint8_t* sf_serial_vmu_multislot;
+#define sf_serial_vmu_multislot_type   CRAYON_TYPE_UINT8
+#define sf_serial_vmu_multislot_length 1
+
 enum savefile_version {
     SFV_INITIAL = 1,
     SFV_BIOS_3D,
@@ -101,7 +109,10 @@ enum savefile_version {
     SFV_VM2_SEND_ALL,
     SFV_BOOT_MODE,
     SFV_VMU_TIME_SYNC,
-    SFV_LATEST_PLUS_ONE //DON'T REMOVE
+    SFV_SERIAL_VMU,
+    SFV_SERIAL_VMU_MULTISLOT,
+    SFV_EXIT_BIOS,
+    SFV_LATEST_PLUS_ONE // DON'T REMOVE
 };
 
 #define VAR_STILL_PRESENT SFV_LATEST_PLUS_ONE
@@ -123,15 +134,22 @@ typedef enum CFG_ASPECT {
     ASPECT_END = ASPECT_WIDE
 } CFG_ASPECT;
 
-typedef enum CFG_UI { UI_START = 0, UI_LINE_DESC = UI_START, UI_GRID3, UI_SCROLL, UI_FOLDERS, UI_END = UI_FOLDERS } CFG_UI;
+typedef enum CFG_UI {
+    UI_START = 0,
+    UI_LINE_DESC = UI_START,
+    UI_GRID3,
+    UI_SCROLL,
+    UI_FOLDERS,
+    UI_END = UI_FOLDERS
+} CFG_UI;
 
 typedef enum CFG_SORT {
     SORT_START = 0,
-    SORT_DEFAULT = SORT_START,  /* Now means Alphabetical */
+    SORT_DEFAULT = SORT_START, /* Now means Alphabetical */
     SORT_NAME,
     SORT_DATE,
     SORT_PRODUCT,
-    SORT_SD_CARD,               /* SD Card Order (slot order) */
+    SORT_SD_CARD, /* SD Card Order (slot order) */
     SORT_END = SORT_SD_CARD
 } CFG_SORT;
 
@@ -197,9 +215,10 @@ typedef enum CFG_CUSTOM_THEME_NUM {
 
 typedef enum CFG_BIOS_3D {
     BIOS_3D_START = 0,
-    BIOS_3D_OFF = BIOS_3D_START,
-    BIOS_3D_ON,
-    BIOS_3D_END = BIOS_3D_ON
+    BIOS_3D_STANDARD = BIOS_3D_START,
+    BIOS_3D_ALTERNATE,
+    BIOS_3D_ALTERNATE_3D,
+    BIOS_3D_END = BIOS_3D_ALTERNATE_3D
 } CFG_BIOS_3D;
 
 typedef enum CFG_SCROLL_ART {
@@ -263,10 +282,10 @@ typedef enum CFG_VM2_SEND_ALL {
 
 typedef enum CFG_BOOT_MODE {
     BOOT_MODE_START = 0,
-    BOOT_MODE_FULL = BOOT_MODE_START,  // boot_intro=1, sega_license=1
-    BOOT_MODE_LICENSE,                  // boot_intro=0, sega_license=1
-    BOOT_MODE_ANIMATION,                // boot_intro=1, sega_license=0
-    BOOT_MODE_FAST,                     // boot_intro=0, sega_license=0
+    BOOT_MODE_FULL = BOOT_MODE_START, // boot_intro=1, sega_license=1
+    BOOT_MODE_LICENSE,                // boot_intro=0, sega_license=1
+    BOOT_MODE_ANIMATION,              // boot_intro=1, sega_license=0
+    BOOT_MODE_FAST,                   // boot_intro=0, sega_license=0
     BOOT_MODE_END = BOOT_MODE_FAST
 } CFG_BOOT_MODE;
 
@@ -277,12 +296,45 @@ typedef enum CFG_VMU_TIME_SYNC {
     VMU_TIME_SYNC_END = VMU_TIME_SYNC_ON
 } CFG_VMU_TIME_SYNC;
 
+typedef enum CFG_SERIAL_VMU {
+    SERIAL_VMU_START = 0,
+    SERIAL_VMU_OFF = SERIAL_VMU_START,
+    SERIAL_VMU_A1,
+    SERIAL_VMU_A2,
+    SERIAL_VMU_B1,
+    SERIAL_VMU_B2,
+    SERIAL_VMU_C1,
+    SERIAL_VMU_C2,
+    SERIAL_VMU_D1,
+    SERIAL_VMU_D2,
+    SERIAL_VMU_END = SERIAL_VMU_D2
+} CFG_SERIAL_VMU;
+
+typedef enum CFG_SERIAL_VMU_MULTISLOT {
+    SERIAL_VMU_MULTISLOT_START = 0,
+    SERIAL_VMU_MULTISLOT_OFF = SERIAL_VMU_MULTISLOT_START,
+    SERIAL_VMU_MULTISLOT_ON,
+    SERIAL_VMU_MULTISLOT_END = SERIAL_VMU_MULTISLOT_ON
+} CFG_SERIAL_VMU_MULTISLOT;
+
 typedef CFG_REGION region;
 
 /* COMPACTION_TEST_START */
-enum draw_state { DRAW_UI = 0, DRAW_MULTIDISC, DRAW_EXIT, DRAW_MENU, DRAW_CREDITS, DRAW_CODEBREAKER, DRAW_PSX_LAUNCHER, DRAW_SAVELOAD, DRAW_COMPACTION_TEST };
+enum draw_state {
+    DRAW_UI = 0,
+    DRAW_MULTIDISC,
+    DRAW_EXIT,
+    DRAW_MENU,
+    DRAW_CREDITS,
+    DRAW_CODEBREAKER,
+    DRAW_PSX_LAUNCHER,
+    DRAW_SAVELOAD,
+    DRAW_COMPACTION_TEST,
+    DRAW_SERIAL_VMU
+};
+
 /* COMPACTION_TEST_END */
 
 void settings_sanitize();
 
-#endif //OPENMENU_SETTINGS_H
+#endif // OPENMENU_SETTINGS_H

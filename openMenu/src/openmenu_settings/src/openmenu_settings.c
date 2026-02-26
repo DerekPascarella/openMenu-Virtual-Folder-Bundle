@@ -21,6 +21,8 @@ uint8_t* sf_clock;
 uint8_t* sf_vm2_send_all;
 uint8_t* sf_boot_mode;
 uint8_t* sf_vmu_time_sync;
+uint8_t* sf_serial_vmu;
+uint8_t* sf_serial_vmu_multislot;
 
 void
 settings_sanitize() {
@@ -68,7 +70,11 @@ settings_sanitize() {
     }
 
     if ((sf_beep[0] < BIOS_3D_START) || (sf_beep[0] > BIOS_3D_END)) {
-        sf_beep[0] = BIOS_3D_OFF;
+        sf_beep[0] = BIOS_3D_STANDARD;
+    }
+
+    if ((sf_bios_3d[0] < BIOS_3D_START) || (sf_bios_3d[0] > BIOS_3D_END)) {
+        sf_bios_3d[0] = BIOS_3D_STANDARD;
     }
 
     if ((sf_scroll_art[0] < SCROLL_ART_START) || (sf_scroll_art[0] > SCROLL_ART_END)) {
@@ -83,7 +89,8 @@ settings_sanitize() {
         sf_folders_art[0] = FOLDERS_ART_ON;
     }
 
-    if ((sf_folders_item_details[0] < FOLDERS_ITEM_DETAILS_START) || (sf_folders_item_details[0] > FOLDERS_ITEM_DETAILS_END)) {
+    if ((sf_folders_item_details[0] < FOLDERS_ITEM_DETAILS_START)
+        || (sf_folders_item_details[0] > FOLDERS_ITEM_DETAILS_END)) {
         sf_folders_item_details[0] = FOLDERS_ITEM_DETAILS_ON;
     }
 
@@ -109,5 +116,14 @@ settings_sanitize() {
 
     if ((sf_vmu_time_sync[0] < VMU_TIME_SYNC_START) || (sf_vmu_time_sync[0] > VMU_TIME_SYNC_END)) {
         sf_vmu_time_sync[0] = VMU_TIME_SYNC_OFF;
+    }
+
+    if ((sf_serial_vmu[0] < SERIAL_VMU_START) || (sf_serial_vmu[0] > SERIAL_VMU_END)) {
+        sf_serial_vmu[0] = SERIAL_VMU_OFF;
+    }
+
+    if ((sf_serial_vmu_multislot[0] < SERIAL_VMU_MULTISLOT_START)
+        || (sf_serial_vmu_multislot[0] > SERIAL_VMU_MULTISLOT_END)) {
+        sf_serial_vmu_multislot[0] = SERIAL_VMU_MULTISLOT_OFF;
     }
 }

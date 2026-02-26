@@ -77,8 +77,9 @@
     </None>
   </ItemGroup>
 
-  <!-- Auto-update version from version.txt -->
-  <Target Name="UpdateVersionFromFile" BeforeTargets="BeforeBuild;BeforeRebuild">
+  <!-- Auto-update version from version.txt (Windows only; on Linux/macOS Constants.cs is pre-generated) -->
+  <Target Name="UpdateVersionFromFile" BeforeTargets="BeforeBuild;BeforeRebuild"
+          Condition="'$(OS)' == 'Windows_NT'">
     <Exec Command="powershell -ExecutionPolicy Bypass -File &quot;$(MSBuildProjectDirectory)\UpdateVersion.ps1&quot;" />
   </Target>
 </Project>

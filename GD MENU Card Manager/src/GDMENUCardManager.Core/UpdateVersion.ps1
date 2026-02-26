@@ -20,11 +20,21 @@ namespace GDMENUCardManager.Core
         public const string NameTextFile = "name.txt";
         public const string SerialTextFile = "serial.txt";
         public const string FolderTextFile = "folder.txt";
+        public const string FolderAlt1TextFile = "folder_alt1.txt";
+        public const string FolderAlt2TextFile = "folder_alt2.txt";
+        public const string FolderAlt3TextFile = "folder_alt3.txt";
+        public const string FolderAlt4TextFile = "folder_alt4.txt";
+        public const string FolderAlt5TextFile = "folder_alt5.txt";
+        public static readonly string[] FolderAltTextFiles = {
+            FolderAlt1TextFile, FolderAlt2TextFile, FolderAlt3TextFile,
+            FolderAlt4TextFile, FolderAlt5TextFile
+        };
         public const string TypeTextFile = "type.txt";
         public const string DiscTextFile = "disc.txt";
         public const string VgaTextFile = "vga.txt";
         public const string VersionTextFile = "version.txt";
         public const string DateTextFile = "date.txt";
+        public const string RegionTextFile = "region.txt";
         //private const string InfoTextFile = "info.txt";
         public const string MenuConfigTextFile = "GDEMU.INI";
         public const string GdiShrinkBlacklistFile = "gdishrink_blacklist.txt";

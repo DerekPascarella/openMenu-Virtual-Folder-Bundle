@@ -1,8 +1,8 @@
 #ifndef OPENMENU_SAVEFILE_H
 #define OPENMENU_SAVEFILE_H
 
-#include <stdbool.h>
 #include <crayon_savefile/savefile.h>
+#include <stdbool.h>
 #include "sd_savefile.h"
 
 void savefile_defaults();
@@ -21,10 +21,10 @@ int8_t savefile_save();
 int8_t savefile_get_device_status(int8_t device_id);
 uint32_t savefile_get_device_version(int8_t device_id);
 void savefile_refresh_device_info(void);
+void savefile_refresh_single_device_info(int8_t device_id);
 int8_t savefile_save_to_device(int8_t device_id);
 int8_t savefile_load_from_device(int8_t device_id);
 int8_t savefile_get_startup_device_id(void);
-void savefile_show_success_icon(int8_t device_id);
 uint32_t savefile_get_save_size_blocks(void);
 uint32_t savefile_get_device_free_blocks(int8_t device_id);
 
@@ -63,4 +63,4 @@ int compaction_test_get_result(void);
 const char* compaction_test_get_status(void);
 /* COMPACTION_TEST_END */
 
-#endif //OPENMENU_SAVEFILE_H
+#endif // OPENMENU_SAVEFILE_H

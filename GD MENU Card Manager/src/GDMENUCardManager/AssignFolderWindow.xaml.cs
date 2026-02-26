@@ -46,7 +46,7 @@ namespace GDMENUCardManager
 
         public AssignFolderWindow(int selectedCount, IEnumerable<string> knownFolders) : this()
         {
-            SelectionInfo = $"Assign folder path to {selectedCount} selected item{(selectedCount == 1 ? "" : "s")}:";
+            SelectionInfo = $"Assign folder path to {selectedCount} selected item{(selectedCount == 1 ? "" : "s")}";
             KnownFolders = knownFolders;
         }
 

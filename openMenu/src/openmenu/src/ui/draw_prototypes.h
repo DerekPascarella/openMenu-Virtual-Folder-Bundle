@@ -40,7 +40,8 @@ int draw_get_list(void);
 
 /* returns default missing texture */
 void* draw_load_missing_icon(void* user);
-/* Throws pass whatever is relevant to your platform as a pointer and it will filled + returned if successfull, otherwise NULL */
+/* Throws pass whatever is relevant to your platform as a pointer and it will filled + returned if successfull,
+ * otherwise NULL */
 void* draw_load_texture(const char* filename, void* user);
 void* draw_load_texture_buffer(const char* filename, void* user, void* buffer);
 /* Loads from new DAT file using struct + ID of file requested */

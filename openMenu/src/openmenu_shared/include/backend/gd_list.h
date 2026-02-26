@@ -34,6 +34,8 @@ void list_set_multidisc(const char* product_id);
 void list_set_multidisc_filtered(const char* product_id, const char* folder_path);
 const struct gd_item** list_get_multidisc(void);
 int list_count_multidisc_filtered(const char* product_id, const char* folder_path);
+void list_set_multidisc_in_folder(const char* product_id);
+int list_count_multidisc_in_folder(const char* product_id);
 
 int list_length(void);
 int list_multidisc_length(void);

@@ -11,12 +11,14 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <arch/arch.h>
 #include <arch/exec.h>
 #include <dc/cdrom.h>
 #include <dc/flashrom.h>
 #include <dc/maple.h>
 #include <dc/maple/controller.h>
 #include <dc/maple/keyboard.h>
+#include <dc/maple/vmu.h>
 #include <dc/pvr.h>
 #include <dc/video.h>
 #include <kos/thread.h>
@@ -24,6 +26,7 @@
 #include <backend/db_list.h>
 #include <backend/gd_list.h>
 #include <openmenu_debug.h>
+#include <openmenu_lcd.h>
 #include <openmenu_savefile.h>
 #include <openmenu_settings.h>
 #include "backend/gdemu_sdk.h"
@@ -34,6 +37,7 @@
 #include "ui/ui_common.h"
 #include "ui/ui_menu_credits.h"
 #include "vm2/vm2_api.h"
+#include "vmu_lcd_utils.h"
 
 #if DEBUG_MAPLE_FLASH
 /* Flash the screen a solid color for debugging.
@@ -42,16 +46,15 @@ static void
 debug_flash(uint8_t r, uint8_t g, uint8_t b) {
     /* Pack RGB into the format vid_clear expects */
     vid_clear(r, g, b);
-    thd_sleep(300);  /* 300ms visible flash */
+    thd_sleep(300); /* 300ms visible flash */
 }
-#define DFLASH(r,g,b) debug_flash(r,g,b)
+
+#define DFLASH(r, g, b) debug_flash(r, g, b)
 #else
-#define DFLASH(r,g,b) ((void)0)
+#define DFLASH(r, g, b) ((void)0)
 #endif
 
-/* Display a simple loading screen.
- * Called after PVR init but before main initialization.
- * Loads and displays FONT/LOADING.PVR centered on screen. */
+/* show loading screen after PVR init */
 static void
 show_loading_screen(void) {
     uint32_t width, height, format;
@@ -88,22 +91,32 @@ show_loading_screen(void) {
     pvr_vertex_t vert;
 
     vert.flags = PVR_CMD_VERTEX;
-    vert.x = x1; vert.y = y1; vert.z = z;
-    vert.u = 0.0f; vert.v = 0.0f;
-    vert.argb = 0xFFFFFFFF; vert.oargb = 0;
+    vert.x = x1;
+    vert.y = y1;
+    vert.z = z;
+    vert.u = 0.0f;
+    vert.v = 0.0f;
+    vert.argb = 0xFFFFFFFF;
+    vert.oargb = 0;
     pvr_prim(&vert, sizeof(vert));
 
-    vert.x = x2; vert.y = y1;
-    vert.u = 1.0f; vert.v = 0.0f;
+    vert.x = x2;
+    vert.y = y1;
+    vert.u = 1.0f;
+    vert.v = 0.0f;
     pvr_prim(&vert, sizeof(vert));
 
-    vert.x = x1; vert.y = y2;
-    vert.u = 0.0f; vert.v = 1.0f;
+    vert.x = x1;
+    vert.y = y2;
+    vert.u = 0.0f;
+    vert.v = 1.0f;
     pvr_prim(&vert, sizeof(vert));
 
     vert.flags = PVR_CMD_VERTEX_EOL;
-    vert.x = x2; vert.y = y2;
-    vert.u = 1.0f; vert.v = 1.0f;
+    vert.x = x2;
+    vert.y = y2;
+    vert.u = 1.0f;
+    vert.v = 1.0f;
     pvr_prim(&vert, sizeof(vert));
 
     pvr_list_finish();
@@ -216,6 +229,35 @@ vm2_send_id_to_all(const char* product, const char* name) {
     }
 }
 
+/* send LCD icon on VMU hot-insert */
+#define VMU_LCD_CHECK_INTERVAL 120 /* ~2 seconds at 60fps */
+static bool vmu_lcd_prev_valid[8] = {false};
+static int vmu_lcd_frame_counter = 0;
+
+static void
+vmu_lcd_check_insertions(void) {
+    if (++vmu_lcd_frame_counter < VMU_LCD_CHECK_INTERVAL) {
+        return;
+    }
+    vmu_lcd_frame_counter = 0;
+
+    for (int port = 0; port < 4; port++) {
+        for (int unit = 1; unit <= 2; unit++) {
+            int idx = port * 2 + (unit - 1);
+            maple_device_t* dev = maple_enum_dev(port, unit);
+            bool now_valid = dev && dev->valid;
+
+            if (now_valid && !vmu_lcd_prev_valid[idx]) {
+                if (dev->info.functions & MAPLE_FUNC_LCD) {
+                    vmu_draw_lcd_auto(dev, openmenu_lcd);
+                }
+            }
+
+            vmu_lcd_prev_valid[idx] = now_valid;
+        }
+    }
+}
+
 static int
 init() {
     int ret = 0;
@@ -227,7 +269,7 @@ init() {
     ret += txr_create_large_pool();
     ret += txr_load_DATs();
     ret += list_read_default();
-    check_bloom_available();  /* Check for BLOOM.BIN once at startup */
+    check_bloom_available(); /* Check for BLOOM.BIN once at startup */
     ret += db_load_DAT();
     ret += theme_manager_load();
 
@@ -411,9 +453,9 @@ translate_input(void) {
 
     /* Keyboard support - skip if no keys pressed */
     if (!INPT_KeyboardNone()) {
-        /* Check if Shift is held — if so, skip letter/number button mappings
-         * so the UI quick-jump feature (Shift+Letter/Number) works without
-         * also triggering the action mapped to that key. */
+        /* Check if Shift is held, skip letter/number button mappings
+         * so UI quick-jump (Shift+Letter/Number) works without also
+         * triggering the action mapped to that key */
         uint8_t mods = INPT_KeyboardModifiers();
         bool shift_held = (mods & KBD_MOD_LSHIFT) || (mods & KBD_MOD_RSHIFT);
 
@@ -433,20 +475,42 @@ translate_input(void) {
 
         if (!shift_held) {
             /* Letter keys → button mappings (disabled when Shift held for quick-jump) */
-            if (INPT_KeyboardButtonPress(KBD_KEY_Z)) { return A; }
-            if (INPT_KeyboardButtonPress(KBD_KEY_X)) { return B; }
-            if (INPT_KeyboardButton(KBD_KEY_A))      { return X; }
-            if (INPT_KeyboardButtonPress(KBD_KEY_S)) { return Y; }
-            if (INPT_KeyboardButton(KBD_KEY_Q))      { return TRIG_L; }
-            if (INPT_KeyboardButton(KBD_KEY_W))      { return TRIG_R; }
+            if (INPT_KeyboardButtonPress(KBD_KEY_Z)) {
+                return A;
+            }
+            if (INPT_KeyboardButtonPress(KBD_KEY_X)) {
+                return B;
+            }
+            if (INPT_KeyboardButton(KBD_KEY_A)) {
+                return X;
+            }
+            if (INPT_KeyboardButtonPress(KBD_KEY_S)) {
+                return Y;
+            }
+            if (INPT_KeyboardButton(KBD_KEY_Q)) {
+                return TRIG_L;
+            }
+            if (INPT_KeyboardButton(KBD_KEY_W)) {
+                return TRIG_R;
+            }
         }
 
         /* Non-letter keys → button mappings (always active, not quick-jump targets) */
-        if (INPT_KeyboardButtonPress(KBD_KEY_SPACE))  { return A; }
-        if (INPT_KeyboardButtonPress(KBD_KEY_ESCAPE)) { return B; }
-        if (INPT_KeyboardButtonPress(KBD_KEY_ENTER))  { return START; }
-        if (INPT_KeyboardButton(KBD_KEY_PGUP))        { return TRIG_L; }
-        if (INPT_KeyboardButton(KBD_KEY_PGDOWN))      { return TRIG_R; }
+        if (INPT_KeyboardButtonPress(KBD_KEY_SPACE)) {
+            return A;
+        }
+        if (INPT_KeyboardButtonPress(KBD_KEY_ESCAPE)) {
+            return B;
+        }
+        if (INPT_KeyboardButtonPress(KBD_KEY_ENTER)) {
+            return START;
+        }
+        if (INPT_KeyboardButton(KBD_KEY_PGUP)) {
+            return TRIG_L;
+        }
+        if (INPT_KeyboardButton(KBD_KEY_PGDOWN)) {
+            return TRIG_R;
+        }
     }
 
     return NONE;
@@ -497,8 +561,7 @@ main(int argc, char* argv[]) {
     /* DEBUG: RED = before maple_wait_scan */
     DFLASH(255, 0, 0);
 
-    /* Wait for maple bus scan to complete before any device enumeration.
-     * This ensures device structures are properly initialized. */
+    /* wait for maple bus scan */
     maple_wait_scan();
 
     /* DEBUG: GREEN = after maple_wait_scan */
@@ -552,6 +615,7 @@ main(int argc, char* argv[]) {
     for (;;) {
         z_reset();
         (*current_ui_handle_input)(translate_input());
+        vmu_lcd_check_insertions();
         vid_waitvbl();
         if (need_reload_ui) {
             ui_set_choice(sf_ui[0]);
@@ -566,16 +630,6 @@ main(int argc, char* argv[]) {
 
 void
 exit_to_bios_ex(int do_mount, int do_send_id) {
-    bloader_cfg_t* bloader_config = (bloader_cfg_t*)&bloader_data[bloader_size - sizeof(bloader_cfg_t)];
-
-    bloader_config->enable_wide = sf_aspect[0];
-    maple_device_t* cont = maple_enum_type(0, MAPLE_FUNC_CONTROLLER);
-    if (cont && !strncmp("Dreamcast Fishing Controller", cont->info.product_name, 28)) {
-        bloader_config->enable_3d = 0;
-    } else {
-        bloader_config->enable_3d = sf_bios_3d[0];
-    }
-
     const gd_item* item = get_cur_game_item();
     /* Only mount/set ID if we have a valid item and it's not a folder */
     /* Folders have disc="DIR" and product[0]='F' */
@@ -585,15 +639,30 @@ exit_to_bios_ex(int do_mount, int do_send_id) {
             gdemu_set_img_num((uint16_t)item->slot_num);
 
             /* Wait for disc to be ready */
-            extern void wait_cd_ready(gd_item* disc);
+            extern void wait_cd_ready(gd_item * disc);
             wait_cd_ready((gd_item*)item);
         }
 
         /* Send game ID to VM2/VMUPro/USB4Maple/Pico2Maple if present */
         if (do_send_id) {
-            vm2_rescan();  /* Rescan to detect hot-swapped devices */
+            vm2_rescan(); /* Rescan to detect hot-swapped devices */
             vm2_send_id_to_all(item->product, item->name);
         }
+    }
+
+    if (sf_bios_3d[0] == BIOS_3D_STANDARD) {
+        arch_menu();
+    }
+
+    /* Alternate or Alternate + 3D: use bloader */
+    bloader_cfg_t* bloader_config = (bloader_cfg_t*)&bloader_data[bloader_size - sizeof(bloader_cfg_t)];
+    bloader_config->enable_wide = 0;
+
+    maple_device_t* cont = maple_enum_type(0, MAPLE_FUNC_CONTROLLER);
+    if (cont && !strncmp("Dreamcast Fishing Controller", cont->info.product_name, 28)) {
+        bloader_config->enable_3d = 0;
+    } else {
+        bloader_config->enable_3d = (sf_bios_3d[0] == BIOS_3D_ALTERNATE_3D) ? 1 : 0;
     }
 
     arch_exec_at(bloader_data, bloader_size, 0xacf00000);

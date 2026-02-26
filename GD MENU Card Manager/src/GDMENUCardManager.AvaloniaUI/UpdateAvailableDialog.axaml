@@ -1,0 +1,38 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="450" d:DesignHeight="220"
+        x:Class="GDMENUCardManager.UpdateAvailableDialog"
+        Title="Update Available" SizeToContent="Height" Width="450"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner">
+  <Grid Margin="20">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <!-- Message -->
+    <StackPanel Grid.Row="0">
+      <StackPanel Orientation="Horizontal" Margin="0 0 0 10" Spacing="0">
+        <TextBlock Text="A new version of GD MENU Card Manager ("/>
+        <TextBlock x:Name="VersionText" FontWeight="SemiBold"/>
+        <TextBlock Text=") is available."/>
+      </StackPanel>
+
+      <Button x:Name="ChangelogButton" Content="View Changelog" Click="Changelog_Click" Margin="0 0 0 15"
+              Background="Transparent" BorderBrush="Transparent" Foreground="Blue"
+              Padding="0" Cursor="Hand" HorizontalAlignment="Left"/>
+
+      <TextBlock TextWrapping="Wrap" Text="Would you like to update now? An update wizard will walk you through options to preserve your current assets."/>
+    </StackPanel>
+
+    <!-- Buttons -->
+    <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 15 0 0">
+      <Button Content="Skip This Version" Click="SkipButton_Click" Width="120" Height="28" Margin="0 0 10 0"/>
+      <Button Content="Remind Me Later" Click="RemindButton_Click" Width="120" Height="28" Margin="0 0 10 0"/>
+      <Button Content="Update Now" Click="UpdateButton_Click" Width="90" Height="28" IsDefault="True"/>
+    </StackPanel>
+  </Grid>
+</Window>

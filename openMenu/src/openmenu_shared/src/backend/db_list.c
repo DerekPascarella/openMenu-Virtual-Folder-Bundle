@@ -11,10 +11,10 @@
 
 #include <stdio.h>
 
-#include "backend/db_list.h"
 #include "backend/dat_format.h"
-#include "texture/serial_sanitize.h"
 #include "backend/db_item.h"
+#include "backend/db_list.h"
+#include "texture/serial_sanitize.h"
 
 static dat_file dat_meta;
 static db_item* db;

@@ -119,6 +119,58 @@ namespace GDMENUCardManager
             catch { }
         }
 
+        private async void CheckForUpdatesButton_Click(object sender, RoutedEventArgs e)
+        {
+            var btn = (Button)sender;
+            btn.IsEnabled = false;
+            btn.Content = "Checking...";
+            try
+            {
+                var result = await UpdateManager.CheckForUpdateAsync();
+                if (result.ManualUpdateRequired)
+                {
+                    var manualDialog = new ManualUpdateDialog(result.LatestTag, result.LatestVersion, result.ManualReason);
+                    await manualDialog.ShowDialog(this);
+                }
+                else if (result.UpdateAvailable)
+                {
+                    btn.Content = "Check for Updates";
+                    btn.IsEnabled = true;
+
+                    var dialog = new UpdateAvailableDialog(result.LatestTag, result.LatestVersion);
+                    await dialog.ShowDialog(this);
+
+                    if (dialog.UserWantsUpdate)
+                    {
+                        var parentWindow = this.Owner as Window;
+                        this.Close();
+                        var wizard = new UpdateWizardWindow(result.LatestTag, result.LatestVersion);
+                        if (parentWindow != null)
+                            await wizard.ShowDialog(parentWindow);
+                        else
+                            wizard.Show();
+                    }
+                }
+                else
+                {
+                    var msgBox = MessageBoxManager.GetMessageBoxStandardWindow("No Update Available",
+                        "You are running the latest version.", MessageBox.Avalonia.Enums.ButtonEnum.Ok, MessageBox.Avalonia.Enums.Icon.Info);
+                    await msgBox.ShowDialog(this);
+                }
+            }
+            catch
+            {
+                var msgBox = MessageBoxManager.GetMessageBoxStandardWindow("Update Check Failed",
+                    "Could not check for updates. Please check your internet connection.", MessageBox.Avalonia.Enums.ButtonEnum.Ok, MessageBox.Avalonia.Enums.Icon.Warning);
+                await msgBox.ShowDialog(this);
+            }
+            finally
+            {
+                btn.IsEnabled = true;
+                btn.Content = "Check for Updates";
+            }
+        }
+
         private async void ButtonVersion_Click(object sender, RoutedEventArgs e)
         {
             var btn = (Button)sender;

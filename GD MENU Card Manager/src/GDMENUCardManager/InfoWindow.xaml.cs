@@ -53,11 +53,8 @@ namespace GDMENUCardManager
             this.item = item;
 
             StringBuilder sb = new StringBuilder();
-            sb.AppendLine("Folder:");
-            sb.AppendLine(Path.GetFileName(item.FullFolderPath));
-            sb.AppendLine();
-            sb.AppendLine("File:");
-            sb.AppendLine(Path.GetFileName(item.ImageFile));
+            sb.AppendLine($"Folder: {Path.GetFileName(item.FullFolderPath)}");
+            sb.Append($"File: {Path.GetFileName(item.ImageFile)}");
 
             FileInfo = sb.ToString();
 
@@ -88,17 +85,18 @@ namespace GDMENUCardManager
                 var ip = await ImageHelper.GetIpBinFromImage(filePath);
                 if (ip != null)
                 {
-                    string vga = ip.Vga ? "   VGA" : null;
                     StringBuilder sb = new StringBuilder();
-                    sb.AppendLine(ip.Name);
-                    sb.AppendLine();
-                    sb.AppendLine($"{ip.Version}   DISC {ip.Disc}{vga}");
-                    sb.AppendLine($"CRC: {ip.CRC}   Product: {ip.ProductNumber}");
+                    sb.AppendLine($"Title: {ip.Name}");
+                    sb.AppendLine($"Version: {ip.Version}");
+                    sb.AppendLine($"Disc: {ip.Disc}");
+                    sb.AppendLine($"VGA: {(ip.Vga ? "Yes" : "No")}");
+                    sb.AppendLine($"Serial: {ip.ProductNumber}");
+                    sb.Append($"Region: {ip.Region}");
 
                     if (ip.SpecialDisc != SpecialDisc.None)
                     {
                         sb.AppendLine();
-                        sb.AppendLine("Detected as: " + ip.SpecialDisc);
+                        sb.Append("Detected as: " + ip.SpecialDisc);
                     }
                     IpInfo = sb.ToString();
                 }
@@ -118,7 +116,7 @@ namespace GDMENUCardManager
                 var gdtexture = await Task.Run(() => ImageHelper.GetGdText(filePath));
                 if (gdtexture == null)
                 {
-                    LabelText = "File not found";
+                    LabelText = "Unable to find or read file";
                 }
                 else
                 {
@@ -147,9 +145,9 @@ namespace GDMENUCardManager
                     }
                 }
             }
-            catch (Exception ex)
+            catch
             {
-                LabelText = ex.Message;
+                LabelText = "Unable to find or read file";
             }
         }
     }

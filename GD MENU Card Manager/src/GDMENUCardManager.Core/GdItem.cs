@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
@@ -141,43 +142,59 @@ namespace GDMENUCardManager.Core
             return serial.Trim().Replace("-", "").Split(' ')[0];
         }
 
+        public static string CleanFolderPath(string path)
+        {
+            if (path == null)
+                return path;
+
+            var segments = path.Split(new[] { '\\' }, StringSplitOptions.None);
+
+            for (int i = 0; i < segments.Length; i++)
+            {
+                segments[i] = segments[i].Trim();
+                if (segments[i].Length > namemaxlen)
+                    segments[i] = segments[i].Substring(0, namemaxlen);
+            }
+
+            segments = segments.Where(s => !string.IsNullOrEmpty(s)).ToArray();
+            var result = string.Join("\\", segments);
+
+            if (result.Length > foldermaxlen)
+                result = result.Substring(0, foldermaxlen);
+
+            return result;
+        }
+
         private string _Folder;
         public string Folder
         {
             get { return _Folder; }
             set
             {
-                _Folder = value;
-                if (_Folder != null)
+                _Folder = CleanFolderPath(value);
+                RaisePropertyChanged();
+            }
+        }
+
+        private List<string> _AlternativeFolders = new List<string>();
+        public List<string> AlternativeFolders
+        {
+            get { return _AlternativeFolders; }
+            set
+            {
+                if (value == null)
                 {
-                    // Split by path separator and process each segment
-                    var segments = _Folder.Split(new[] { '\\' }, StringSplitOptions.None);
-
-                    for (int i = 0; i < segments.Length; i++)
-                    {
-                        // Trim whitespace from each segment
-                        segments[i] = segments[i].Trim();
-
-                        // Limit each segment to 39 characters (same as game name limit)
-                        if (segments[i].Length > namemaxlen)
-                        {
-                            segments[i] = segments[i].Substring(0, namemaxlen);
-                        }
-                    }
-
-                    // Remove empty segments (caused by double backslashes, leading/trailing backslashes)
-                    segments = segments.Where(s => !string.IsNullOrEmpty(s)).ToArray();
-
-                    // Rejoin with backslashes
-                    _Folder = string.Join("\\", segments);
-
-                    // Ensure total path length doesn't exceed 512 characters
-                    if (_Folder.Length > foldermaxlen)
-                    {
-                        _Folder = _Folder.Substring(0, foldermaxlen);
-                    }
+                    _AlternativeFolders = new List<string>();
                 }
-
+                else
+                {
+                    _AlternativeFolders = value
+                        .Select(p => CleanFolderPath(p))
+                        .Where(p => !string.IsNullOrEmpty(p))
+                        .Distinct(StringComparer.Ordinal)
+                        .Take(5)
+                        .ToList();
+                }
                 RaisePropertyChanged();
             }
         }

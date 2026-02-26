@@ -15,8 +15,8 @@
 #include <dc/fmath.h>
 #include <dc/pvr.h>
 
-#include "texture/simple_texture_allocator.h"
 #include "dc/pvr_texture.h"
+#include "texture/simple_texture_allocator.h"
 #include "theme_manager.h"
 
 #ifndef PVR_PACK_ARGB

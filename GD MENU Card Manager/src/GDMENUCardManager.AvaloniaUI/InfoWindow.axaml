@@ -1,36 +1,49 @@
-﻿<Window xmlns="https://github.com/avaloniaui"
+<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="650" d:DesignHeight="400"
+        xmlns:conv="clr-namespace:GDMENUCardManager.Converter"
+        mc:Ignorable="d" d:DesignWidth="630" d:DesignHeight="250"
         x:Class="GDMENUCardManager.InfoWindow"
-        Title="Info" SizeToContent="Height" Width="650" CanResize="False"
+        Title="Info" SizeToContent="WidthAndHeight" CanResize="False"
         WindowStartupLocation="CenterOwner">
+  <Window.Resources>
+    <conv:SubtractConverter x:Key="SubtractConverter"/>
+  </Window.Resources>
   <Grid>
-    <Grid.RowDefinitions>
-      <RowDefinition Height="Auto"/>
-      <RowDefinition Height="Auto"/>
-    </Grid.RowDefinitions>
     <Grid.ColumnDefinitions>
-      <ColumnDefinition Width="1*"/>
+      <ColumnDefinition Width="420"/>
       <ColumnDefinition Width="Auto"/>
     </Grid.ColumnDefinitions>
 
-    <HeaderedContentControl Grid.Row="0" Grid.ColumnSpan="2" Header="File Info" Margin="5">
-      <TextBlock Text="{Binding FileInfo, Mode=OneTime}" TextWrapping="Wrap"/>
-    </HeaderedContentControl>
+    <!-- Left column: File Info and IP.BIN Info stacked -->
+    <StackPanel x:Name="LeftPanel" Grid.Column="0" VerticalAlignment="Top">
+      <HeaderedContentControl Margin="5">
+        <HeaderedContentControl.Header>
+          <TextBlock Text="File Info" FontWeight="Bold"/>
+        </HeaderedContentControl.Header>
+        <TextBlock Text="{Binding FileInfo, Mode=OneTime}" TextWrapping="Wrap"/>
+      </HeaderedContentControl>
 
-    <HeaderedContentControl Grid.Row="1" Grid.Column="0" Header="IP.BIN Info" Margin="5">
-      <TextBlock Text="{Binding IpInfo, Mode=OneWay}" TextWrapping="Wrap"/>
-    </HeaderedContentControl>
+      <HeaderedContentControl Margin="5">
+        <HeaderedContentControl.Header>
+          <TextBlock Text="IP.BIN Info" FontWeight="Bold"/>
+        </HeaderedContentControl.Header>
+        <TextBlock Text="{Binding IpInfo, Mode=OneWay}" TextWrapping="Wrap"/>
+      </HeaderedContentControl>
+    </StackPanel>
 
-    <HeaderedContentControl Grid.Row="1" Grid.Column="1" Header="0GDTEX.PVR" Width="192" Height="192" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="5">
+    <!-- Right column: 0GDTEX.PVR -->
+    <HeaderedContentControl Grid.Column="1" Width="172" VerticalAlignment="Top" MaxHeight="{Binding #LeftPanel.Bounds.Height, Converter={StaticResource SubtractConverter}, ConverterParameter=10}" Margin="5">
+      <HeaderedContentControl.Header>
+        <TextBlock Text="0GDTEX.PVR" FontWeight="Bold"/>
+      </HeaderedContentControl.Header>
       <Grid>
         <TextBlock Text="{Binding LabelText, Mode=OneWay}" TextWrapping="Wrap"/>
-        <Image Source="{Binding GdTexture, Mode=OneWay}"/>
+        <Image Source="{Binding GdTexture, Mode=OneWay}" Stretch="Uniform" Margin="5"/>
       </Grid>
     </HeaderedContentControl>
-    
+
   </Grid>
 
 </Window>
