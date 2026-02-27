@@ -700,6 +700,8 @@ Note that the Serial VMU (see the [Serial VMU Feature](#serial-vmu-feature) sect
 
 openMenu supports backing up and restoring VMU save data to and from a serial SD adapter (like the one [sold here](https://www.amazon.com/ALOEU-Adapter-Reader-Dreamcast-Dreamshell/dp/B0CSDNQ1HF)) on a per-game basis. When enabled, launching a game will automatically restore VMU data from the serial SD card before booting, and the next time openMenu starts it will back up any changes made during gameplay. This allows users to maintain persistent per-game VMUs without relying on excessive physical VMU storage.
 
+New users of this feature may find [this video overview](https://youtu.be/ycVAZJv6TYE) helpful in understanding how it works.
+
 Over the years, it's been noted that the Dreamcast serial SD adapter is picky with SD card support. Users have reported success with cards like [this](https://www.amazon.com/dp/B00FQMWTGK), [this](https://www.amazon.com/dp/B004CZ0H1Q), and [this](https://www.amazon.com/dp/B094YW3MCL).
 
 On a FAT32-formatted serial SD card, individual per-game VMUs can be found in the `OPENMENU\SAVES` folder, where each game's unique Serial ID is used to create a dedicated folder (e.g., `OPENMENU\SAVES\MK5115450`). Inside this folder are the individual `.VMU` files for each slot, along with a `TITLE.TXT` file containing the full title of the game to which that Serial VMU belongs. These `.VMU` files can be modified using tools like [VMU Explorer](https://segaretro.org/VMU_Explorer).
