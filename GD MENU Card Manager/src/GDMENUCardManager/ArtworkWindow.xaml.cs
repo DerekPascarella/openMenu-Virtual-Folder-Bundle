@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
@@ -11,7 +12,7 @@ namespace GDMENUCardManager
 {
     public partial class ArtworkWindow : Window, INotifyPropertyChanged
     {
-        private readonly GdItem _item;
+        private GdItem _item;
         private readonly Core.Manager _manager;
         private byte[] _pendingPvrData;      // 256x256 for BOX.DAT
         private byte[] _pendingIconPvrData;  // 128x128 for ICON.DAT
@@ -21,10 +22,22 @@ namespace GDMENUCardManager
         private byte[] _originalBoxPvrData;
         private byte[] _originalIconPvrData;
 
+        // Navigation
+        private readonly IList<GdItem> _navigableItems;
+        private int _currentIndex;
+
         public event PropertyChangedEventHandler PropertyChanged;
 
-        public string Serial { get; }
+        private string _serial;
+        public string Serial
+        {
+            get => _serial;
+            private set { _serial = value; RaisePropertyChanged(); }
+        }
         public string WindowTitle => $"Artwork - {_item.Name}";
+
+        public bool CanNavigatePrev => _navigableItems != null && _currentIndex > 0;
+        public bool CanNavigateNext => _navigableItems != null && _currentIndex >= 0 && _currentIndex < _navigableItems.Count - 1;
 
         private BitmapSource _previewImage;
         public BitmapSource PreviewImage
@@ -44,12 +57,15 @@ namespace GDMENUCardManager
 
         public bool CanDelete => !HasUnsavedChanges && _manager.BoxDat?.HasArtworkForSerial(Serial) == true;
 
-        public ArtworkWindow(GdItem item, Core.Manager manager)
+        public ArtworkWindow(GdItem item, Core.Manager manager, IList<GdItem> navigableItems = null)
         {
             InitializeComponent();
 
-            _item = item;
             _manager = manager;
+            _navigableItems = navigableItems;
+            _currentIndex = navigableItems?.IndexOf(item) ?? -1;
+
+            _item = item;
             Serial = BoxDatManager.NormalizeSerial(item.ProductNumber);
 
             // Capture original artwork data for undo
@@ -59,7 +75,12 @@ namespace GDMENUCardManager
             LoadCurrentArtwork();
 
             this.Closing += ArtworkWindow_Closing;
-            this.KeyUp += (s, e) => { if (e.Key == System.Windows.Input.Key.Escape) Close(); };
+            this.KeyUp += (s, e) =>
+            {
+                if (e.Key == System.Windows.Input.Key.Escape) Close();
+                else if (e.Key == System.Windows.Input.Key.Left) NavigatePrev_Click(this, null);
+                else if (e.Key == System.Windows.Input.Key.Right) NavigateNext_Click(this, null);
+            };
             DataContext = this;
         }
 
@@ -78,6 +99,66 @@ namespace GDMENUCardManager
             {
                 DisplayPvrData(pvrData);
             }
+        }
+
+        private void LoadItem(GdItem item)
+        {
+            _item = item;
+            Serial = BoxDatManager.NormalizeSerial(item.ProductNumber);
+            RaisePropertyChanged(nameof(WindowTitle));
+
+            // Reset pending state
+            _pendingPvrData = null;
+            _pendingIconPvrData = null;
+            _deleteRequested = false;
+            HasUnsavedChanges = false;
+            PreviewImage = null;
+
+            // Capture original artwork data for undo
+            _originalBoxPvrData = _manager.BoxDat?.GetPvrDataForSerial(Serial);
+            _originalIconPvrData = _manager.IconDat?.GetPvrDataForSerial(Serial);
+
+            LoadCurrentArtwork();
+
+            RaisePropertyChanged(nameof(CanNavigatePrev));
+            RaisePropertyChanged(nameof(CanNavigateNext));
+        }
+
+        private bool PromptUnsavedChanges()
+        {
+            if (!HasUnsavedChanges)
+                return true;
+
+            var result = MessageBox.Show(
+                "You have unsaved changes. Save before navigating?",
+                "Unsaved Changes",
+                MessageBoxButton.YesNoCancel,
+                MessageBoxImage.Warning);
+
+            if (result == MessageBoxResult.Cancel)
+                return false;
+
+            if (result == MessageBoxResult.Yes)
+                SaveChanges();
+            return true;
+        }
+
+        private void NavigatePrev_Click(object sender, RoutedEventArgs e)
+        {
+            if (!CanNavigatePrev || !PromptUnsavedChanges())
+                return;
+
+            _currentIndex--;
+            LoadItem(_navigableItems[_currentIndex]);
+        }
+
+        private void NavigateNext_Click(object sender, RoutedEventArgs e)
+        {
+            if (!CanNavigateNext || !PromptUnsavedChanges())
+                return;
+
+            _currentIndex++;
+            LoadItem(_navigableItems[_currentIndex]);
         }
 
         private void DisplayPvrData(byte[] pvrData)
@@ -193,56 +274,60 @@ namespace GDMENUCardManager
             }
         }
 
+        private void SaveChanges()
+        {
+            if (_manager.BoxDat == null)
+                return;
+
+            byte[] newBoxData = null;
+            byte[] newIconData = null;
+
+            if (_deleteRequested)
+            {
+                // Delete from both DATs (in memory only - written during Save Changes)
+                _manager.BoxDat.DeleteEntryForSerial(Serial);
+                _manager.IconDat?.DeleteEntryForSerial(Serial);
+                // newBoxData and newIconData stay null for delete
+            }
+            else if (_pendingPvrData != null)
+            {
+                // Set artwork in both DATs (in memory only - written during Save Changes)
+                _manager.BoxDat.SetArtworkForSerial(Serial, _pendingPvrData);
+                newBoxData = _pendingPvrData;
+                if (_pendingIconPvrData != null && _manager.IconDat != null)
+                {
+                    _manager.IconDat.SetIconForSerial(Serial, _pendingIconPvrData);
+                    newIconData = _pendingIconPvrData;
+                }
+            }
+
+            // Record undo operation
+            _manager.UndoManager.RecordChange(new ArtworkChangeOperation
+            {
+                Serial = Serial,
+                OldBoxPvrData = _originalBoxPvrData,
+                NewBoxPvrData = newBoxData,
+                OldIconPvrData = _originalIconPvrData,
+                NewIconPvrData = newIconData,
+                BoxDat = _manager.BoxDat,
+                IconDat = _manager.IconDat,
+                RefreshArtworkStatus = _manager.RefreshArtworkStatusForSerial
+            });
+
+            HasUnsavedChanges = false;
+            _pendingPvrData = null;
+            _pendingIconPvrData = null;
+            _deleteRequested = false;
+
+            // Refresh the item's artwork status
+            _manager.RefreshArtworkStatusForSerial(Serial);
+        }
+
         private void Apply_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                if (_manager.BoxDat == null)
-                    return;
-
-                byte[] newBoxData = null;
-                byte[] newIconData = null;
-
-                if (_deleteRequested)
-                {
-                    // Delete from both DATs (in memory only - written during Save Changes)
-                    _manager.BoxDat.DeleteEntryForSerial(Serial);
-                    _manager.IconDat?.DeleteEntryForSerial(Serial);
-                    // newBoxData and newIconData stay null for delete
-                }
-                else if (_pendingPvrData != null)
-                {
-                    // Set artwork in both DATs (in memory only - written during Save Changes)
-                    _manager.BoxDat.SetArtworkForSerial(Serial, _pendingPvrData);
-                    newBoxData = _pendingPvrData;
-                    if (_pendingIconPvrData != null && _manager.IconDat != null)
-                    {
-                        _manager.IconDat.SetIconForSerial(Serial, _pendingIconPvrData);
-                        newIconData = _pendingIconPvrData;
-                    }
-                }
-
-                // Record undo operation
-                _manager.UndoManager.RecordChange(new ArtworkChangeOperation
-                {
-                    Serial = Serial,
-                    OldBoxPvrData = _originalBoxPvrData,
-                    NewBoxPvrData = newBoxData,
-                    OldIconPvrData = _originalIconPvrData,
-                    NewIconPvrData = newIconData,
-                    BoxDat = _manager.BoxDat,
-                    IconDat = _manager.IconDat,
-                    RefreshArtworkStatus = _manager.RefreshArtworkStatusForSerial
-                });
-
-                HasUnsavedChanges = false;
-                _pendingPvrData = null;
-                _pendingIconPvrData = null;
-                _deleteRequested = false;
-
-                // Refresh the item's artwork status
-                _manager.RefreshArtworkStatusForSerial(Serial);
-
+                SaveChanges();
                 Close();
             }
             catch

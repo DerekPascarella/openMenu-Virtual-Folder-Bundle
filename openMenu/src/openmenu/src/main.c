@@ -142,6 +142,7 @@ show_loading_screen(void) {
 /* VM2/VMUPro/USB4Maple/Pico2Maple device tracking */
 #define VM2_MAX_DEVICES 8
 maple_device_t* vm2_devices[VM2_MAX_DEVICES] = {NULL};
+char vm2_type_names[VM2_MAX_DEVICES][16];
 int vm2_device_count = 0;
 
 void (*current_ui_init)(void);
@@ -204,9 +205,26 @@ vm2_rescan(void) {
         /* Check both non-NULL and valid to avoid sending commands to
          * stale/uninitialized device structures */
         if (vmu && vmu->valid && check_vm2_present(vmu)) {
-            vm2_devices[vm2_device_count++] = vmu;
+            vm2_devices[vm2_device_count] = vmu;
+            /* Cache type name from ALLINFO response still in recv_buff */
+            strncpy(vm2_type_names[vm2_device_count], get_last_allinfo_type_name(), sizeof(vm2_type_names[0]) - 1);
+            vm2_type_names[vm2_device_count][sizeof(vm2_type_names[0]) - 1] = '\0';
+            vm2_device_count++;
         }
     }
+}
+
+const char*
+vm2_get_type_name(maple_device_t* dev) {
+    if (!dev) {
+        return "VMU";
+    }
+    for (int i = 0; i < vm2_device_count; i++) {
+        if (vm2_devices[i] == dev) {
+            return vm2_type_names[i];
+        }
+    }
+    return "VMU";
 }
 
 void

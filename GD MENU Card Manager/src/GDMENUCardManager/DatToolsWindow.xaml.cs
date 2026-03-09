@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using System.Windows;
@@ -95,6 +96,10 @@ namespace GDMENUCardManager
                 return;
 
             bool overwriteExisting = RadioImportAll.IsChecked == true;
+
+            // Check DAT files are writable before proceeding
+            if (!await EnsureDatFilesWritableWithDialog())
+                return;
 
             // Show progress window
             var progressWindow = new ProgressWindow();
@@ -236,6 +241,10 @@ namespace GDMENUCardManager
             if (confirmResult != MessageBoxResult.OK)
                 return;
 
+            // Check DAT files are writable before proceeding
+            if (!await EnsureDatFilesWritableWithDialog())
+                return;
+
             // Show progress window
             var progressWindow = new ProgressWindow();
             progressWindow.Owner = this;
@@ -295,6 +304,10 @@ namespace GDMENUCardManager
             if (confirmResult != MessageBoxResult.OK)
                 return;
 
+            // Check DAT files are writable before proceeding
+            if (!await EnsureDatFilesWritableWithDialog())
+                return;
+
             // Show progress window
             var progressWindow = new ProgressWindow();
             progressWindow.Owner = this;
@@ -338,5 +351,22 @@ namespace GDMENUCardManager
         }
 
         #endregion
+
+        /// <summary>
+        /// Checks DAT file writability with a retry dialog owned by this window
+        /// (not MainWindow) so it appears on top of DatToolsWindow.
+        /// </summary>
+        private Task<bool> EnsureDatFilesWritableWithDialog()
+        {
+            while (true)
+            {
+                var lockedFiles = _manager.CheckDatFilesAccessibility();
+                if (lockedFiles.Count == 0) return Task.FromResult(true);
+
+                var dialog = new LockedFilesDialog(lockedFiles) { Owner = this };
+                var result = dialog.ShowDialog();
+                if (result != true) return Task.FromResult(false); // user cancelled
+            }
+        }
     }
 }

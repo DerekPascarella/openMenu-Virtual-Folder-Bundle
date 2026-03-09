@@ -247,6 +247,9 @@ namespace GDMENUCardManager.Core
         /// </summary>
         public void Save(string outputPath)
         {
+            if (File.Exists(outputPath))
+                Helper.TryMakeWritable(outputPath);
+
             using var fs = new FileStream(outputPath, FileMode.Create, FileAccess.Write);
             using var writer = new BinaryWriter(fs);
 
@@ -377,6 +380,9 @@ namespace GDMENUCardManager.Core
         /// </summary>
         public static void CreateEmptyFile(string outputPath)
         {
+            if (File.Exists(outputPath))
+                Helper.TryMakeWritable(outputPath);
+
             using var fs = new FileStream(outputPath, FileMode.Create, FileAccess.Write);
             using var writer = new BinaryWriter(fs);
 

@@ -37,7 +37,8 @@ namespace GDMENUCardManager.Core
                 {
                     if (_Name.Length > namemaxlen)
                         _Name = _Name.Substring(0, namemaxlen);
-                    _Name = Helper.RemoveDiacritics(_Name).Replace("_", " ").Trim();
+                    _Name = Helper.StripNonPrintableAscii(
+                        Helper.RemoveDiacritics(_Name).Replace("_", " ").Trim());
                 }
 
                 RaisePropertyChanged();
@@ -50,7 +51,7 @@ namespace GDMENUCardManager.Core
             get { return _ProductNumber; }
             set
             {
-                var cleaned = CleanSerial(value);
+                var cleaned = Helper.StripNonPrintableAscii(CleanSerial(value));
 
                 // If setting to the same translated value, skip to preserve translation tracking.
                 // But if translation hasn't happened yet (WasSerialTranslated=false), allow re-processing
@@ -151,7 +152,7 @@ namespace GDMENUCardManager.Core
 
             for (int i = 0; i < segments.Length; i++)
             {
-                segments[i] = segments[i].Trim();
+                segments[i] = Helper.StripNonPrintableAscii(segments[i].Trim());
                 if (segments[i].Length > namemaxlen)
                     segments[i] = segments[i].Substring(0, namemaxlen);
             }

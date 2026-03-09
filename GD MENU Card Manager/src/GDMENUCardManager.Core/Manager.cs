@@ -814,6 +814,54 @@ namespace GDMENUCardManager.Core
 
         public bool ArtworkDisabled { get; set; }
 
+        /// <summary>
+        /// When true, the config file is read-only and settings should not be saved.
+        /// Set at startup if the config file cannot be made writable.
+        /// </summary>
+        public static bool ConfigReadOnly { get; set; }
+
+        /// <summary>
+        /// Checks that all existing DAT files (BOX.DAT, ICON.DAT, META.DAT) are writable.
+        /// Attempts TryMakeWritable first, then returns a dictionary of any files that are
+        /// still inaccessible. Returns an empty dictionary if all files are writable.
+        /// </summary>
+        public Dictionary<string, string> CheckDatFilesAccessibility()
+        {
+            var lockedFiles = new Dictionary<string, string>();
+
+            var datPaths = new[] { GetBoxDatPath(), GetIconDatPath(), GetMetaDatPath() };
+
+            foreach (var path in datPaths)
+            {
+                if (!File.Exists(path)) continue;
+
+                Helper.TryMakeWritable(path);
+                var error = Helper.CheckFileAccessibility(path);
+                if (error != null)
+                    lockedFiles[path] = error;
+            }
+
+            return lockedFiles;
+        }
+
+        /// <summary>
+        /// Checks that all existing DAT files (BOX.DAT, ICON.DAT, META.DAT) are writable.
+        /// Attempts TryMakeWritable first. If any are still locked, shows the LockedFilesDialog
+        /// with Retry/Cancel. Returns true if all files are writable (or don't exist yet),
+        /// false if user cancelled.
+        /// </summary>
+        public async Task<bool> EnsureDatFilesWritable()
+        {
+            while (true)
+            {
+                var lockedFiles = CheckDatFilesAccessibility();
+                if (lockedFiles.Count == 0) return true;
+
+                if (!await Helper.DependencyManager.ShowLockedFilesDialog(lockedFiles))
+                    return false; // user cancelled
+            }
+        }
+
         public static Manager CreateInstance(IDependencyManager m, string[] compressedFileExtensions)
         {
             Helper.DependencyManager = m;
@@ -1751,25 +1799,30 @@ namespace GDMENUCardManager.Core
 
                     if (hasBoxChanges || hasIconChanges)
                     {
-                        var datProgress = Helper.DependencyManager.CreateAndShowProgressWindow();
-                        datProgress.TotalItems = 1;
-                        datProgress.TextContent = "Updating DAT files...";
-                        do { await Task.Delay(50); } while (!datProgress.IsInitialized);
+                        // If DAT files aren't writable and user cancels, skip DAT update
+                        // but continue with the save - DAT update failure shouldn't block save
+                        if (await EnsureDatFilesWritable())
+                        {
+                            var datProgress = Helper.DependencyManager.CreateAndShowProgressWindow();
+                            datProgress.TotalItems = 1;
+                            datProgress.TextContent = "Updating DAT files...";
+                            do { await Task.Delay(50); } while (!datProgress.IsInitialized);
 
-                        try
-                        {
-                            var (success, errorMessage) = SaveBothDats(true); // Proceed without backup prompt
-                            if (!success)
+                            try
                             {
-                                // Log error but continue - DAT update failure shouldn't block save
+                                var (success, errorMessage) = SaveBothDats(true); // Proceed without backup prompt
+                                if (!success)
+                                {
+                                    // Log error but continue - DAT update failure shouldn't block save
+                                }
                             }
-                        }
-                        finally
-                        {
-                            datProgress.ProcessedItems = 1;
-                            await Task.Delay(100);
-                            datProgress.AllowClose();
-                            datProgress.Close();
+                            finally
+                            {
+                                datProgress.ProcessedItems = 1;
+                                await Task.Delay(100);
+                                datProgress.AllowClose();
+                                datProgress.Close();
+                            }
                         }
                     }
                 }
@@ -2686,7 +2739,7 @@ namespace GDMENUCardManager.Core
                         {
                             if (EnableGDIShrink && EnableGDIShrinkCompressed && itemsToShrink.Contains(item))
                             {
-                                progress.TextContent = $"Uncompressing {item.Name}...";
+                                progress.TextContent = $"Decompressing {item.Name}...";
 
                                 shrink = true;
 
@@ -2907,7 +2960,7 @@ namespace GDMENUCardManager.Core
                             }
                             else// if not shrinking, can extract directly to card
                             {
-                                progress.TextContent = $"Uncompressing {item.Name}...";
+                                progress.TextContent = $"Decompressing {item.Name}...";
                                 await Uncompress(item, i + 1, tempdir, progress);//+ ammountToIncrement
                             }
 

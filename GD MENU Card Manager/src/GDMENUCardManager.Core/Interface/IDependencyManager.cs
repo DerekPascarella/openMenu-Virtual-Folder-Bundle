@@ -41,6 +41,12 @@ namespace GDMENUCardManager.Core.Interface
         /// </summary>
         public ValueTask<bool> ShowGdemuTypeDialog();
 
+        /// <summary>
+        /// Shows a dialog when the config file is read-only and settings cannot be saved.
+        /// Returns true if user wants to retry, false to proceed without saving settings.
+        /// </summary>
+        public ValueTask<bool> ShowConfigReadOnlyDialog(string configPath, string error);
+
         public void ExtractArchive(string archivePath, string extractTo);
         public Dictionary<string, long> GetArchiveFiles(string archivePath);
     }

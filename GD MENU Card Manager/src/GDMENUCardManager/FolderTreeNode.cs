@@ -3,6 +3,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using GDMENUCardManager.Core;
 
 namespace GDMENUCardManager
 {
@@ -14,9 +15,10 @@ namespace GDMENUCardManager
             get => _Name;
             set
             {
-                if (_Name != value)
+                var sanitized = Helper.StripNonPrintableAscii(value);
+                if (_Name != sanitized)
                 {
-                    _Name = value;
+                    _Name = sanitized;
                     OnPropertyChanged();
                     OnPropertyChanged(nameof(DisplayName));
                     UpdateFullPath();

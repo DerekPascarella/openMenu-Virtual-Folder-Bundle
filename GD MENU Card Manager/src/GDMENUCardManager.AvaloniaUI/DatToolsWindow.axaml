@@ -4,13 +4,16 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="870" d:DesignHeight="400"
         x:Class="GDMENUCardManager.DatToolsWindow"
-        Title="DAT Tools" SizeToContent="Height" Width="870" CanResize="False"
+        Title="DAT Tools" SizeToContent="Height" Width="655" CanResize="False"
         WindowStartupLocation="CenterOwner">
   <Grid Margin="10">
     <TabControl>
       <TabControl.Styles>
         <Style Selector="TabControl /template/ ItemsPresenter#PART_ItemsPresenter">
           <Setter Property="HorizontalAlignment" Value="Center"/>
+        </Style>
+        <Style Selector="TabItem">
+          <Setter Property="FontSize" Value="12"/>
         </Style>
       </TabControl.Styles>
       <!-- Import DAT Entries Tab -->

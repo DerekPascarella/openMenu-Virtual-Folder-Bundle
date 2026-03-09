@@ -42,6 +42,13 @@ namespace GDMENUCardManager
             return dialog.Result;
         }
 
+        public async ValueTask<bool> ShowConfigReadOnlyDialog(string configPath, string error)
+        {
+            var dialog = new ConfigReadOnlyDialog(configPath, error);
+            await dialog.ShowDialog(getMainWindow());
+            return dialog.Result;
+        }
+
         public async ValueTask ShowSerialTranslationDialog(IEnumerable<GdItem> translatedItems)
         {
             var itemsList = translatedItems.ToList();

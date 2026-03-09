@@ -1,11 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk" ToolsVersion="Current">
   <PropertyGroup>
-    <!-- Read and parse version from version.txt -->
+    <!-- Read and parse version from version.txt (supports v1.5-ateam and v1.5.1-ateam formats) -->
     <VersionFileContent>$([System.IO.File]::ReadAllText('$(MSBuildProjectDirectory)\..\version.txt').Trim())</VersionFileContent>
-    <NumericVersion>$([System.Text.RegularExpressions.Regex]::Match('$(VersionFileContent)', '\d+\.\d+').Value)</NumericVersion>
-    <Version>$(NumericVersion).0</Version>
-    <AssemblyVersion>$(NumericVersion).0.0</AssemblyVersion>
-    <FileVersion>$(NumericVersion).0.0</FileVersion>
+    <NumericVersion>$([System.Text.RegularExpressions.Regex]::Match('$(VersionFileContent)', '\d+\.\d+(\.\d+)?').Value)</NumericVersion>
+    <HasPatch>$([System.Text.RegularExpressions.Regex]::IsMatch('$(NumericVersion)', '\d+\.\d+\.\d+'))</HasPatch>
+    <Version Condition="'$(HasPatch)' == 'True'">$(NumericVersion).0</Version>
+    <Version Condition="'$(HasPatch)' != 'True'">$(NumericVersion).0.0</Version>
+    <AssemblyVersion>$(Version)</AssemblyVersion>
+    <FileVersion>$(Version)</FileVersion>
   </PropertyGroup>
 
   <PropertyGroup>

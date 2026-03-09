@@ -118,6 +118,21 @@ wait_vm2:
     return -1;
 }
 
+const char*
+get_last_allinfo_type_name(void) {
+    maple_alldevinfo_t* info = (maple_alldevinfo_t*)&recv_buff[4];
+    if (!strncasecmp(info->extended, "VM2 by Dreamware", 16)) {
+        return "VM2";
+    } else if (!strncasecmp(info->extended, "8BITMODS VMUPro ", 16)) {
+        return "VMUPro";
+    } else if (!strncasecmp(info->extended, "USB RP2040 EMU  ", 16)) {
+        return "USB4MAPLE";
+    } else if (!strncasecmp(info->extended, "Pico2Maple USBBT", 16)) {
+        return "Pico2Maple";
+    }
+    return "VMU";
+}
+
 int
 check_vm2_present(maple_device_t* dev) {
     if (!dev || !(dev->info.functions & MAPLE_FUNC_MEMCARD)) {

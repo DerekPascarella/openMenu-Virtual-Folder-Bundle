@@ -50,7 +50,7 @@ To accommodate the new openMenu, a modified version of [GD MENU Card Manager](ht
   - [Disc Image Options](#disc-image-options)
   - [Application Settings](#application-settings)
     - [SD Drive](#sd-drive)
-    - [Temp. Folder](#temp-folder)
+    - [Temporary Folder](#temporary-folder)
     - [Menu Type](#menu-type)
 - [openMenu Usage](#openmenu-usage)
   - [VGA and Region Patching](#vga-and-region-patching)
@@ -90,7 +90,7 @@ To accommodate the new openMenu, a modified version of [GD MENU Card Manager](ht
 
 ## Current Version
 
-The latest version of **openMenu Virtual Folder Bundle** is [1.5-ateam](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/releases/tag/1.5-ateam).
+The latest version of **openMenu Virtual Folder Bundle** is [1.5.1-ateam](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/releases/tag/1.5.1-ateam).
 
 ## Roadmap Ideas
 
@@ -103,6 +103,16 @@ The latest version of **openMenu Virtual Folder Bundle** is [1.5-ateam](https://
 
 ## Changelog
 
+- **Version 1.5.1-ateam (2026-03-09)**
+  - **openMenu**
+    - Fixed errant CMD2 sent in Save/Load window (see [Issue 130](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/130)).
+    - Fixed incorrect labeling of a VMU as "loaded" in Save/Load window during hot-swap scenarios (see [Issue 129](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/129)).
+  - **GD MENU Card Manager**
+    - Artwork management window now includes previous/next arrows (see [Issue 131](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/131)).
+    - Tab size corrected in "DAT Tools" window for Linux/macOS version (see [Issue 132](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/132)).
+    - Regression due to "no Serial ID" check fixed (see [Issue 134](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/134)).
+    - Enhanced restriction of ASCII-only for Title, Folder, and Serial values (see [Issue 137](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/137)).
+    - "Is Writable" check now performed on DATs and saved settings file (see [Issue 138](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/138)).
 - **Version 1.5-ateam (2026-02-26)**
   - **openMenu**
     - Serial VMU feature added, enabling per-game virtual VMUs using serial SD adapter (see [Issue 108](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/108)).
@@ -122,7 +132,7 @@ The latest version of **openMenu Virtual Folder Bundle** is [1.5-ateam](https://
     - Metadata file `region.txt` now generated and honored, correcting issues with PAL consoles using analog video cables and some Japanese games (see [Issue 112](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/112)).
     - All "Disc Image Options" settings now remembered on next launch (see [Issue 113](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/113)).
     - Disc image "Info" window fixes and enhancements (see [Issue 114](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/114)).
-    - SD card can no longer be saved in Card Manager if one or more disc images is missing a Serial ID (see [Issue 120](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/120)).
+    - SD card can no longer be saved in Card Manager if one or more disc images are missing a Serial ID (see [Issue 120](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/120)).
     - macOS package fixed to allow editing of artwork/metadata DATs, as well as saving custom settings (see [Issue 123](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/123)).
     - Fixed regression that prevented adding non-game disc images (e.g., audio CDs, VCDs) (see [Issue 124](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/124)).
     - Enhanced automatic disc image type detection (see [Issue 125](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/125)).
@@ -386,11 +396,15 @@ Automatic backups are saved to the `dat_backups` folder with timestamps (located
 
 #### Restoring a New User's Personal DAT Files
 
-New users of **openMenu Virtual Folder Bundle** on Windows and Linux may wish to use their existing DAT files containing artwork and metadata. To do so, navigate to the `tools\openMenu\menu_data` folder in the original GD MENU Card Manager application folder and copy `BOX.DAT`, `ICON.DAT`, and `META.DAT` to the `tools\openMenu\menu_data` folder inside the **openMenu Virtual Folder Bundle**'s GD MENU Card Manager application folder, overwriting the defaults.
+New users of **openMenu Virtual Folder Bundle** on Windows and Linux may wish to use their existing DAT files containing artwork and metadata. There are two options for performing this operation.
+
+**Restoring From Files**
+Navigate to the `tools\openMenu\menu_data` folder in the original GD MENU Card Manager application folder and copy `BOX.DAT`, `ICON.DAT`, and `META.DAT` to the `tools\openMenu\menu_data` folder inside the **openMenu Virtual Folder Bundle**'s GD MENU Card Manager application folder, overwriting the defaults.
 
 macOS users may take their old DATs and copy and paste them into `~/Library/Application-Support/GDMENUCardManager/menu_data`.
 
-Note that this restoration process is also applicable to users upgrading from a previous version of **openMenu Virtual Folder Bundle** to the latest version.
+**Automatically Restoring From SD Card**
+With the **Overwrite DATs with SD Card** function in **DAT Tools** (see more in the [DAT Tools](#dat-tools) section), users can take the DATs directly from their openMenu SD card and use them in GD MENU Card Manager.
 
 #### Cover Art Resources
 
@@ -637,7 +651,7 @@ Click **Save** to apply changes or **Cancel** to discard them.
 
 Select SD card from the **SD Drive** dropdown. The application will auto-detect drives containing `GDEMU.INI` or a folder named `01`. Alternatively, click the folder browse icon to the left of the dropdown to select any custom path to be treated as if it were a GDEMU SD card.
 
-#### Temp. Folder
+#### Temporary Folder
 
 GD MENU Card Manager uses a temporary folder for operations like decompressing archives and converting disc images. By default, it uses the system's temp folder, but users can specify a custom location:
 
@@ -702,7 +716,7 @@ openMenu supports backing up and restoring VMU save data to and from a serial SD
 
 New users of this feature may find [this video overview](https://youtu.be/ycVAZJv6TYE) helpful in understanding how it works.
 
-Over the years, it's been noted that the Dreamcast serial SD adapter is picky with SD card support. Users have reported success with cards like [this](https://www.amazon.com/dp/B00FQMWTGK), [this](https://www.amazon.com/dp/B004CZ0H1Q), and [this](https://www.amazon.com/dp/B094YW3MCL).
+Over the years, it's been noted that the Dreamcast serial SD adapter is picky with SD card support. Users have reported success with cards like [this](https://www.amazon.com/dp/B00FQMWTGK), [this](https://www.amazon.com/dp/B004CZ0H1Q), and [this](https://www.amazon.com/dp/B094YW3MCL). Furthermore, users have reported more success when they select "Default allocation size" for the **Allocation unit size** option when formatting their SD card.
 
 On a FAT32-formatted serial SD card, individual per-game VMUs can be found in the `OPENMENU\SAVES` folder, where each game's unique Serial ID is used to create a dedicated folder (e.g., `OPENMENU\SAVES\MK5115450`). Inside this folder are the individual `.VMU` files for each slot, along with a `TITLE.TXT` file containing the full title of the game to which that Serial VMU belongs. These `.VMU` files can be modified using tools like [VMU Explorer](https://segaretro.org/VMU_Explorer).
 

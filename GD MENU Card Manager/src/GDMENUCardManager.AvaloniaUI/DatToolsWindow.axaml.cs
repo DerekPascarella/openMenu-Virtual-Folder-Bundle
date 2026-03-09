@@ -179,6 +179,10 @@ namespace GDMENUCardManager
 
             bool overwriteExisting = RadioImportAll?.IsChecked == true;
 
+            // Check DAT files are writable before proceeding
+            if (!await EnsureDatFilesWritableWithDialog())
+                return;
+
             // Show progress window
             var progressWindow = new ProgressWindow();
             progressWindow.Title = "Importing DAT Entries";
@@ -326,6 +330,10 @@ namespace GDMENUCardManager
             if (confirmResult != "Clear All")
                 return;
 
+            // Check DAT files are writable before proceeding
+            if (!await EnsureDatFilesWritableWithDialog())
+                return;
+
             // Show progress window
             var progressWindow = new ProgressWindow();
             progressWindow.Title = "Clearing DAT Files";
@@ -391,6 +399,10 @@ namespace GDMENUCardManager
             if (confirmResult != "Continue")
                 return;
 
+            // Check DAT files are writable before proceeding
+            if (!await EnsureDatFilesWritableWithDialog())
+                return;
+
             // Show progress window
             var progressWindow = new ProgressWindow();
             progressWindow.Title = "Overwriting DAT Files";
@@ -447,6 +459,23 @@ namespace GDMENUCardManager
             await MessageBoxManager.GetMessageBoxStandardWindow(title, message,
                 MessageBox.Avalonia.Enums.ButtonEnum.Ok, MessageBox.Avalonia.Enums.Icon.Info)
                 .ShowDialog(this);
+        }
+
+        /// <summary>
+        /// Checks DAT file writability with a retry dialog owned by this window
+        /// (not MainWindow) so it appears on top of DatToolsWindow.
+        /// </summary>
+        private async Task<bool> EnsureDatFilesWritableWithDialog()
+        {
+            while (true)
+            {
+                var lockedFiles = _manager.CheckDatFilesAccessibility();
+                if (lockedFiles.Count == 0) return true;
+
+                var dialog = new LockedFilesDialog(lockedFiles);
+                await dialog.ShowDialog(this);
+                if (!dialog.Result) return false; // user cancelled
+            }
         }
 
         #endregion

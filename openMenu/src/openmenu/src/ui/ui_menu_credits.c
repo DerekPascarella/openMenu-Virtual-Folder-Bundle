@@ -46,6 +46,7 @@ extern maple_device_t* vm2_devices[];
 extern int vm2_device_count;
 extern void vm2_rescan(void);
 extern void vm2_send_id_to_all(const char* product, const char* name);
+extern const char* vm2_get_type_name(maple_device_t* dev);
 
 #pragma region Exit_Menu
 
@@ -66,7 +67,7 @@ static int exit_menu_choice = 0;
 static int exit_menu_num_options = 0;
 static int exit_menu_is_folder = 0;
 
-/* Exit menu option indices - set dynamically based on context */
+/* Exit menu option indices, set dynamically based on context */
 typedef enum EXIT_OPTION {
     EXIT_OPT_SENDID_MOUNT = 0,
     EXIT_OPT_SENDID_ONLY,
@@ -574,7 +575,7 @@ menu_accept(void) {
             return;
         }
 
-        /* Apply only (no save) - apply settings and reload UI */
+        /* Apply only (no save). Apply settings and reload UI */
         /* update Global Settings */
         sf_ui[0] = choices[CHOICE_THEME];
         sf_region[0] = choices[CHOICE_REGION];
@@ -596,7 +597,7 @@ menu_accept(void) {
         if (choices[CHOICE_VMU_TIME_SYNC] == VMU_TIME_SYNC_ON && sf_vmu_time_sync[0] == VMU_TIME_SYNC_OFF) {
             sync_rtc_from_vmu();
         }
-        /* COMPACTION_TEST_START - enable DEBUG_COMPACTION_TEST in openmenu_debug.h */
+        /* COMPACTION_TEST_START. Enable DEBUG_COMPACTION_TEST in openmenu_debug.h */
 #if DEBUG_COMPACTION_TEST
         /* Hijack VMU Time Sync enable to trigger compaction test */
         if (choices[CHOICE_VMU_TIME_SYNC] == VMU_TIME_SYNC_ON && sf_vmu_time_sync[0] == VMU_TIME_SYNC_OFF) {
@@ -1056,7 +1057,7 @@ menu_exit_accept(void) {
             /* Send hardcoded "DCBIOS" ID to actual VM2 devices only (not VMUPro/USB4Maple/Pico2Maple) */
             vm2_rescan();
             for (int i = 0; i < vm2_device_count; i++) {
-                const char* type = get_vmu_type_name(vm2_devices[i]);
+                const char* type = vm2_get_type_name(vm2_devices[i]);
                 if (type && strcmp(type, "VM2") == 0) {
                     vm2_set_id(vm2_devices[i], "DCBIOS", NULL);
                 }
@@ -1393,7 +1394,7 @@ draw_menu_tr(void) {
             ((current_choice == CHOICE_SAVE) && (choices[CHOICE_SAVE] == 1) ? highlight_color : text_color);
         uint32_t credits_color = (current_choice == CHOICE_CREDITS ? highlight_color : text_color);
         cur_y += line_height;
-        /* Save at left, Apply in middle, Credits at right - equal 24px spacing */
+        /* Save at left, Apply in middle, Credits at right. Equal 24px spacing */
         /* Save/Load(72px) + gap(24px) + Apply(40px) + gap(24px) + Credits(56px) = 216px total */
         font_bmp_set_color(save_color);
         font_bmp_draw_main(640 / 2 - 108, cur_y, save_choice_text[0]);
@@ -1410,10 +1411,10 @@ draw_menu_tr(void) {
         uint32_t version_size = 8;
         char combined_str[80];
         if (gdemu_get_version(version_buffer, &version_size) == 0) {
-            snprintf(combined_str, sizeof(combined_str), "GDEMU: %d.%02x.%d - openMenu: %s", version_buffer[7],
+            snprintf(combined_str, sizeof(combined_str), "GDEMU %d.%02x.%d - openMenu %s", version_buffer[7],
                      version_buffer[6], version_buffer[5], OPENMENU_BUILD_VERSION);
         } else {
-            snprintf(combined_str, sizeof(combined_str), "GDEMU: N/A - openMenu: %s", OPENMENU_BUILD_VERSION);
+            snprintf(combined_str, sizeof(combined_str), "GDEMU N/A - openMenu %s", OPENMENU_BUILD_VERSION);
         }
         font_bmp_set_color(text_color);
         cur_y += line_height;
@@ -1534,7 +1535,7 @@ draw_menu_tr(void) {
             }
         }
 
-        /* Extra spacing before buttons - same as spacing after buttons to version strings */
+        /* Extra spacing before buttons, same as spacing after buttons to version strings */
         cur_y += line_height + line_height / 2;
 
         /* Draw Save/Apply/Credits on one line using smaller font */
@@ -1558,10 +1559,10 @@ draw_menu_tr(void) {
         uint32_t version_size = 8;
         char combined_str[80];
         if (gdemu_get_version(version_buffer, &version_size) == 0) {
-            snprintf(combined_str, sizeof(combined_str), "GDEMU:  %d.%02x.%d  -  openMenu:  %s", version_buffer[7],
+            snprintf(combined_str, sizeof(combined_str), "GDEMU  %d.%02x.%d  -  openMenu  %s", version_buffer[7],
                      version_buffer[6], version_buffer[5], OPENMENU_BUILD_VERSION);
         } else {
-            snprintf(combined_str, sizeof(combined_str), "GDEMU:  N/A  -  openMenu:  %s", OPENMENU_BUILD_VERSION);
+            snprintf(combined_str, sizeof(combined_str), "GDEMU  N/A  -  openMenu  %s", OPENMENU_BUILD_VERSION);
         }
         cur_y += line_height / 2;
         font_bmf_set_height(20.0f);
@@ -1646,7 +1647,7 @@ draw_multidisc_tr(void) {
 
     z_set_cond(205.0f);
     if (sf_ui[0] == UI_SCROLL || sf_ui[0] == UI_FOLDERS) {
-        /* Menu size and placement - width auto-sized based on disc labels */
+        /* Menu size and placement. Width auto-sized based on disc labels */
         const int line_height = 24;
         const int title_gap = line_height / 2;
         const int title_width = 10 * 8; /* "Multi-Disc" = 10 chars */
@@ -1767,7 +1768,7 @@ draw_exit_tr(void) {
     z_set_cond(205.0f);
 
     if (sf_ui[0] == UI_SCROLL || sf_ui[0] == UI_FOLDERS) {
-        /* Menu size and placement - width calculated based on actual options */
+        /* Menu size and placement. Width calculated based on actual options */
         const int line_height = 24;
         const int title_gap = 2;
         const int padding = 16;         /* 8px margin on each side */
@@ -1820,7 +1821,7 @@ draw_exit_tr(void) {
             draw_wrap_text_bmp(exit_info_text, x_item, cur_y, max_option_len, line_height);
         }
     } else {
-        /* LineDesc/Grid modes - dynamic menu with larger font */
+        /* LineDesc/Grid modes. Dynamic menu with larger font */
         const int line_height = 32;
         const int title_gap = line_height / 4;
         const int padding = 20;
@@ -1882,7 +1883,7 @@ draw_codebreaker_tr(void) {
     z_set_cond(205.0f);
 
     if (sf_ui[0] == UI_SCROLL || sf_ui[0] == UI_FOLDERS) {
-        /* Menu size and placement - width calculated based on actual options */
+        /* Menu size and placement. Width calculated based on actual options */
         const int line_height = 24;
         const int title_gap = 2;
         const int padding = 16;         /* 8px margin on each side */
@@ -1924,7 +1925,7 @@ draw_codebreaker_tr(void) {
             font_bmp_draw_main(x_item, cur_y, cb_option_text[i]);
         }
     } else {
-        /* LineDesc/Grid modes - dynamic menu with larger font */
+        /* LineDesc/Grid modes. Dynamic menu with larger font */
         const int line_height = 32;
         const int title_gap = line_height / 4;
         const int padding = 20;
@@ -2033,7 +2034,7 @@ draw_psx_launcher_tr(void) {
     z_set_cond(205.0f);
 
     if (sf_ui[0] == UI_SCROLL || sf_ui[0] == UI_FOLDERS) {
-        /* Menu size and placement - width based on title "PlayStation Launcher" (20 chars) */
+        /* Menu size and placement. Width based on title "PlayStation Launcher" (20 chars) */
         const int line_height = 24;
         const int title_gap = 2;
         const int padding = 16;             /* 8px margin on each side */
@@ -2064,7 +2065,7 @@ draw_psx_launcher_tr(void) {
         font_bmp_set_color(psx_launcher_choice == 2 ? highlight_color : text_color);
         font_bmp_draw_main(x_item, cur_y, "Close");
     } else {
-        /* LineDesc/Grid modes - keep original sizing */
+        /* LineDesc/Grid modes, keep original sizing */
         const int line_height = 32;
         const int width = 200;
         const int height = 4 * line_height + (line_height / 2);
@@ -2140,7 +2141,7 @@ static bool saveload_sd_is_startup_source = false;
 
 static bool saveload_show_serial_error = false;
 
-/* Cached width state - recomputed only on device or substate changes */
+/* Cached width state, recomputed only on device or substate changes */
 static bool saveload_width_dirty = true;
 static SAVELOAD_STATE saveload_width_substate = SAVELOAD_BROWSE;
 static const char* saveload_width_msg = NULL;
@@ -2237,7 +2238,7 @@ saveload_scan_devices(void) {
             int unit = (i % 2 == 0) ? 1 : 2;
             maple_device_t* dev = maple_enum_dev(port, unit);
             if (dev) {
-                const char* type = get_vmu_type_name(dev);
+                const char* type = vm2_get_type_name(dev);
                 strncpy(slot->type_name, type, sizeof(slot->type_name) - 1);
                 slot->type_name[sizeof(slot->type_name) - 1] = '\0';
             } else {
@@ -2339,7 +2340,6 @@ saveload_find_next_device(int dev_idx) {
 static void
 saveload_live_update_devices(void) {
     int changed = 0;
-    int8_t startup_dev = savefile_get_startup_device_id();
 
     /* Snapshot what the cursor and selection are pointing at before changes */
     int old_cursor_dev = saveload_cursor_to_device_index(saveload_cursor); /* 0-7, 8=SD, -1=button */
@@ -2363,7 +2363,7 @@ saveload_live_update_devices(void) {
             savefile_refresh_single_device_info(i);
             int8_t status = savefile_get_device_status(i);
             slot->device_id = i;
-            slot->is_startup_source = (i == startup_dev);
+            slot->is_startup_source = 0; /* hot-inserted device is never the startup source */
             slot->crayon_status = status;
             slot->has_device = 1;
             const char* type = get_vmu_type_name(dev);
@@ -2396,7 +2396,7 @@ saveload_live_update_devices(void) {
         /* Selected VMU was removed */
         saveload_selected_device = -1;
     } else if (saveload_selected_device >= 0) {
-        /* Selected device still present - remap cursor index */
+        /* Selected device still present, remap cursor index */
         int new_idx = saveload_device_index_to_cursor(old_selected_dev);
         if (new_idx >= 0) {
             saveload_selected_device = new_idx;
@@ -2409,7 +2409,7 @@ saveload_live_update_devices(void) {
     if (old_cursor_dev >= 0) {
         /* Cursor was on a device */
         if (old_cursor_dev < 8 && !saveload_slots[old_cursor_dev].has_device) {
-            /* That VMU was removed - find next available device */
+            /* That VMU was removed, find next available device */
             int next = saveload_find_next_device(old_cursor_dev);
             if (next >= 0) {
                 int idx = saveload_device_index_to_cursor(next);
@@ -2419,11 +2419,11 @@ saveload_live_update_devices(void) {
                     saveload_cursor = close_idx;
                 }
             } else {
-                /* No devices at all - jump to Close */
+                /* No devices at all, jump to Close */
                 saveload_cursor = close_idx;
             }
         } else {
-            /* Device still present - recalculate filtered index */
+            /* Device still present, recalculate filtered index */
             int new_idx = saveload_device_index_to_cursor(old_cursor_dev);
             if (new_idx >= 0) {
                 saveload_cursor = new_idx;
@@ -2437,7 +2437,7 @@ saveload_live_update_devices(void) {
             }
         }
     } else if (old_cursor_action >= 0) {
-        /* Cursor was on a button - keep it on the same button */
+        /* Cursor was on a button, keep it on the same button */
         saveload_cursor = device_count + old_cursor_action;
 
         /* If no device selected, don't leave cursor on Save/Load */
@@ -2486,7 +2486,7 @@ saveload_live_update_devices(void) {
     }
 }
 
-/* Initialize saveload state - called from menu_accept when colors are already set */
+/* Initialize saveload state. Called from menu_accept when colors are already set */
 static void
 saveload_init_state(void) {
     /* Save current UI mode for consistent rendering until window closes */
@@ -2811,14 +2811,14 @@ handle_input_saveload(enum control input) {
                     break;
                 case A:
                     if (saveload_confirm_choice == 0) {
-                        /* Yes - proceed with action */
+                        /* Yes, proceed with action */
                         if (saveload_pending_action == SAVELOAD_ACTION_SAVE) {
                             saveload_do_save();
                         } else {
                             saveload_do_load();
                         }
                     } else {
-                        /* No - cancel and return to browse */
+                        /* No, cancel and return to browse */
                         saveload_substate = SAVELOAD_BROWSE;
                     }
                     *input_timeout_ptr = INPUT_TIMEOUT;
@@ -2837,7 +2837,7 @@ handle_input_saveload(enum control input) {
             break;
     }
 
-    /* Serial VMU error popup - swallow all input except A/B to dismiss */
+    /* Serial VMU error popup. Swallow all input except A/B to dismiss */
     if (saveload_show_serial_error) {
         if (input == A || input == B) {
             saveload_show_serial_error = false;
@@ -2900,9 +2900,9 @@ handle_input_saveload(enum control input) {
                 *state_ptr = DRAW_MENU;
                 *input_timeout_ptr = 3;
             } else if (action == SAVELOAD_ACTION_SAVE) {
-                /* Save - check if we need confirmation */
+                /* Save, check if we need confirmation */
                 if (saveload_selected_device < 0) {
-                    /* No device selected - do nothing */
+                    /* No device selected, do nothing */
                     break;
                 }
                 int dev_idx = saveload_cursor_to_device_index(saveload_selected_device);
@@ -2916,7 +2916,7 @@ handle_input_saveload(enum control input) {
                         saveload_confirm_choice = 0;
                         saveload_pending_upgrade = 0;
                     } else {
-                        /* No existing save - proceed directly */
+                        /* No existing save, proceed directly */
                         saveload_do_save();
                     }
                 } else if (dev_idx >= 0) {
@@ -2933,14 +2933,14 @@ handle_input_saveload(enum control input) {
                         saveload_confirm_choice = 0;
                         saveload_pending_upgrade = 0;
                     } else {
-                        /* No existing save - proceed directly */
+                        /* No existing save, proceed directly */
                         saveload_do_save();
                     }
                 }
             } else if (action == SAVELOAD_ACTION_LOAD) {
-                /* Load - check if we can load and need confirmation */
+                /* Load, check if we can load and need confirmation */
                 if (saveload_selected_device < 0) {
-                    /* No device selected - do nothing */
+                    /* No device selected, do nothing */
                     break;
                 }
                 int dev_idx = saveload_cursor_to_device_index(saveload_selected_device);
@@ -2950,7 +2950,7 @@ handle_input_saveload(enum control input) {
                         saveload_substate = SAVELOAD_RESULT;
                         saveload_msg_line1 = "Error: No save file on SD.";
                     } else if (saveload_sd_status == SD_STATUS_FUTURE) {
-                        /* Future save - need confirmation for downgrade */
+                        /* Future save, need confirmation for downgrade */
                         saveload_substate = SAVELOAD_CONFIRM;
                         saveload_pending_action = SAVELOAD_ACTION_LOAD;
                         saveload_confirm_choice = 0;
@@ -2959,13 +2959,13 @@ handle_input_saveload(enum control input) {
                         saveload_substate = SAVELOAD_RESULT;
                         saveload_msg_line1 = "Error: SD config file invalid.";
                     } else if (saveload_sd_status == SD_STATUS_OLD) {
-                        /* Old save - need confirmation for upgrade */
+                        /* Old save, need confirmation for upgrade */
                         saveload_substate = SAVELOAD_CONFIRM;
                         saveload_pending_action = SAVELOAD_ACTION_LOAD;
                         saveload_confirm_choice = 0;
                         saveload_pending_upgrade = 1;
                     } else {
-                        /* Current save - load directly */
+                        /* Current save, load directly */
                         saveload_do_load();
                     }
                 } else if (dev_idx >= 0) {
@@ -2975,7 +2975,7 @@ handle_input_saveload(enum control input) {
                         saveload_substate = SAVELOAD_RESULT;
                         saveload_msg_line1 = "Error: No save file on this VMU.";
                     } else if (slot->save_status == SAVE_FUTURE) {
-                        /* Future save - need confirmation for downgrade */
+                        /* Future save, need confirmation for downgrade */
                         saveload_substate = SAVELOAD_CONFIRM;
                         saveload_pending_action = SAVELOAD_ACTION_LOAD;
                         saveload_confirm_choice = 0;
@@ -2984,18 +2984,18 @@ handle_input_saveload(enum control input) {
                         saveload_substate = SAVELOAD_RESULT;
                         saveload_msg_line1 = "Error: Save file is corrupt.";
                     } else if (slot->save_status == SAVE_OLD) {
-                        /* Old save - need confirmation for upgrade */
+                        /* Old save, need confirmation for upgrade */
                         saveload_substate = SAVELOAD_CONFIRM;
                         saveload_pending_action = SAVELOAD_ACTION_LOAD;
                         saveload_confirm_choice = 0;
                         saveload_pending_upgrade = 1;
                     } else {
-                        /* Current save - load directly */
+                        /* Current save, load directly */
                         saveload_do_load();
                     }
                 }
             } else if (saveload_cursor_on_device()) {
-                /* On a device - select it and move to Save button */
+                /* On a device, select it and move to Save button */
                 saveload_selected_device = saveload_cursor;
                 saveload_cursor = device_count; /* Move to Save button */
             }
@@ -3178,7 +3178,7 @@ draw_saveload_tr(void) {
     int ui_mode = (saveload_original_ui_mode >= 0) ? saveload_original_ui_mode : sf_ui[0];
 
     if (ui_mode == UI_SCROLL || ui_mode == UI_FOLDERS) {
-        /* Scroll/Folders mode - bitmap font */
+        /* Scroll/Folders mode. Bitmap font */
         const int line_height = 24;
         const int padding = 16;
 
@@ -3209,7 +3209,7 @@ draw_saveload_tr(void) {
         font_bmp_begin_draw();
         font_bmp_set_color(menu_title_color);
 
-        /* Title - centered */
+        /* Title, centered */
         const char* title = "Save and Load Settings";
         font_bmp_draw_main(x + width / 2 - ((int)strlen(title) * 8 / 2), cur_y, title);
 
@@ -3226,7 +3226,7 @@ draw_saveload_tr(void) {
             }
         }
 
-        /* Draw ports and sockets - compact layout: Port X - Socket 1 on same line */
+        /* Draw ports and sockets. Compact layout: Port X - Socket 1 on same line */
         for (int p = 0; p < 4; p++) {
             /* Socket 1 row: "Port X - Socket 1: TYPE (status)" */
             cur_y += line_height;
@@ -3258,7 +3258,7 @@ draw_saveload_tr(void) {
                 font_bmp_draw_main(x_item, cur_y, line);
             }
 
-            /* Socket 2 row: "         Socket 2: TYPE (status)" - aligned under Socket 1 */
+            /* Socket 2 row: "         Socket 2: TYPE (status)", aligned under Socket 1 */
             cur_y += line_height;
             slot_idx = p * 2 + 1;
             slot = &saveload_slots[slot_idx];
@@ -3288,7 +3288,7 @@ draw_saveload_tr(void) {
             }
         }
 
-        /* Serial row - SD card, separate from port entries */
+        /* Serial row. SD card, separate from port entries */
         cur_y += line_height;
         if (saveload_sd_available) {
             int is_cursor = (saveload_substate == SAVELOAD_BROWSE && cursor_idx == saveload_cursor);
@@ -3316,7 +3316,7 @@ draw_saveload_tr(void) {
         /* Spacing before action area */
         cur_y += line_height;
 
-        /* Action area - all states use exactly 4 lines for consistent window height */
+        /* Action area. All states use exactly 4 lines for consistent window height */
         if (saveload_substate == SAVELOAD_BUSY || saveload_substate == SAVELOAD_RESULT) {
             font_bmp_set_color(text_color);
 
@@ -3371,7 +3371,7 @@ draw_saveload_tr(void) {
             /* Line 4: Empty for consistent height */
             cur_y += line_height;
         } else {
-            /* BROWSE state - Layout: Save / Load / Close / empty */
+            /* BROWSE state. Layout: Save / Load / Close / empty */
             int action_start_idx = device_count; /* device_count already includes SD if available */
 
             /* Line 1: Save to selected */
@@ -3410,7 +3410,7 @@ draw_saveload_tr(void) {
             cur_y += line_height;
         }
 
-        /* Serial VMU error popup - drawn on top of save/load window */
+        /* Serial VMU error popup, drawn on top of save/load window */
         if (saveload_show_serial_error) {
             const int err_line_height = 24;
             const int err_width = (38 + 2) * 8;
@@ -3446,7 +3446,7 @@ draw_saveload_tr(void) {
             font_bmp_draw_main(err_x_item, ey, "Close");
         }
     } else {
-        /* LineDesc/Grid mode - proportional font */
+        /* LineDesc/Grid mode. Proportional font */
         const int line_height = 26;
         const int padding = 16;
 
@@ -3492,7 +3492,7 @@ draw_saveload_tr(void) {
             }
         }
 
-        /* Draw ports and sockets - compact layout: Port X - Socket 1 on same line */
+        /* Draw ports and sockets. Compact layout: Port X - Socket 1 on same line */
         for (int p = 0; p < 4; p++) {
             /* Socket 1 row: "Port X - Socket 1: TYPE (status)" */
             cur_y += line_height;
@@ -3519,7 +3519,7 @@ draw_saveload_tr(void) {
                 font_bmf_draw(x_item, cur_y, text_color, line);
             }
 
-            /* Socket 2 row: "         Socket 2: TYPE (status)" - aligned under Socket 1 */
+            /* Socket 2 row: "         Socket 2: TYPE (status)", aligned under Socket 1 */
             cur_y += line_height;
             slot_idx = p * 2 + 1;
             slot = &saveload_slots[slot_idx];
@@ -3544,7 +3544,7 @@ draw_saveload_tr(void) {
             }
         }
 
-        /* Serial row - SD card, separate from port entries */
+        /* Serial row. SD card, separate from port entries */
         cur_y += line_height;
         if (saveload_sd_available) {
             int is_cursor = (saveload_substate == SAVELOAD_BROWSE && cursor_idx == saveload_cursor);
@@ -3567,7 +3567,7 @@ draw_saveload_tr(void) {
         /* Spacing before action area */
         cur_y += line_height;
 
-        /* Action area - all states use exactly 4 lines for consistent window height */
+        /* Action area. All states use exactly 4 lines for consistent window height */
         if (saveload_substate == SAVELOAD_BUSY || saveload_substate == SAVELOAD_RESULT) {
             /* Line 1: Main message */
             cur_y += line_height;
@@ -3615,7 +3615,7 @@ draw_saveload_tr(void) {
             /* Line 4: Empty for consistent height */
             cur_y += line_height;
         } else {
-            /* BROWSE state - Layout: Save / Load / Close / empty */
+            /* BROWSE state. Layout: Save / Load / Close / empty */
             int action_start_idx = device_count; /* device_count already includes SD if available */
 
             /* Line 1: Save to selected */
@@ -3642,7 +3642,7 @@ draw_saveload_tr(void) {
             cur_y += line_height;
         }
 
-        /* Serial VMU error popup - drawn on top of save/load window */
+        /* Serial VMU error popup, drawn on top of save/load window */
         if (saveload_show_serial_error) {
             const int err_line_height = 26;
             const int err_max_chars = 38;
@@ -3746,14 +3746,14 @@ handle_input_compaction_test(enum control input) {
             break;
 
         case COMPACTION_RESULT:
-            /* Test completed - need to restore partition */
+            /* Test completed, need to restore partition */
             if (input == A || input == B) {
                 compaction_state = COMPACTION_RESTORING;
             }
             break;
 
         case COMPACTION_ERROR:
-            /* Error occurred (e.g., backup failed) - just close, nothing to restore */
+            /* Error occurred (e.g., backup failed), just close, nothing to restore */
             if (input == A || input == B) {
                 compaction_test_close();
             }
@@ -3845,7 +3845,7 @@ draw_compaction_test_tr(void) {
     char line[64];
 
     if (sf_ui[0] == UI_SCROLL || sf_ui[0] == UI_FOLDERS) {
-        /* Scroll/Folders mode - bitmap font */
+        /* Scroll/Folders mode. Bitmap font */
         int line_height = 20;
 
         font_bmp_begin_draw();
@@ -3918,7 +3918,7 @@ draw_compaction_test_tr(void) {
             default: break;
         }
     } else {
-        /* LineDesc/Grid mode - bmf font */
+        /* LineDesc/Grid mode. BMF font */
         int line_height = 24;
 
         /* Title */
@@ -4435,7 +4435,7 @@ serial_vmu_finish_backup(void) {
 static void serial_vmu_reset_selector_tracking(void);
 static void serial_vmu_live_update_selector(void);
 
-/* Begin the restore flow - checks SD, VMU, file validity */
+/* Begin the restore flow. Checks SD, VMU, file validity */
 static void
 serial_vmu_begin_restore_flow(void) {
     /* Free previous buffer if any */
@@ -4509,7 +4509,7 @@ serial_vmu_begin_restore_flow(void) {
     }
 }
 
-/* Begin the backup flow - checks SD, VMU */
+/* Begin the backup flow. Checks SD, VMU */
 static void
 serial_vmu_begin_backup_flow(void) {
     /* Free previous buffer if any */
@@ -4560,7 +4560,7 @@ serial_vmu_setup(enum draw_state* state, theme_color* _colors, int* timeout_ptr,
 /* Start a restore for game launch (called from UI mode menu_accept) */
 void
 serial_vmu_start_restore(const gd_item* item, serial_vmu_launch_action_t action) {
-    /* Guard: skip Serial VMU for items with no serial ID - launch directly */
+    /* Guard: skip Serial VMU for items with no serial ID, launch directly */
     if (!item->product[0]) {
         switch (action) {
             case SERIAL_VMU_LAUNCH_DC: dreamcast_launch_disc(item); break;
@@ -4584,7 +4584,7 @@ serial_vmu_start_restore(const gd_item* item, serial_vmu_launch_action_t action)
     if (sf_serial_vmu_multislot[0] == SERIAL_VMU_MULTISLOT_ON) {
         serial_vmu_populate_slot_timestamps();
         if (svmu_ctx.all_slots_empty) {
-            /* No saves in any slot - skip selector, default to slot 1 */
+            /* No saves in any slot. Skip selector, default to slot 1 */
             svmu_ctx.slot_number = 1;
             serial_vmu_build_slot_file_id(svmu_ctx.slot_file_id, sizeof(svmu_ctx.slot_file_id), svmu_ctx.serial_id, 1);
             serial_vmu_begin_restore_flow();
@@ -4605,7 +4605,7 @@ serial_vmu_start_exit_restore(int mount_disc) {
     if (!item) {
         return;
     }
-    /* Guard: skip Serial VMU for items with no serial ID - exit directly */
+    /* Guard: skip Serial VMU for items with no serial ID, exit directly */
     if (!item->product[0]) {
         exit_to_bios_ex(mount_disc, 0);
         return;
@@ -4715,7 +4715,7 @@ draw_serial_vmu_op(void) {
 
         case SERIAL_VMU_BACKUP_BUSY: {
             if (svmu_ctx.current_block >= SERIAL_VMU_BLOCKS) {
-                /* All blocks read from VMU - write to SD */
+                /* All blocks read from VMU, write to SD */
                 if (serial_vmu_write_save_file(svmu_ctx.serial_id, svmu_ctx.slot_number, svmu_ctx.buffer) != 0) {
                     svmu_ctx.error_block = -1;
                     svmu_ctx.state = SERIAL_VMU_BACKUP_FAILED;
@@ -4757,7 +4757,7 @@ draw_serial_vmu_op(void) {
 
         case SERIAL_VMU_WIPE_BUSY: {
             if (svmu_ctx.current_block >= SERIAL_VMU_BLOCKS) {
-                /* Wipe complete - free buffer and launch game */
+                /* Wipe complete, free buffer and launch game */
                 if (svmu_ctx.buffer) {
                     free(svmu_ctx.buffer);
                     svmu_ctx.buffer = NULL;
@@ -4770,7 +4770,7 @@ draw_serial_vmu_op(void) {
             int ret = vmu_block_write(svmu_ctx.vmu_dev, (uint16_t)svmu_ctx.current_block,
                                       &svmu_ctx.buffer[svmu_ctx.current_block * SERIAL_VMU_BLOCK_SIZE]);
             if (ret != MAPLE_EOK) {
-                /* Wipe failed - free buffer and still launch */
+                /* Wipe failed, free buffer and still launch */
                 if (svmu_ctx.buffer) {
                     free(svmu_ctx.buffer);
                     svmu_ctx.buffer = NULL;
@@ -4912,7 +4912,7 @@ svmu_recalc_layout(void) {
             break;
         }
         default:
-            /* Unknown state - zero out cache and stop recalculating */
+            /* Unknown state, zero out cache and stop recalculating */
             svmu_cached_bmp_width = 0;
             svmu_cached_bmf_width = 0;
             svmu_cached_content_lines = 0;
@@ -4976,7 +4976,7 @@ draw_serial_vmu_tr(void) {
         font_bmp_begin_draw();
         font_bmp_set_color(menu_title_color);
         font_bmp_draw_main(x + width / 2 - (10 * 8 / 2), cur_y, "Serial VMU");
-        cur_y += 2; /* title gap - match exit/settings menus */
+        cur_y += 2; /* title gap, match exit/settings menus */
 
         switch (svmu_ctx.state) {
             case SERIAL_VMU_NO_SD:
@@ -5079,7 +5079,7 @@ draw_serial_vmu_tr(void) {
                 }
                 cur_y += line_height; /* blank */
                 cur_y += line_height;
-                /* "Use selected" - only highlighted when cursor is here AND a device is selected */
+                /* "Use selected", only highlighted when cursor is here AND a device is selected */
                 bool use_sel_active = (svmu_ctx.selector_cursor == use_sel_idx && svmu_ctx.selected_device >= 0);
                 font_bmp_set_color(use_sel_active ? highlight_color : text_color);
                 font_bmp_draw_main(x_item, cur_y, "Use selected");
@@ -5323,7 +5323,7 @@ draw_serial_vmu_tr(void) {
         }
 
     } else {
-        /* BMF font path (Grid/LineDesc) - match Save/Load window scaling */
+        /* BMF font path (Grid/LineDesc), match Save/Load window scaling */
         const int line_height = 26;
         const int padding = 16;
         char line_buf[80];
@@ -5340,7 +5340,7 @@ draw_serial_vmu_tr(void) {
         font_bmf_begin_draw();
         font_bmf_set_height(24.0f);
         font_bmf_draw(x_item, cur_y, menu_title_color, "Serial VMU");
-        cur_y += line_height / 4; /* title gap - match Save/Load */
+        cur_y += line_height / 4; /* title gap, match Save/Load */
         font_bmf_set_height_default();
 
         switch (svmu_ctx.state) {
@@ -5424,7 +5424,7 @@ draw_serial_vmu_tr(void) {
                         snprintf(line_buf, sizeof(line_buf), "Port %c - Socket 1: None", 'A' + p);
                         font_bmf_draw_auto_size(x_item, cur_y, text_color, line_buf, width - padding);
                     }
-                    /* Socket 2 - pixel offset to align under Socket 1 */
+                    /* Socket 2, pixel offset to align under Socket 1 */
                     cur_y += line_height;
                     int slot_idx2 = p * 2 + 1;
                     maple_device_t* dev2 = serial_vmu_get_dev(slot_idx2);
@@ -5442,7 +5442,7 @@ draw_serial_vmu_tr(void) {
                 }
                 cur_y += line_height; /* blank */
                 cur_y += line_height;
-                /* "Use selected" - only highlighted when cursor is here AND a device is selected */
+                /* "Use selected", only highlighted when cursor is here AND a device is selected */
                 bool use_sel_active = (svmu_ctx.selector_cursor == use_sel_idx && svmu_ctx.selected_device >= 0);
                 font_bmf_draw_auto_size(x_item, cur_y, use_sel_active ? highlight_color : text_color, "Use selected",
                                         width - padding);
@@ -5789,7 +5789,7 @@ serial_vmu_live_update_selector(void) {
 
     int new_detected = serial_vmu_detected_count();
 
-    /* First call - initialize tracking */
+    /* First call. Initialize tracking */
     if (svmu_selector_prev_detected < 0) {
         svmu_selector_prev_detected = new_detected;
         for (int i = 0; i < 8; i++) {
@@ -5827,7 +5827,7 @@ serial_vmu_live_update_selector(void) {
     int old_button_offset = -1; /* 0 = Use selected, 1 = skip1, 2 = skip2 */
 
     if (old_cursor < svmu_selector_prev_detected) {
-        /* Cursor was on a device - find which device_id using old presence map */
+        /* Cursor was on a device. Find which device_id using old presence map */
         int count = 0;
         for (int i = 0; i < 8; i++) {
             if (svmu_selector_prev_devices[i]) {
@@ -5855,16 +5855,16 @@ serial_vmu_live_update_selector(void) {
     if (old_device_id >= 0) {
         /* Cursor was on a device */
         if (!cur_devices[old_device_id]) {
-            /* That device was removed - find next available */
+            /* That device was removed. Find next available */
             int next = serial_vmu_find_next_device(old_device_id);
             if (next >= 0) {
                 svmu_ctx.selector_cursor = serial_vmu_device_to_cursor(next);
             } else {
-                /* No devices left - jump to skip1 (Cancel equivalent) */
+                /* No devices left. Jump to skip1 (Cancel equivalent) */
                 svmu_ctx.selector_cursor = new_detected + 1;
             }
         } else {
-            /* Device still present - recalculate filtered index (may have shifted) */
+            /* Device still present. Recalculate filtered index (may have shifted) */
             int new_idx = serial_vmu_device_to_cursor(old_device_id);
             if (new_idx >= 0) {
                 svmu_ctx.selector_cursor = new_idx;
@@ -5878,7 +5878,7 @@ serial_vmu_live_update_selector(void) {
             }
         }
     } else if (old_button_offset >= 0) {
-        /* Cursor was on a button - keep it on the same button */
+        /* Cursor was on a button, keep it on the same button */
         int new_button_pos = new_detected + old_button_offset;
         svmu_ctx.selector_cursor = new_button_pos;
 
@@ -6024,10 +6024,10 @@ handle_input_serial_vmu(enum control input) {
                         /* Retry detection */
                         serial_vmu_begin_backup_flow();
                     } else if (svmu_ctx.menu_cursor == 1) {
-                        /* Skip for now (ask again on next boot) - keep LASTDISC.TXT */
+                        /* Skip for now (ask again on next boot), keep LASTDISC.TXT */
                         menu_leave();
                     } else {
-                        /* Skip entirely - clear LASTDISC.TXT */
+                        /* Skip entirely. Clear LASTDISC.TXT */
                         serial_vmu_clear_lastdisc();
                         menu_leave();
                     }
@@ -6075,7 +6075,7 @@ handle_input_serial_vmu(enum control input) {
                         menu_leave();
                     } else if (svmu_ctx.selector_cursor == skip2_idx) {
                         if (svmu_ctx.is_backup) {
-                            /* Skip entirely - clear LASTDISC.TXT */
+                            /* Skip entirely. Clear LASTDISC.TXT */
                             serial_vmu_clear_lastdisc();
                             menu_leave();
                         } else {
@@ -6104,7 +6104,7 @@ handle_input_serial_vmu(enum control input) {
                 case B: menu_leave(); break;
                 case A:
                     if (svmu_ctx.menu_cursor == 0) {
-                        /* Start fresh and format VMU - show confirmation */
+                        /* Start fresh and format VMU. Show confirmation */
                         svmu_ctx.state = SERIAL_VMU_WIPE_CONFIRM;
                         svmu_ctx.menu_cursor = 0;
                         svmu_ctx.menu_num_options = 2;
@@ -6135,7 +6135,7 @@ handle_input_serial_vmu(enum control input) {
                 case UP: serial_vmu_menu_prev(); break;
                 case DOWN: serial_vmu_menu_next(); break;
                 case B: {
-                    /* Go back to first time or corrupt - re-check to determine which */
+                    /* Go back to first time or corrupt. Re-check to determine which */
                     save_file_status_t st =
                         serial_vmu_validate_file(svmu_ctx.serial_id, svmu_ctx.slot_number, &svmu_ctx.actual_file_size);
                     bool back_to_corrupt = (st == SAVE_FILE_WRONG_SIZE);
@@ -6145,7 +6145,7 @@ handle_input_serial_vmu(enum control input) {
                 } break;
                 case A:
                     if (svmu_ctx.menu_cursor == 0) {
-                        /* Yes - wipe VMU by flashing BIOS-formatted EMPTY.VMU from disc */
+                        /* Yes. Wipe VMU by flashing BIOS-formatted EMPTY.VMU from disc */
                         svmu_ctx.vmu_dev = serial_vmu_get_dev(svmu_ctx.vmu_device_id);
                         if (svmu_ctx.vmu_dev) {
                             /* Load EMPTY.VMU from CD */
@@ -6155,7 +6155,7 @@ handle_input_serial_vmu(enum control input) {
                             }
                             file_t fd = fs_open("/cd/EMPTY.VMU", O_RDONLY);
                             if (fd == -1) {
-                                /* Can't open file - fall back, go back to previous state */
+                                /* Can't open file, fall back to previous state */
                                 break;
                             }
                             svmu_ctx.buffer = malloc(SERIAL_VMU_TOTAL_SIZE);
@@ -6175,7 +6175,7 @@ handle_input_serial_vmu(enum control input) {
                             vmu_draw_lcd_auto(svmu_ctx.vmu_dev, openmenu_lcd_access);
                         }
                     } else {
-                        /* No - go back */
+                        /* No, go back */
                         save_file_status_t st = serial_vmu_validate_file(svmu_ctx.serial_id, svmu_ctx.slot_number,
                                                                          &svmu_ctx.actual_file_size);
                         svmu_ctx.state = (st == SAVE_FILE_WRONG_SIZE) ? SERIAL_VMU_CORRUPT_FILE : SERIAL_VMU_FIRST_TIME;
@@ -6228,7 +6228,7 @@ handle_input_serial_vmu(enum control input) {
                         /* Retry */
                         serial_vmu_begin_backup_flow();
                     } else if (svmu_ctx.menu_cursor == 1) {
-                        /* Skip backup - keep LASTDISC.TXT */
+                        /* Skip backup, keep LASTDISC.TXT */
                         menu_leave();
                     } else {
                         /* Discard backup */
@@ -6305,7 +6305,7 @@ handle_input_serial_vmu(enum control input) {
                         }
                     } else if (svmu_ctx.slot_cursor == SERIAL_VMU_NUM_SLOTS + 1) {
                         if (svmu_ctx.is_backup) {
-                            /* Skip entirely - clear LASTDISC.TXT */
+                            /* Skip entirely. Clear LASTDISC.TXT */
                             serial_vmu_clear_lastdisc();
                             menu_leave();
                         } else {

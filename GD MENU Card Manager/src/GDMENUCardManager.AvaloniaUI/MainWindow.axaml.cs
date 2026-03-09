@@ -93,7 +93,7 @@ namespace GDMENUCardManager
 
         public bool HasSdPath => SelectedDrive != null || IsUsingCustomPath;
 
-        private string _TotalFilesLength;
+        private string _TotalFilesLength = "N/A";
         public string TotalFilesLength
         {
             get { return _TotalFilesLength; }
@@ -203,6 +203,8 @@ namespace GDMENUCardManager
 
             this.Opened += async (ss, ee) =>
             {
+                await CheckConfigWritability();
+
                 // macOS first-time setup: copy BOX.DAT, ICON.DAT, META.DAT from the bundle to
                 // ~/Library/Application Support/GDMENUCardManager/menu_data/ with a progress bar.
                 // This runs fully before anything else so the DAT files are in place before any
@@ -580,6 +582,34 @@ namespace GDMENUCardManager
                 }
             }
 
+            // Validate printable ASCII for Title, Serial, and Folder columns
+            if (newValue is string newStr &&
+                (propertyName == nameof(GdItem.Name) || propertyName == nameof(GdItem.ProductNumber) || propertyName == nameof(GdItem.Folder)) &&
+                !Helper.IsValidPrintableAscii(newStr))
+            {
+                // Revert the editing element and the property (binding may have already pushed)
+                var revertValue = oldValue as string ?? "";
+                if (e.EditingElement is TextBox revertTb)
+                    revertTb.Text = revertValue;
+                else if (e.EditingElement is Panel revertPanel)
+                {
+                    var innerTb = revertPanel.Children.OfType<TextBox>().FirstOrDefault();
+                    if (innerTb != null) innerTb.Text = revertValue;
+                }
+                // Revert the property in case binding already updated it
+                RevertProperty(item, propertyName, oldValue);
+                e.Cancel = true;
+                // Don't clear editing state - cell stays in edit mode and
+                // the next commit attempt needs this state for validation
+                Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
+                {
+                    await MessageBoxManager.GetMessageBoxStandardWindow("Invalid Characters",
+                        "Only printable ASCII characters (letters, numbers, and standard symbols) are supported by openMenu.",
+                        icon: MessageBox.Avalonia.Enums.Icon.Warning).ShowDialog(this);
+                });
+                return;
+            }
+
             // Clear immediately so next edit can capture its own values
             _editingItem = null;
             _editingPropertyName = null;
@@ -594,6 +624,8 @@ namespace GDMENUCardManager
                     var trimmed = newFolder.Trim();
                     if (!string.IsNullOrEmpty(trimmed) && item.AlternativeFolders.Contains(trimmed))
                     {
+                        // Revert the property in case binding already updated it
+                        RevertProperty(item, propertyName, oldValue);
                         e.Cancel = true;
                         Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
                         {
@@ -626,6 +658,22 @@ namespace GDMENUCardManager
                         }
                     }, Avalonia.Threading.DispatcherPriority.Background);
                 }
+            }
+        }
+
+        private void RevertProperty(GdItem item, string propertyName, object oldValue)
+        {
+            switch (propertyName)
+            {
+                case nameof(GdItem.Name):
+                    item.Name = oldValue as string;
+                    break;
+                case nameof(GdItem.ProductNumber):
+                    item.ProductNumber = oldValue as string;
+                    break;
+                case nameof(GdItem.Folder):
+                    item.Folder = oldValue as string;
+                    break;
             }
         }
 
@@ -827,6 +875,7 @@ namespace GDMENUCardManager
 
                         if (result == "Create")
                         {
+                            if (!await Manager.EnsureDatFilesWritable()) { Manager.ArtworkDisabled = true; break; }
                             var (success, error) = Manager.CreateEmptyDatFiles();
                             if (!success)
                             {
@@ -868,6 +917,7 @@ namespace GDMENUCardManager
 
                         if (result == "Create")
                         {
+                            if (!await Manager.EnsureDatFilesWritable()) { Manager.ArtworkDisabled = true; break; }
                             var (success, error) = Manager.CreateEmptyBoxDat();
                             if (!success)
                             {
@@ -909,6 +959,7 @@ namespace GDMENUCardManager
 
                         if (result == "Generate")
                         {
+                            if (!await Manager.EnsureDatFilesWritable()) { Manager.ArtworkDisabled = true; break; }
                             var (success, error) = Manager.GenerateIconDatFromBox();
                             if (!success)
                             {
@@ -950,6 +1001,7 @@ namespace GDMENUCardManager
 
                         if (result == "Regenerate")
                         {
+                            if (!await Manager.EnsureDatFilesWritable()) break;
                             var (success, error) = Manager.GenerateIconDatFromBox();
                             if (!success)
                             {
@@ -1053,8 +1105,10 @@ namespace GDMENUCardManager
         {
             return Manager.ItemList.Any(item =>
             {
-                // Skip menu items
+                // Skip menu items and compressed files (serial assigned during extraction)
                 if (item.Ip?.Name == "GDMENU" || item.Ip?.Name == "openMenu")
+                    return false;
+                if (item.FileFormat == Core.FileFormat.SevenZip)
                     return false;
 
                 if (string.IsNullOrWhiteSpace(item.ProductNumber))
@@ -1126,8 +1180,36 @@ namespace GDMENUCardManager
             }
         }
 
+        private async Task CheckConfigWritability()
+        {
+            try
+            {
+                var config = ConfigurationManager.OpenExeConfiguration(System.Configuration.ConfigurationUserLevel.None);
+                var configPath = config.FilePath;
+
+                if (!File.Exists(configPath))
+                    return; // nothing to check
+
+                while (true)
+                {
+                    Core.Helper.TryMakeWritable(configPath);
+                    var error = Core.Helper.CheckFileAccessibility(configPath);
+                    if (error == null) break; // writable
+
+                    // Show dialog — returns true=retry, false=proceed without saving
+                    if (!await Core.Helper.DependencyManager.ShowConfigReadOnlyDialog(configPath, error))
+                    {
+                        Core.Manager.ConfigReadOnly = true;
+                        break;
+                    }
+                }
+            }
+            catch { }
+        }
+
         private void SaveTempFolderConfig()
         {
+            if (Core.Manager.ConfigReadOnly) return;
             try
             {
                 var config = ConfigurationManager.OpenExeConfiguration(System.Configuration.ConfigurationUserLevel.None);
@@ -1146,6 +1228,7 @@ namespace GDMENUCardManager
 
         private void SaveDiscImageOptionsConfig()
         {
+            if (Core.Manager.ConfigReadOnly) return;
             try
             {
                 var config = ConfigurationManager.OpenExeConfiguration(System.Configuration.ConfigurationUserLevel.None);
@@ -1165,6 +1248,7 @@ namespace GDMENUCardManager
 
         private void SaveLockCheckConfig()
         {
+            if (Core.Manager.ConfigReadOnly) return;
             try
             {
                 var config = ConfigurationManager.OpenExeConfiguration(System.Configuration.ConfigurationUserLevel.None);
@@ -1226,6 +1310,7 @@ namespace GDMENUCardManager
 
         private void SaveWindowBounds()
         {
+            if (Core.Manager.ConfigReadOnly) return;
             try
             {
                 var config = ConfigurationManager.OpenExeConfiguration(System.Configuration.ConfigurationUserLevel.None);
@@ -1302,6 +1387,7 @@ namespace GDMENUCardManager
 
             var emptySerials = Manager.ItemList
                 .Where(x => x.Ip?.Name != "GDMENU" && x.Ip?.Name != "openMenu"
+                    && x.FileFormat != Core.FileFormat.SevenZip
                     && string.IsNullOrWhiteSpace(x.ProductNumber))
                 .ToList();
 
@@ -1403,7 +1489,8 @@ namespace GDMENUCardManager
                     }
                 }
 
-                await new ArtworkWindow(item, Manager).ShowDialog(this);
+                var navigableItems = Manager.ItemList.Where(i => i.CanManageArtwork).ToList();
+                await new ArtworkWindow(item, Manager, navigableItems).ShowDialog(this);
 
                 // Refresh column visibility in case BoxDat state changed
                 UpdateFolderColumnVisibility();

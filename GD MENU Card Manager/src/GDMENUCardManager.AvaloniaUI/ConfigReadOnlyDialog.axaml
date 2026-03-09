@@ -1,0 +1,39 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="400"
+        x:Class="GDMENUCardManager.ConfigReadOnlyDialog"
+        Title="Settings File Read-Only" Height="400" Width="600"
+        MinHeight="250" MinWidth="400"
+        WindowStartupLocation="CenterOwner">
+  <Grid Margin="10">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <StackPanel Grid.Row="0" Margin="0,0,0,10">
+      <TextBlock FontWeight="Bold" TextWrapping="Wrap" Margin="0,0,0,8">The settings file is read-only and cannot be modified.</TextBlock>
+      <TextBlock TextWrapping="Wrap" Margin="0,0,0,8">No settings (window position, temp folder, disc image options, etc.) will be saved if you continue.</TextBlock>
+      <TextBlock TextWrapping="Wrap">Please fix the file permissions and click Retry, or click Continue to proceed without saving settings.</TextBlock>
+    </StackPanel>
+
+    <ListBox Grid.Row="1" x:Name="FileListBox" Margin="0,0,0,10">
+      <ListBox.ItemTemplate>
+        <DataTemplate>
+          <StackPanel Margin="2">
+            <TextBlock Text="{Binding Path}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+            <TextBlock Text="{Binding Error}" Foreground="Gray" FontSize="11" TextWrapping="Wrap" Margin="10,0,0,0"/>
+          </StackPanel>
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+
+    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
+      <Button Content="Retry" Width="80" Padding="15,8" Margin="0,0,10,0" Click="RetryButton_Click" IsDefault="True"/>
+      <Button Content="Continue" Width="120" Padding="15,8" Click="ContinueButton_Click"/>
+    </StackPanel>
+  </Grid>
+</Window>

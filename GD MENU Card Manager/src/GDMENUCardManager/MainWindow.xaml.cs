@@ -27,6 +27,7 @@ namespace GDMENUCardManager
 
         private readonly bool showAllDrives = false;
         private string _originalFolderValue;
+        private string _rawFolderText;
 
         // Undo tracking for cell edits
         private GdItem _editingItem;
@@ -103,7 +104,7 @@ namespace GDMENUCardManager
 
         public bool HasSdPath => SelectedDrive != null || IsUsingCustomPath;
 
-        private string _TotalFilesLength;
+        private string _TotalFilesLength = "N/A";
         public string TotalFilesLength
         {
             get { return _TotalFilesLength; }
@@ -223,6 +224,8 @@ namespace GDMENUCardManager
 
             this.Loaded += async (ss, ee) =>
             {
+                await CheckConfigWritability();
+
                 HaveGDIShrinkBlacklist = File.Exists(Constants.GdiShrinkBlacklistFile);
 
                 // If custom path is set, load from it instead of searching for drives
@@ -474,7 +477,7 @@ namespace GDMENUCardManager
                 // Check DAT file status for openMenu
                 if (MenuKindSelected == MenuKind.openMenu)
                 {
-                    HandleDatFileStatus();
+                    await HandleDatFileStatus();
                 }
 
                 // Check for serial translations that were applied
@@ -529,7 +532,7 @@ namespace GDMENUCardManager
             }
         }
 
-        private void HandleDatFileStatus()
+        private async Task HandleDatFileStatus()
         {
             var status = Manager.CheckDatFilesStatus();
 
@@ -549,6 +552,7 @@ namespace GDMENUCardManager
 
                         if (result == MessageBoxResult.Yes)
                         {
+                            if (!await Manager.EnsureDatFilesWritable()) { Manager.ArtworkDisabled = true; break; }
                             var (success, error) = Manager.CreateEmptyDatFiles();
                             if (!success)
                             {
@@ -583,6 +587,7 @@ namespace GDMENUCardManager
 
                         if (result == MessageBoxResult.Yes)
                         {
+                            if (!await Manager.EnsureDatFilesWritable()) { Manager.ArtworkDisabled = true; break; }
                             var (success, error) = Manager.CreateEmptyBoxDat();
                             if (!success)
                             {
@@ -615,6 +620,7 @@ namespace GDMENUCardManager
 
                         if (result == MessageBoxResult.Yes)
                         {
+                            if (!await Manager.EnsureDatFilesWritable()) { Manager.ArtworkDisabled = true; break; }
                             var (success, error) = Manager.GenerateIconDatFromBox();
                             if (!success)
                             {
@@ -647,6 +653,7 @@ namespace GDMENUCardManager
 
                         if (result == MessageBoxResult.Yes)
                         {
+                            if (!await Manager.EnsureDatFilesWritable()) break;
                             var (success, error) = Manager.GenerateIconDatFromBox();
                             if (!success)
                             {
@@ -730,8 +737,10 @@ namespace GDMENUCardManager
         {
             return Manager.ItemList.Any(item =>
             {
-                // Skip menu items
+                // Skip menu items and compressed files (serial assigned during extraction)
                 if (item.Ip?.Name == "GDMENU" || item.Ip?.Name == "openMenu")
+                    return false;
+                if (item.FileFormat == Core.FileFormat.SevenZip)
                     return false;
 
                 if (string.IsNullOrWhiteSpace(item.ProductNumber))
@@ -803,8 +812,36 @@ namespace GDMENUCardManager
             }
         }
 
+        private async Task CheckConfigWritability()
+        {
+            try
+            {
+                var config = ConfigurationManager.OpenExeConfiguration(System.Configuration.ConfigurationUserLevel.None);
+                var configPath = config.FilePath;
+
+                if (!File.Exists(configPath))
+                    return; // nothing to check
+
+                while (true)
+                {
+                    Core.Helper.TryMakeWritable(configPath);
+                    var error = Core.Helper.CheckFileAccessibility(configPath);
+                    if (error == null) break; // writable
+
+                    // Show dialog — returns true=retry, false=proceed without saving
+                    if (!await Core.Helper.DependencyManager.ShowConfigReadOnlyDialog(configPath, error))
+                    {
+                        Core.Manager.ConfigReadOnly = true;
+                        break;
+                    }
+                }
+            }
+            catch { }
+        }
+
         private void SaveTempFolderConfig()
         {
+            if (Core.Manager.ConfigReadOnly) return;
             try
             {
                 var config = ConfigurationManager.OpenExeConfiguration(System.Configuration.ConfigurationUserLevel.None);
@@ -823,6 +860,7 @@ namespace GDMENUCardManager
 
         private void SaveDiscImageOptionsConfig()
         {
+            if (Core.Manager.ConfigReadOnly) return;
             try
             {
                 var config = ConfigurationManager.OpenExeConfiguration(System.Configuration.ConfigurationUserLevel.None);
@@ -842,6 +880,7 @@ namespace GDMENUCardManager
 
         private void SaveLockCheckConfig()
         {
+            if (Core.Manager.ConfigReadOnly) return;
             try
             {
                 var config = ConfigurationManager.OpenExeConfiguration(System.Configuration.ConfigurationUserLevel.None);
@@ -904,6 +943,7 @@ namespace GDMENUCardManager
 
         private void SaveWindowBounds()
         {
+            if (Core.Manager.ConfigReadOnly) return;
             try
             {
                 var config = ConfigurationManager.OpenExeConfiguration(System.Configuration.ConfigurationUserLevel.None);
@@ -998,6 +1038,7 @@ namespace GDMENUCardManager
 
             var emptySerials = Manager.ItemList
                 .Where(x => x.Ip?.Name != "GDMENU" && x.Ip?.Name != "openMenu"
+                    && x.FileFormat != Core.FileFormat.SevenZip
                     && string.IsNullOrWhiteSpace(x.ProductNumber))
                 .ToList();
 
@@ -1110,7 +1151,8 @@ namespace GDMENUCardManager
                     }
                 }
 
-                new ArtworkWindow(item, Manager) { Owner = this }.ShowDialog();
+                var navigableItems = Manager.ItemList.Where(i => i.CanManageArtwork).ToList();
+                new ArtworkWindow(item, Manager, navigableItems) { Owner = this }.ShowDialog();
 
                 // Refresh column visibility in case BoxDat state changed
                 UpdateFolderColumnVisibility();
@@ -1835,6 +1877,38 @@ namespace GDMENUCardManager
                 }
             }
 
+            // Validate printable ASCII for Title, Serial, and Folder columns
+            if (newValue is string newStr &&
+                (propertyName == nameof(GdItem.Name) || propertyName == nameof(GdItem.ProductNumber) || propertyName == nameof(GdItem.Folder)) &&
+                !Helper.IsValidPrintableAscii(newStr))
+            {
+                MessageBox.Show(
+                    "Only printable ASCII characters (letters, numbers, and standard symbols) are supported by openMenu.",
+                    "Invalid Characters", MessageBoxButton.OK, MessageBoxImage.Warning);
+                // Revert the editing element
+                var revertValue = oldValue as string ?? "";
+                if (e.EditingElement is TextBox revertTb)
+                    revertTb.Text = revertValue;
+                else if (e.EditingElement is ComboBox revertCb)
+                    revertCb.Text = revertValue;
+                else
+                {
+                    var comboInTemplate = FindVisualChild<ComboBox>(e.EditingElement);
+                    if (comboInTemplate != null)
+                        comboInTemplate.Text = revertValue;
+                    else
+                    {
+                        var tbInTemplate = FindVisualChild<TextBox>(e.EditingElement);
+                        if (tbInTemplate != null)
+                            tbInTemplate.Text = revertValue;
+                    }
+                }
+                e.Cancel = true;
+                // Don't clear editing state - cell stays in edit mode and
+                // the next commit attempt needs this state for validation
+                return;
+            }
+
             // Clear immediately so next edit can capture its own values
             _editingItem = null;
             _editingPropertyName = null;
@@ -2126,22 +2200,37 @@ namespace GDMENUCardManager
             }
         }
 
+        private void FolderComboBox_PreviewLostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+        {
+            // Capture the raw text BEFORE the binding pushes (UpdateSourceTrigger=LostFocus
+            // will strip non-ASCII via CleanFolderPath before FolderComboBox_LostFocus fires)
+            if (sender is ComboBox comboBox)
+            {
+                _rawFolderText = comboBox.Text;
+            }
+        }
+
         private void FolderComboBox_KeyDown(object sender, KeyEventArgs e)
         {
-            // If user presses Enter on empty text, clear the folder value
             if (e.Key == Key.Enter && sender is ComboBox comboBox && comboBox.DataContext is GdItem item)
             {
+                // Validate printable ASCII
+                if (!string.IsNullOrWhiteSpace(comboBox.Text) && !Helper.IsValidPrintableAscii(comboBox.Text))
+                {
+                    MessageBox.Show(
+                        "Only printable ASCII characters (letters, numbers, and standard symbols) are supported by openMenu.",
+                        "Invalid Characters", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    comboBox.Text = _originalFolderValue ?? string.Empty;
+                    e.Handled = true;
+                    return;
+                }
+
+                // If user presses Enter on empty text, clear the folder value
                 if (string.IsNullOrWhiteSpace(comboBox.Text))
                 {
-                    // Clear the folder value
                     item.Folder = string.Empty;
-
-                    // Clear the original value so LostFocus doesn't restore it
                     _originalFolderValue = null;
-
-                    // Move focus away to exit edit mode and commit the change
                     dg1.Focus();
-
                     e.Handled = true;
                 }
             }
@@ -2151,15 +2240,33 @@ namespace GDMENUCardManager
         {
             if (sender is ComboBox comboBox && comboBox.DataContext is GdItem item)
             {
+                // Use raw text captured before the binding pushed (the binding's
+                // UpdateSourceTrigger=LostFocus strips non-ASCII via CleanFolderPath
+                // before this handler fires, so comboBox.Text is already clean)
+                var textBeforeBinding = _rawFolderText ?? comboBox.Text;
+                _rawFolderText = null;
+
                 // If empty, restore original
-                if (string.IsNullOrWhiteSpace(comboBox.Text) && !string.IsNullOrWhiteSpace(_originalFolderValue))
+                if (string.IsNullOrWhiteSpace(textBeforeBinding) && !string.IsNullOrWhiteSpace(_originalFolderValue))
                 {
                     item.Folder = _originalFolderValue;
                     _originalFolderValue = null;
                     return;
                 }
 
-                // check if new folder value conflicts with an alt folder on this item
+                // Validate printable ASCII against the raw text
+                if (!Helper.IsValidPrintableAscii(textBeforeBinding))
+                {
+                    MessageBox.Show(
+                        "Only printable ASCII characters (letters, numbers, and standard symbols) are supported by openMenu.",
+                        "Invalid Characters", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    item.Folder = _originalFolderValue ?? string.Empty;
+                    comboBox.Text = _originalFolderValue ?? string.Empty;
+                    _originalFolderValue = null;
+                    return;
+                }
+
+                // Check if new folder value conflicts with an alt folder on this item
                 var newFolder = comboBox.Text?.Trim() ?? string.Empty;
                 if (!string.IsNullOrEmpty(newFolder) && item.AlternativeFolders.Contains(newFolder))
                 {

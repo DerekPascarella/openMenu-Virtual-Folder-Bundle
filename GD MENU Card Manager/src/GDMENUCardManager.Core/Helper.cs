@@ -459,6 +459,20 @@ namespace GDMENUCardManager.Core
             return stringBuilder.ToString().Normalize(NormalizationForm.FormC);
         }
 
+        public static bool IsValidPrintableAscii(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return true;
+            return text.All(c => c >= 0x20 && c <= 0x7E);
+        }
+
+        public static string StripNonPrintableAscii(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return text;
+            return new string(text.Where(c => c >= 0x20 && c <= 0x7E).ToArray());
+        }
+
         internal static System.Func<string, bool> CompressedFileExpression;// = new System.Func<string, bool>(x => x.EndsWith(".7z", StringComparison.InvariantCultureIgnoreCase) || x.EndsWith(".rar", StringComparison.InvariantCultureIgnoreCase) || x.EndsWith(".zip", StringComparison.InvariantCultureIgnoreCase));
 
         /// <summary>

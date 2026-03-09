@@ -1,0 +1,40 @@
+<Window x:Class="GDMENUCardManager.ConfigReadOnlyDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Settings File Read-Only" Height="400" Width="600"
+        ResizeMode="CanResize" WindowStartupLocation="CenterOwner"
+        MinHeight="250" MinWidth="400">
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" TextWrapping="Wrap" Margin="0,0,0,10">
+            <Run FontWeight="Bold">The settings file is read-only and cannot be modified.</Run>
+            <LineBreak/>
+            <LineBreak/>
+            <Run>No settings (window position, temp folder, disc image options, etc.) will be saved if you continue.</Run>
+            <LineBreak/>
+            <LineBreak/>
+            <Run>Please fix the file permissions and click Retry, or click Continue to proceed without saving settings.</Run>
+        </TextBlock>
+
+        <ListBox Grid.Row="1" x:Name="FileListBox" Margin="0,0,0,10">
+            <ListBox.ItemTemplate>
+                <DataTemplate>
+                    <StackPanel Margin="2">
+                        <TextBlock Text="{Binding Path}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                        <TextBlock Text="{Binding Error}" Foreground="Gray" FontSize="11" TextWrapping="Wrap" Margin="10,0,0,0"/>
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="Retry" Width="80" Padding="15,8" Margin="0,0,10,0" Click="RetryButton_Click" IsDefault="True"/>
+            <Button Content="Continue" Width="120" Padding="15,8" Click="ContinueButton_Click" IsCancel="True"/>
+        </StackPanel>
+    </Grid>
+</Window>

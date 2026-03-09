@@ -57,6 +57,7 @@ namespace GDMENUCardManager
 
         internal static void SaveSkippedVersion(string tag)
         {
+            if (Core.Manager.ConfigReadOnly) return;
             try
             {
                 var config = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);

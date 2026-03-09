@@ -219,6 +219,17 @@ namespace GDMENUCardManager
             {
                 node.IsEditing = false;
 
+                // Validate printable ASCII
+                if (!Core.Helper.IsValidPrintableAscii(node.Name))
+                {
+                    MessageBox.Show(
+                        "Only printable ASCII characters (letters, numbers, and standard symbols) are supported by openMenu.",
+                        "Invalid Characters", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    node.Name = "PLEASE RENAME";
+                    _editingOriginalName = null;
+                    return;
+                }
+
                 // Check if name was actually changed
                 if (_editingOriginalName != null && _editingOriginalName != node.Name)
                 {
@@ -238,8 +249,16 @@ namespace GDMENUCardManager
         {
             if (e.Key == Key.Enter)
             {
-                if (sender is FrameworkElement element && element.DataContext is FolderTreeNode node)
+                if (sender is TextBox textBox && textBox.DataContext is FolderTreeNode node)
                 {
+                    if (!Core.Helper.IsValidPrintableAscii(textBox.Text))
+                    {
+                        MessageBox.Show(
+                            "Only printable ASCII characters (letters, numbers, and standard symbols) are supported by openMenu.",
+                            "Invalid Characters", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        node.Name = "PLEASE RENAME";
+                        _editingOriginalName = null;
+                    }
                     node.IsEditing = false;
                 }
                 e.Handled = true;
