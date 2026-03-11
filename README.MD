@@ -316,6 +316,8 @@ Below represents all the changes brought with the initial release of **openMenu 
 
 ## Upgrading
 
+As of `v1.5-ateam`, the Windows and Linux versions of this software package include an automatic in-app updater. However, macOS users must undertake the process described below.
+
 The upgrade/migration process is very simple for:
 
 - Upgrading from a previous version of **openMenu Virtual Folder Bundle** to the latest version.
