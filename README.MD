@@ -401,11 +401,13 @@ Automatic backups are saved to the `dat_backups` folder with timestamps (located
 New users of **openMenu Virtual Folder Bundle** on Windows and Linux may wish to use their existing DAT files containing artwork and metadata. There are two options for performing this operation.
 
 **Restoring From Files**
+
 Navigate to the `tools\openMenu\menu_data` folder in the original GD MENU Card Manager application folder and copy `BOX.DAT`, `ICON.DAT`, and `META.DAT` to the `tools\openMenu\menu_data` folder inside the **openMenu Virtual Folder Bundle**'s GD MENU Card Manager application folder, overwriting the defaults.
 
 macOS users may take their old DATs and copy and paste them into `~/Library/Application-Support/GDMENUCardManager/menu_data`.
 
 **Automatically Restoring From SD Card**
+
 With the **Overwrite DATs with SD Card** function in **DAT Tools** (see more in the [DAT Tools](#dat-tools) section), users can take the DATs directly from their openMenu SD card and use them in GD MENU Card Manager.
 
 #### Cover Art Resources
