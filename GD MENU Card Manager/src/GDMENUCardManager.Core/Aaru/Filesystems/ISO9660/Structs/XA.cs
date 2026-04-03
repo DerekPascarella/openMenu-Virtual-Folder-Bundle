@@ -41,11 +41,11 @@ namespace Aaru.Filesystems
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
         readonly struct CdromXa
         {
-            public readonly ushort       group;
-            public readonly ushort       user;
+            public readonly ushort group;
+            public readonly ushort user;
             public readonly XaAttributes attributes;
-            public readonly ushort       signature;
-            public readonly byte         filenumber;
+            public readonly ushort signature;
+            public readonly byte filenumber;
             [MarshalAs(UnmanagedType.ByValArray, SizeConst = 5)]
             public readonly byte[] reserved;
         }

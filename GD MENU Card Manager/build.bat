@@ -10,6 +10,12 @@ set /p VERSION=<src\version.txt
 echo Building version: %VERSION%
 echo.
 
+REM Format code
+echo Formatting code...
+dotnet format src\GDMENUCardManager.sln
+if %ERRORLEVEL% neq 0 goto :error
+echo.
+
 REM Clean previous builds
 echo Cleaning previous builds...
 if exist "_releases" rd /s /q "_releases"
@@ -25,7 +31,6 @@ dotnet publish src\GDMENUCardManager\GDMENUCardManager.csproj -c Release -o "%OU
 if %ERRORLEVEL% neq 0 goto :error
 xcopy /E /I /Y src\GDMENUCardManager.Core\tools "%OUTPUT_DIR%\tools\"
 copy /Y redump2cdi\windows-x86_64-msvc\redump2cdi.exe "%OUTPUT_DIR%\tools\"
-if exist src\GDMENUCardManager.Core\runtimes\win-x64\native\libchdr.dll copy /Y src\GDMENUCardManager.Core\runtimes\win-x64\native\libchdr.dll "%OUTPUT_DIR%\"
 copy /Y LICENSE "%OUTPUT_DIR%\"
 copy /Y README.md "%OUTPUT_DIR%\"
 cd "%OUTPUT_DIR%" && tar -a -c -f ..\GDMENUCardManager.%VERSION%-win-x64.zip * && cd ..\..
@@ -43,12 +48,20 @@ dotnet publish src\GDMENUCardManager\GDMENUCardManager.csproj -c Release -r win-
 if %ERRORLEVEL% neq 0 goto :error
 xcopy /E /I /Y src\GDMENUCardManager.Core\tools "%OUTPUT_DIR%\tools\"
 copy /Y redump2cdi\windows-x86-msvc\redump2cdi.exe "%OUTPUT_DIR%\tools\"
-if exist src\GDMENUCardManager.Core\runtimes\win-x86\native\libchdr.dll copy /Y src\GDMENUCardManager.Core\runtimes\win-x86\native\libchdr.dll "%OUTPUT_DIR%\"
 copy /Y LICENSE "%OUTPUT_DIR%\"
 copy /Y README.md "%OUTPUT_DIR%\"
 cd "%OUTPUT_DIR%" && tar -a -c -f ..\GDMENUCardManager.%VERSION%-win-x86.zip * && cd ..\..
 if %ERRORLEVEL% neq 0 echo Warning: Failed to create zip file for win-x86
 echo Build completed for win-x86
+
+REM Purge intermediate build output before cross-platform builds to prevent
+REM stale Windows-only native libs from leaking into non-Windows packages.
+echo.
+echo Cleaning intermediate output...
+if exist "src\GDMENUCardManager.Core\bin" rd /s /q "src\GDMENUCardManager.Core\bin"
+if exist "src\GDMENUCardManager.Core\obj" rd /s /q "src\GDMENUCardManager.Core\obj"
+if exist "src\GDMENUCardManager.AvaloniaUI\bin" rd /s /q "src\GDMENUCardManager.AvaloniaUI\bin"
+if exist "src\GDMENUCardManager.AvaloniaUI\obj" rd /s /q "src\GDMENUCardManager.AvaloniaUI\obj"
 
 REM Build for linux-x64 (AvaloniaUI - self-contained)
 echo.
@@ -60,7 +73,6 @@ dotnet publish src\GDMENUCardManager.AvaloniaUI\GDMENUCardManager.AvaloniaUI.csp
 if %ERRORLEVEL% neq 0 goto :error
 xcopy /E /I /Y src\GDMENUCardManager.Core\tools "%OUTPUT_DIR%\tools\"
 copy /Y redump2cdi\linux-x86_64\redump2cdi "%OUTPUT_DIR%\tools\"
-if exist src\GDMENUCardManager.Core\runtimes\linux-x64\native\libchdr.so copy /Y src\GDMENUCardManager.Core\runtimes\linux-x64\native\libchdr.so "%OUTPUT_DIR%\"
 copy /Y LICENSE "%OUTPUT_DIR%\"
 copy /Y README.md "%OUTPUT_DIR%\"
 cd _releases && tar -czf GDMENUCardManager.%VERSION%-linux-x64.tar.gz GDMENUCardManager.%VERSION%-linux-x64 && cd ..
@@ -77,23 +89,32 @@ dotnet publish src\GDMENUCardManager.AvaloniaUI\GDMENUCardManager.AvaloniaUI.csp
 if %ERRORLEVEL% neq 0 goto :error
 xcopy /E /I /Y src\GDMENUCardManager.Core\tools "%TEMP_OUTPUT_DIR%\tools\"
 copy /Y redump2cdi\macos-x86_64\redump2cdi "%TEMP_OUTPUT_DIR%\tools\"
-if exist src\GDMENUCardManager.Core\runtimes\osx-x64\native\libchdr.dylib copy /Y src\GDMENUCardManager.Core\runtimes\osx-x64\native\libchdr.dylib "%TEMP_OUTPUT_DIR%\"
 copy /Y LICENSE "%TEMP_OUTPUT_DIR%\"
 copy /Y README.md "%TEMP_OUTPUT_DIR%\"
 echo Creating macOS .app bundle...
 wsl bash create-macos-bundle.sh "_releases/temp-osx-x64" "%VERSION%" "_releases"
-if %ERRORLEVEL% neq 0 (
-    echo Warning: Failed to create macOS app bundle with WSL
-    echo Attempting with bash.exe...
-    bash.exe create-macos-bundle.sh "_releases/temp-osx-x64" "%VERSION%" "_releases"
-    if !ERRORLEVEL! neq 0 (
-        echo Warning: Failed to create macOS app bundle
-        echo Falling back to simple tar.gz...
-        cd _releases && tar -czf GDMENUCardManager.%VERSION%-osx-x64.tar.gz temp-osx-x64 && cd ..
-    )
-)
-rd /s /q "%TEMP_OUTPUT_DIR%"
+if %ERRORLEVEL% neq 0 goto :error
+rd /s /q "%TEMP_OUTPUT_DIR%" 2>nul
 echo Build completed for osx-x64
+
+REM Build for osx-arm64 (AvaloniaUI - self-contained)
+echo.
+echo ================================================
+echo Building AvaloniaUI for osx-arm64...
+echo ================================================
+set TEMP_OUTPUT_DIR=_releases\temp-osx-arm64
+set OUTPUT_DIR=_releases
+dotnet publish src\GDMENUCardManager.AvaloniaUI\GDMENUCardManager.AvaloniaUI.csproj -c Release --self-contained true -r osx-arm64 -p:PublishSingleFile=false -p:IncludeNativeLibrariesForSelfExtract=true -o "%TEMP_OUTPUT_DIR%"
+if %ERRORLEVEL% neq 0 goto :error
+xcopy /E /I /Y src\GDMENUCardManager.Core\tools "%TEMP_OUTPUT_DIR%\tools\"
+copy /Y redump2cdi\macos-aarch64\redump2cdi "%TEMP_OUTPUT_DIR%\tools\"
+copy /Y LICENSE "%TEMP_OUTPUT_DIR%\"
+copy /Y README.md "%TEMP_OUTPUT_DIR%\"
+echo Creating macOS .app bundle (arm64)...
+wsl bash create-macos-bundle.sh "_releases/temp-osx-arm64" "%VERSION%" "_releases" "arm64"
+if %ERRORLEVEL% neq 0 goto :error
+rd /s /q "%TEMP_OUTPUT_DIR%" 2>nul
+echo Build completed for osx-arm64
 
 echo.
 echo ================================================

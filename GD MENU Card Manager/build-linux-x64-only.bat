@@ -11,6 +11,16 @@ set OUTPUT_DIR=_releases\GDMENUCardManager.%VERSION%-linux-x64
 echo Building version: %VERSION%
 echo.
 
+REM Format code
+echo Formatting code...
+dotnet format src\GDMENUCardManager.sln
+if %ERRORLEVEL% neq 0 (
+    echo ERROR: Format failed
+    pause
+    exit /b 1
+)
+echo.
+
 REM Clean previous build
 if exist "%OUTPUT_DIR%" rd /s /q "%OUTPUT_DIR%"
 if not exist "_releases" mkdir "_releases"
@@ -36,9 +46,6 @@ xcopy /E /I /Y src\GDMENUCardManager.Core\tools "%OUTPUT_DIR%\tools\"
 
 REM Copy redump2cdi tool for CUE/BIN conversion
 copy /Y redump2cdi\linux-x86_64\redump2cdi "%OUTPUT_DIR%\tools\"
-
-REM Copy libchdr native library for CHD support
-if exist src\GDMENUCardManager.Core\runtimes\linux-x64\native\libchdr.so copy /Y src\GDMENUCardManager.Core\runtimes\linux-x64\native\libchdr.so "%OUTPUT_DIR%\"
 
 REM Copy LICENSE and README
 copy /Y LICENSE "%OUTPUT_DIR%\"

@@ -43,56 +43,56 @@ namespace Aaru.Filesystems
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
         readonly struct PosixAttributesOld
         {
-            public readonly ushort    signature;
-            public readonly byte      length;
-            public readonly byte      version;
+            public readonly ushort signature;
+            public readonly byte length;
+            public readonly byte version;
             public readonly PosixMode st_mode;
             public readonly PosixMode st_mode_be;
-            public readonly uint      st_nlink;
-            public readonly uint      st_nlink_be;
-            public readonly uint      st_uid;
-            public readonly uint      st_uid_be;
-            public readonly uint      st_gid;
-            public readonly uint      st_gid_be;
+            public readonly uint st_nlink;
+            public readonly uint st_nlink_be;
+            public readonly uint st_uid;
+            public readonly uint st_uid_be;
+            public readonly uint st_gid;
+            public readonly uint st_gid_be;
         }
 
         // RRIP 1.12
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
         readonly struct PosixAttributes
         {
-            public readonly ushort    signature;
-            public readonly byte      length;
-            public readonly byte      version;
+            public readonly ushort signature;
+            public readonly byte length;
+            public readonly byte version;
             public readonly PosixMode st_mode;
             public readonly PosixMode st_mode_be;
-            public readonly uint      st_nlink;
-            public readonly uint      st_nlink_be;
-            public readonly uint      st_uid;
-            public readonly uint      st_uid_be;
-            public readonly uint      st_gid;
-            public readonly uint      st_gid_be;
-            public readonly uint      st_ino;
-            public readonly uint      st_ino_be;
+            public readonly uint st_nlink;
+            public readonly uint st_nlink_be;
+            public readonly uint st_uid;
+            public readonly uint st_uid_be;
+            public readonly uint st_gid;
+            public readonly uint st_gid_be;
+            public readonly uint st_ino;
+            public readonly uint st_ino_be;
         }
 
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
         readonly struct PosixDeviceNumber
         {
             public readonly ushort signature;
-            public readonly byte   length;
-            public readonly byte   version;
-            public readonly uint   dev_t_high;
-            public readonly uint   dev_t_high_be;
-            public readonly uint   dev_t_low;
-            public readonly uint   dev_t_low_be;
+            public readonly byte length;
+            public readonly byte version;
+            public readonly uint dev_t_high;
+            public readonly uint dev_t_high_be;
+            public readonly uint dev_t_low;
+            public readonly uint dev_t_low_be;
         }
 
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
         readonly struct SymbolicLink
         {
-            public readonly ushort       signature;
-            public readonly byte         length;
-            public readonly byte         version;
+            public readonly ushort signature;
+            public readonly byte length;
+            public readonly byte version;
             public readonly SymlinkFlags flags;
 
             // Followed by SymbolicLinkComponent (link to /bar/foo uses at least two of these structs)
@@ -102,7 +102,7 @@ namespace Aaru.Filesystems
         readonly struct SymbolicLinkComponent
         {
             public readonly SymlinkComponentFlags flags;
-            public readonly byte                  length;
+            public readonly byte length;
 
             // Followed by component content
         }
@@ -110,9 +110,9 @@ namespace Aaru.Filesystems
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
         readonly struct AlternateName
         {
-            public readonly ushort             signature;
-            public readonly byte               length;
-            public readonly byte               version;
+            public readonly ushort signature;
+            public readonly byte length;
+            public readonly byte version;
             public readonly AlternateNameFlags flags;
 
             // Folowed by name, can be divided in pieces
@@ -122,36 +122,36 @@ namespace Aaru.Filesystems
         readonly struct ChildLink
         {
             public readonly ushort signature;
-            public readonly byte   length;
-            public readonly byte   version;
-            public readonly uint   child_dir_lba;
-            public readonly uint   child_dir_lba_be;
+            public readonly byte length;
+            public readonly byte version;
+            public readonly uint child_dir_lba;
+            public readonly uint child_dir_lba_be;
         }
 
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
         readonly struct ParentLink
         {
             public readonly ushort signature;
-            public readonly byte   length;
-            public readonly byte   version;
-            public readonly uint   parent_dir_lba;
-            public readonly uint   parent_dir_lba_be;
+            public readonly byte length;
+            public readonly byte version;
+            public readonly uint parent_dir_lba;
+            public readonly uint parent_dir_lba_be;
         }
 
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
         readonly struct RelocatedDirectory
         {
             public readonly ushort signature;
-            public readonly byte   length;
-            public readonly byte   version;
+            public readonly byte length;
+            public readonly byte version;
         }
 
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
         readonly struct Timestamps
         {
-            public readonly ushort         signature;
-            public readonly byte           length;
-            public readonly byte           version;
+            public readonly ushort signature;
+            public readonly byte length;
+            public readonly byte version;
             public readonly TimestampFlags flags;
 
             // If flags indicate long format, timestamps are 17 bytes, if not, 7 bytes
@@ -168,13 +168,13 @@ namespace Aaru.Filesystems
         readonly struct SparseFile
         {
             public readonly ushort signature;
-            public readonly byte   length;
-            public readonly byte   version;
-            public readonly uint   virtual_size_high;
-            public readonly uint   virtual_size_high_be;
-            public readonly uint   virtual_size_low;
-            public readonly uint   virtual_size_low_be;
-            public readonly byte   table_depth;
+            public readonly byte length;
+            public readonly byte version;
+            public readonly uint virtual_size_high;
+            public readonly uint virtual_size_high_be;
+            public readonly uint virtual_size_low;
+            public readonly uint virtual_size_low_be;
+            public readonly byte table_depth;
         }
     }
 }

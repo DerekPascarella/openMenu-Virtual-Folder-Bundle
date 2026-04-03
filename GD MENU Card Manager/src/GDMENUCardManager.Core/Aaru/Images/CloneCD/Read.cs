@@ -50,7 +50,7 @@ namespace Aaru.DiscImages
     {
         public bool Open(IFilter imageFilter)
         {
-            if(imageFilter == null)
+            if (imageFilter == null)
                 return false;
 
             _ccdFilter = imageFilter;
@@ -61,143 +61,143 @@ namespace Aaru.DiscImages
                 _cueStream = new StreamReader(imageFilter.GetDataForkStream());
                 int lineNumber = 0;
 
-                var ccdIdRegex     = new Regex(CCD_IDENTIFIER);
-                var discIdRegex    = new Regex(DISC_IDENTIFIER);
-                var sessIdRegex    = new Regex(SESSION_IDENTIFIER);
-                var entryIdRegex   = new Regex(ENTRY_IDENTIFIER);
-                var trackIdRegex   = new Regex(TRACK_IDENTIFIER);
-                var cdtIdRegex     = new Regex(CDTEXT_IDENTIFIER);
-                var ccdVerRegex    = new Regex(CCD_VERSION);
-                var discEntRegex   = new Regex(DISC_ENTRIES);
-                var discSessRegex  = new Regex(DISC_SESSIONS);
-                var discScrRegex   = new Regex(DISC_SCRAMBLED);
-                var cdtLenRegex    = new Regex(CDTEXT_LENGTH);
-                var discCatRegex   = new Regex(DISC_CATALOG);
-                var sessPregRegex  = new Regex(SESSION_PREGAP);
-                var sessSubcRegex  = new Regex(SESSION_SUBCHANNEL);
-                var entSessRegex   = new Regex(ENTRY_SESSION);
-                var entPointRegex  = new Regex(ENTRY_POINT);
-                var entAdrRegex    = new Regex(ENTRY_ADR);
-                var entCtrlRegex   = new Regex(ENTRY_CONTROL);
-                var entTnoRegex    = new Regex(ENTRY_TRACKNO);
-                var entAMinRegex   = new Regex(ENTRY_AMIN);
-                var entASecRegex   = new Regex(ENTRY_ASEC);
+                var ccdIdRegex = new Regex(CCD_IDENTIFIER);
+                var discIdRegex = new Regex(DISC_IDENTIFIER);
+                var sessIdRegex = new Regex(SESSION_IDENTIFIER);
+                var entryIdRegex = new Regex(ENTRY_IDENTIFIER);
+                var trackIdRegex = new Regex(TRACK_IDENTIFIER);
+                var cdtIdRegex = new Regex(CDTEXT_IDENTIFIER);
+                var ccdVerRegex = new Regex(CCD_VERSION);
+                var discEntRegex = new Regex(DISC_ENTRIES);
+                var discSessRegex = new Regex(DISC_SESSIONS);
+                var discScrRegex = new Regex(DISC_SCRAMBLED);
+                var cdtLenRegex = new Regex(CDTEXT_LENGTH);
+                var discCatRegex = new Regex(DISC_CATALOG);
+                var sessPregRegex = new Regex(SESSION_PREGAP);
+                var sessSubcRegex = new Regex(SESSION_SUBCHANNEL);
+                var entSessRegex = new Regex(ENTRY_SESSION);
+                var entPointRegex = new Regex(ENTRY_POINT);
+                var entAdrRegex = new Regex(ENTRY_ADR);
+                var entCtrlRegex = new Regex(ENTRY_CONTROL);
+                var entTnoRegex = new Regex(ENTRY_TRACKNO);
+                var entAMinRegex = new Regex(ENTRY_AMIN);
+                var entASecRegex = new Regex(ENTRY_ASEC);
                 var entAFrameRegex = new Regex(ENTRY_AFRAME);
-                var entAlbaRegex   = new Regex(ENTRY_ALBA);
-                var entZeroRegex   = new Regex(ENTRY_ZERO);
-                var entPMinRegex   = new Regex(ENTRY_PMIN);
-                var entPSecRegex   = new Regex(ENTRY_PSEC);
+                var entAlbaRegex = new Regex(ENTRY_ALBA);
+                var entZeroRegex = new Regex(ENTRY_ZERO);
+                var entPMinRegex = new Regex(ENTRY_PMIN);
+                var entPSecRegex = new Regex(ENTRY_PSEC);
                 var entPFrameRegex = new Regex(ENTRY_PFRAME);
-                var entPlbaRegex   = new Regex(ENTRY_PLBA);
-                var cdtEntsRegex   = new Regex(CDTEXT_ENTRIES);
-                var cdtEntRegex    = new Regex(CDTEXT_ENTRY);
+                var entPlbaRegex = new Regex(ENTRY_PLBA);
+                var cdtEntsRegex = new Regex(CDTEXT_ENTRIES);
+                var cdtEntRegex = new Regex(CDTEXT_ENTRY);
 
-                bool                              inCcd        = false;
-                bool                              inDisk       = false;
-                bool                              inSession    = false;
-                bool                              inEntry      = false;
-                bool                              inTrack      = false;
-                bool                              inCdText     = false;
-                var                               cdtMs        = new MemoryStream();
-                int                               minSession   = int.MaxValue;
-                int                               maxSession   = int.MinValue;
-                var                               currentEntry = new FullTOC.TrackDataDescriptor();
-                List<FullTOC.TrackDataDescriptor> entries      = new List<FullTOC.TrackDataDescriptor>();
+                bool inCcd = false;
+                bool inDisk = false;
+                bool inSession = false;
+                bool inEntry = false;
+                bool inTrack = false;
+                bool inCdText = false;
+                var cdtMs = new MemoryStream();
+                int minSession = int.MaxValue;
+                int maxSession = int.MinValue;
+                var currentEntry = new FullTOC.TrackDataDescriptor();
+                List<FullTOC.TrackDataDescriptor> entries = new List<FullTOC.TrackDataDescriptor>();
                 _scrambled = false;
-                _catalog   = null;
+                _catalog = null;
 
-                while(_cueStream.Peek() >= 0)
+                while (_cueStream.Peek() >= 0)
                 {
                     lineNumber++;
                     string line = _cueStream.ReadLine();
 
-                    Match ccdIdMatch   = ccdIdRegex.Match(line);
-                    Match discIdMatch  = discIdRegex.Match(line);
-                    Match sessIdMatch  = sessIdRegex.Match(line);
+                    Match ccdIdMatch = ccdIdRegex.Match(line);
+                    Match discIdMatch = discIdRegex.Match(line);
+                    Match sessIdMatch = sessIdRegex.Match(line);
                     Match entryIdMatch = entryIdRegex.Match(line);
                     Match trackIdMatch = trackIdRegex.Match(line);
-                    Match cdtIdMatch   = cdtIdRegex.Match(line);
+                    Match cdtIdMatch = cdtIdRegex.Match(line);
 
                     // [CloneCD]
-                    if(ccdIdMatch.Success)
+                    if (ccdIdMatch.Success)
                     {
-                        if(inDisk    ||
+                        if (inDisk ||
                            inSession ||
-                           inEntry   ||
-                           inTrack   ||
+                           inEntry ||
+                           inTrack ||
                            inCdText)
                             throw new
                                 FeatureUnsupportedImageException($"Found [CloneCD] out of order in line {lineNumber}");
 
-                        inCcd     = true;
-                        inDisk    = false;
+                        inCcd = true;
+                        inDisk = false;
                         inSession = false;
-                        inEntry   = false;
-                        inTrack   = false;
-                        inCdText  = false;
+                        inEntry = false;
+                        inTrack = false;
+                        inCdText = false;
                     }
-                    else if(discIdMatch.Success  ||
-                            sessIdMatch.Success  ||
+                    else if (discIdMatch.Success ||
+                            sessIdMatch.Success ||
                             entryIdMatch.Success ||
                             trackIdMatch.Success ||
                             cdtIdMatch.Success)
                     {
-                        if(inEntry)
+                        if (inEntry)
                         {
                             entries.Add(currentEntry);
                             currentEntry = new FullTOC.TrackDataDescriptor();
                         }
 
-                        inCcd     = false;
-                        inDisk    = discIdMatch.Success;
+                        inCcd = false;
+                        inDisk = discIdMatch.Success;
                         inSession = sessIdMatch.Success;
-                        inEntry   = entryIdMatch.Success;
-                        inTrack   = trackIdMatch.Success;
-                        inCdText  = cdtIdMatch.Success;
+                        inEntry = entryIdMatch.Success;
+                        inTrack = trackIdMatch.Success;
+                        inCdText = cdtIdMatch.Success;
                     }
                     else
                     {
-                        if(inCcd)
+                        if (inCcd)
                         {
                             Match ccdVerMatch = ccdVerRegex.Match(line);
 
-                            if(!ccdVerMatch.Success)
+                            if (!ccdVerMatch.Success)
                                 continue;
 
                             AaruConsole.DebugWriteLine("CloneCD plugin", "Found Version at line {0}", lineNumber);
 
                             _imageInfo.Version = ccdVerMatch.Groups["value"].Value;
 
-                            if(_imageInfo.Version != "2" &&
+                            if (_imageInfo.Version != "2" &&
                                _imageInfo.Version != "3")
                                 AaruConsole.
                                     ErrorWriteLine("(CloneCD plugin): Warning! Unknown CCD image version {0}, may not work!",
                                                    _imageInfo.Version);
                         }
-                        else if(inDisk)
+                        else if (inDisk)
                         {
-                            Match discEntMatch  = discEntRegex.Match(line);
+                            Match discEntMatch = discEntRegex.Match(line);
                             Match discSessMatch = discSessRegex.Match(line);
-                            Match discScrMatch  = discScrRegex.Match(line);
-                            Match cdtLenMatch   = cdtLenRegex.Match(line);
-                            Match discCatMatch  = discCatRegex.Match(line);
+                            Match discScrMatch = discScrRegex.Match(line);
+                            Match cdtLenMatch = cdtLenRegex.Match(line);
+                            Match discCatMatch = discCatRegex.Match(line);
 
-                            if(discEntMatch.Success)
+                            if (discEntMatch.Success)
                                 AaruConsole.DebugWriteLine("CloneCD plugin", "Found TocEntries at line {0}",
                                                            lineNumber);
-                            else if(discSessMatch.Success)
+                            else if (discSessMatch.Success)
                                 AaruConsole.DebugWriteLine("CloneCD plugin", "Found Sessions at line {0}", lineNumber);
-                            else if(discScrMatch.Success)
+                            else if (discScrMatch.Success)
                             {
                                 AaruConsole.DebugWriteLine("CloneCD plugin", "Found DataTracksScrambled at line {0}",
                                                            lineNumber);
 
                                 _scrambled |= discScrMatch.Groups["value"].Value == "1";
                             }
-                            else if(cdtLenMatch.Success)
+                            else if (cdtLenMatch.Success)
                                 AaruConsole.DebugWriteLine("CloneCD plugin", "Found CDTextLength at line {0}",
                                                            lineNumber);
-                            else if(discCatMatch.Success)
+                            else if (discCatMatch.Success)
                             {
                                 AaruConsole.DebugWriteLine("CloneCD plugin", "Found Catalog at line {0}", lineNumber);
                                 _catalog = discCatMatch.Groups["value"].Value;
@@ -205,15 +205,15 @@ namespace Aaru.DiscImages
                         }
 
                         // TODO: Do not suppose here entries come sorted
-                        else if(inCdText)
+                        else if (inCdText)
                         {
                             Match cdtEntsMatch = cdtEntsRegex.Match(line);
-                            Match cdtEntMatch  = cdtEntRegex.Match(line);
+                            Match cdtEntMatch = cdtEntRegex.Match(line);
 
-                            if(cdtEntsMatch.Success)
+                            if (cdtEntsMatch.Success)
                                 AaruConsole.DebugWriteLine("CloneCD plugin", "Found CD-Text Entries at line {0}",
                                                            lineNumber);
-                            else if(cdtEntMatch.Success)
+                            else if (cdtEntMatch.Success)
                             {
                                 AaruConsole.DebugWriteLine("CloneCD plugin", "Found CD-Text Entry at line {0}",
                                                            lineNumber);
@@ -223,133 +223,133 @@ namespace Aaru.DiscImages
                                     ' '
                                 }, StringSplitOptions.RemoveEmptyEntries);
 
-                                foreach(string byt in bytes)
+                                foreach (string byt in bytes)
                                     cdtMs.WriteByte(Convert.ToByte(byt, 16));
                             }
                         }
 
                         // Is this useful?
-                        else if(inSession)
+                        else if (inSession)
                         {
                             Match sessPregMatch = sessPregRegex.Match(line);
                             Match sessSubcMatch = sessSubcRegex.Match(line);
 
-                            if(sessPregMatch.Success)
+                            if (sessPregMatch.Success)
                                 AaruConsole.DebugWriteLine("CloneCD plugin", "Found PreGapMode at line {0}",
                                                            lineNumber);
-                            else if(sessSubcMatch.Success)
+                            else if (sessSubcMatch.Success)
                                 AaruConsole.DebugWriteLine("CloneCD plugin", "Found PreGapSubC at line {0}",
                                                            lineNumber);
                         }
-                        else if(inEntry)
+                        else if (inEntry)
                         {
-                            Match entSessMatch   = entSessRegex.Match(line);
-                            Match entPointMatch  = entPointRegex.Match(line);
-                            Match entAdrMatch    = entAdrRegex.Match(line);
-                            Match entCtrlMatch   = entCtrlRegex.Match(line);
-                            Match entTnoMatch    = entTnoRegex.Match(line);
-                            Match entAMinMatch   = entAMinRegex.Match(line);
-                            Match entASecMatch   = entASecRegex.Match(line);
+                            Match entSessMatch = entSessRegex.Match(line);
+                            Match entPointMatch = entPointRegex.Match(line);
+                            Match entAdrMatch = entAdrRegex.Match(line);
+                            Match entCtrlMatch = entCtrlRegex.Match(line);
+                            Match entTnoMatch = entTnoRegex.Match(line);
+                            Match entAMinMatch = entAMinRegex.Match(line);
+                            Match entASecMatch = entASecRegex.Match(line);
                             Match entAFrameMatch = entAFrameRegex.Match(line);
-                            Match entAlbaMatch   = entAlbaRegex.Match(line);
-                            Match entZeroMatch   = entZeroRegex.Match(line);
-                            Match entPMinMatch   = entPMinRegex.Match(line);
-                            Match entPSecMatch   = entPSecRegex.Match(line);
+                            Match entAlbaMatch = entAlbaRegex.Match(line);
+                            Match entZeroMatch = entZeroRegex.Match(line);
+                            Match entPMinMatch = entPMinRegex.Match(line);
+                            Match entPSecMatch = entPSecRegex.Match(line);
                             Match entPFrameMatch = entPFrameRegex.Match(line);
-                            Match entPlbaMatch   = entPlbaRegex.Match(line);
+                            Match entPlbaMatch = entPlbaRegex.Match(line);
 
-                            if(entSessMatch.Success)
+                            if (entSessMatch.Success)
                             {
                                 AaruConsole.DebugWriteLine("CloneCD plugin", "Found Session at line {0}", lineNumber);
                                 currentEntry.SessionNumber = Convert.ToByte(entSessMatch.Groups["value"].Value, 10);
 
-                                if(currentEntry.SessionNumber < minSession)
+                                if (currentEntry.SessionNumber < minSession)
                                     minSession = currentEntry.SessionNumber;
 
-                                if(currentEntry.SessionNumber > maxSession)
+                                if (currentEntry.SessionNumber > maxSession)
                                     maxSession = currentEntry.SessionNumber;
                             }
-                            else if(entPointMatch.Success)
+                            else if (entPointMatch.Success)
                             {
                                 AaruConsole.DebugWriteLine("CloneCD plugin", "Found Point at line {0}", lineNumber);
                                 currentEntry.POINT = Convert.ToByte(entPointMatch.Groups["value"].Value, 16);
                             }
-                            else if(entAdrMatch.Success)
+                            else if (entAdrMatch.Success)
                             {
                                 AaruConsole.DebugWriteLine("CloneCD plugin", "Found ADR at line {0}", lineNumber);
                                 currentEntry.ADR = Convert.ToByte(entAdrMatch.Groups["value"].Value, 16);
                             }
-                            else if(entCtrlMatch.Success)
+                            else if (entCtrlMatch.Success)
                             {
                                 AaruConsole.DebugWriteLine("CloneCD plugin", "Found Control at line {0}", lineNumber);
                                 currentEntry.CONTROL = Convert.ToByte(entCtrlMatch.Groups["value"].Value, 16);
                             }
-                            else if(entTnoMatch.Success)
+                            else if (entTnoMatch.Success)
                             {
                                 AaruConsole.DebugWriteLine("CloneCD plugin", "Found TrackNo at line {0}", lineNumber);
                                 currentEntry.TNO = Convert.ToByte(entTnoMatch.Groups["value"].Value, 10);
                             }
-                            else if(entAMinMatch.Success)
+                            else if (entAMinMatch.Success)
                             {
                                 AaruConsole.DebugWriteLine("CloneCD plugin", "Found AMin at line {0}", lineNumber);
                                 currentEntry.Min = Convert.ToByte(entAMinMatch.Groups["value"].Value, 10);
                             }
-                            else if(entASecMatch.Success)
+                            else if (entASecMatch.Success)
                             {
                                 AaruConsole.DebugWriteLine("CloneCD plugin", "Found ASec at line {0}", lineNumber);
                                 currentEntry.Sec = Convert.ToByte(entASecMatch.Groups["value"].Value, 10);
                             }
-                            else if(entAFrameMatch.Success)
+                            else if (entAFrameMatch.Success)
                             {
                                 AaruConsole.DebugWriteLine("CloneCD plugin", "Found AFrame at line {0}", lineNumber);
                                 currentEntry.Frame = Convert.ToByte(entAFrameMatch.Groups["value"].Value, 10);
                             }
-                            else if(entAlbaMatch.Success)
+                            else if (entAlbaMatch.Success)
                                 AaruConsole.DebugWriteLine("CloneCD plugin", "Found ALBA at line {0}", lineNumber);
-                            else if(entZeroMatch.Success)
+                            else if (entZeroMatch.Success)
                             {
                                 AaruConsole.DebugWriteLine("CloneCD plugin", "Found Zero at line {0}", lineNumber);
-                                currentEntry.Zero  = Convert.ToByte(entZeroMatch.Groups["value"].Value, 10);
-                                currentEntry.HOUR  = (byte)((currentEntry.Zero & 0xF0) >> 4);
+                                currentEntry.Zero = Convert.ToByte(entZeroMatch.Groups["value"].Value, 10);
+                                currentEntry.HOUR = (byte)((currentEntry.Zero & 0xF0) >> 4);
                                 currentEntry.PHOUR = (byte)(currentEntry.Zero & 0x0F);
                             }
-                            else if(entPMinMatch.Success)
+                            else if (entPMinMatch.Success)
                             {
                                 AaruConsole.DebugWriteLine("CloneCD plugin", "Found PMin at line {0}", lineNumber);
                                 currentEntry.PMIN = Convert.ToByte(entPMinMatch.Groups["value"].Value, 10);
                             }
-                            else if(entPSecMatch.Success)
+                            else if (entPSecMatch.Success)
                             {
                                 AaruConsole.DebugWriteLine("CloneCD plugin", "Found PSec at line {0}", lineNumber);
                                 currentEntry.PSEC = Convert.ToByte(entPSecMatch.Groups["value"].Value, 10);
                             }
-                            else if(entPFrameMatch.Success)
+                            else if (entPFrameMatch.Success)
                             {
                                 AaruConsole.DebugWriteLine("CloneCD plugin", "Found PFrame at line {0}", lineNumber);
                                 currentEntry.PFRAME = Convert.ToByte(entPFrameMatch.Groups["value"].Value, 10);
                             }
-                            else if(entPlbaMatch.Success)
+                            else if (entPlbaMatch.Success)
                                 AaruConsole.DebugWriteLine("CloneCD plugin", "Found PLBA at line {0}", lineNumber);
                         }
                     }
                 }
 
-                if(inEntry)
+                if (inEntry)
                     entries.Add(currentEntry);
 
-                if(entries.Count == 0)
+                if (entries.Count == 0)
                     throw new FeatureUnsupportedImageException("Did not find any track.");
 
                 FullTOC.CDFullTOC toc;
-                toc.TrackDescriptors     = entries.ToArray();
-                toc.LastCompleteSession  = (byte)maxSession;
+                toc.TrackDescriptors = entries.ToArray();
+                toc.LastCompleteSession = (byte)maxSession;
                 toc.FirstCompleteSession = (byte)minSession;
-                toc.DataLength           = (ushort)((entries.Count * 11) + 2);
+                toc.DataLength = (ushort)((entries.Count * 11) + 2);
                 var tocMs = new MemoryStream();
                 tocMs.WriteByte(toc.FirstCompleteSession);
                 tocMs.WriteByte(toc.LastCompleteSession);
 
-                foreach(FullTOC.TrackDataDescriptor descriptor in toc.TrackDescriptors)
+                foreach (FullTOC.TrackDataDescriptor descriptor in toc.TrackDescriptors)
                 {
                     tocMs.WriteByte(descriptor.SessionNumber);
                     tocMs.WriteByte((byte)((descriptor.ADR << 4) + descriptor.CONTROL));
@@ -368,37 +368,37 @@ namespace Aaru.DiscImages
                 _imageInfo.ReadableMediaTags.Add(MediaTagType.CD_FullTOC);
 
                 string dataFile = Path.ChangeExtension(imageFilter.GetBasePath(), ".img");//Path.GetFileNameWithoutExtension(imageFilter.GetBasePath()) + ".img";
-                string subFile  = Path.ChangeExtension(imageFilter.GetBasePath(), ".sub");//Path.GetFileNameWithoutExtension(imageFilter.GetBasePath()) + ".sub";
+                string subFile = Path.ChangeExtension(imageFilter.GetBasePath(), ".sub");//Path.GetFileNameWithoutExtension(imageFilter.GetBasePath()) + ".sub";
 
                 var filtersList = new FiltersList();
                 _dataFilter = filtersList.GetFilter(dataFile);
 
-                if(_dataFilter == null)
+                if (_dataFilter == null)
                     throw new Exception("Cannot open data file");
 
                 filtersList = new FiltersList();
-                _subFilter  = filtersList.GetFilter(subFile);
+                _subFilter = filtersList.GetFilter(subFile);
 
-                int  curSessionNo        = 0;
-                var  currentTrack        = new Track();
+                int curSessionNo = 0;
+                var currentTrack = new Track();
                 bool firstTrackInSession = true;
                 Tracks = new List<Track>();
                 ulong leadOutStart = 0;
 
                 _dataStream = _dataFilter.GetDataForkStream();
 
-                if(_subFilter != null)
+                if (_subFilter != null)
                     _subStream = _subFilter.GetDataForkStream();
 
                 _trackFlags = new Dictionary<byte, byte>();
 
-                foreach(FullTOC.TrackDataDescriptor descriptor in entries)
+                foreach (FullTOC.TrackDataDescriptor descriptor in entries)
                 {
-                    if(descriptor.SessionNumber > curSessionNo)
+                    if (descriptor.SessionNumber > curSessionNo)
                     {
                         curSessionNo = descriptor.SessionNumber;
 
-                        if(!firstTrackInSession)
+                        if (!firstTrackInSession)
                         {
                             currentTrack.TrackEndSector = leadOutStart - 1;
                             Tracks.Add(currentTrack);
@@ -407,11 +407,11 @@ namespace Aaru.DiscImages
                         firstTrackInSession = true;
                     }
 
-                    switch(descriptor.ADR)
+                    switch (descriptor.ADR)
                     {
                         case 1:
                         case 4:
-                            switch(descriptor.POINT)
+                            switch (descriptor.POINT)
                             {
                                 case 0xA0:
                                     byte discType = descriptor.PSEC;
@@ -423,10 +423,10 @@ namespace Aaru.DiscImages
 
                                     break;
                                 default:
-                                    if(descriptor.POINT >= 0x01 &&
+                                    if (descriptor.POINT >= 0x01 &&
                                        descriptor.POINT <= 0x63)
                                     {
-                                        if(!firstTrackInSession)
+                                        if (!firstTrackInSession)
                                         {
                                             currentTrack.TrackEndSector =
                                                 GetLba(descriptor.PMIN, descriptor.PSEC, descriptor.PFRAME) - 1;
@@ -436,26 +436,26 @@ namespace Aaru.DiscImages
 
                                         currentTrack = new Track
                                         {
-                                            TrackBytesPerSector    = 2352,
-                                            TrackFile              = _dataFilter.GetFilename(),
-                                            TrackFileType          = _scrambled ? "SCRAMBLED" : "BINARY",
-                                            TrackFilter            = _dataFilter,
+                                            TrackBytesPerSector = 2352,
+                                            TrackFile = _dataFilter.GetFilename(),
+                                            TrackFileType = _scrambled ? "SCRAMBLED" : "BINARY",
+                                            TrackFilter = _dataFilter,
                                             TrackRawBytesPerSector = 2352,
-                                            TrackSequence          = descriptor.POINT,
+                                            TrackSequence = descriptor.POINT,
                                             TrackStartSector =
                                                 GetLba(descriptor.PMIN, descriptor.PSEC, descriptor.PFRAME),
                                             TrackSession = descriptor.SessionNumber
                                         };
 
-                                        if(firstTrackInSession)
+                                        if (firstTrackInSession)
                                         {
                                             currentTrack.TrackPregap = 150;
 
-                                            if(currentTrack.TrackStartSector > 0)
+                                            if (currentTrack.TrackStartSector > 0)
                                             {
                                                 currentTrack.Indexes[0] = (int)currentTrack.TrackStartSector - 150;
 
-                                                if(currentTrack.Indexes[0] < 0)
+                                                if (currentTrack.Indexes[0] < 0)
                                                     currentTrack.Indexes[0] = 0;
                                             }
                                         }
@@ -465,20 +465,20 @@ namespace Aaru.DiscImages
                                         firstTrackInSession = false;
 
                                         // Need to check exact data type later
-                                        if((TocControl)(descriptor.CONTROL & 0x0D) == TocControl.DataTrack ||
+                                        if ((TocControl)(descriptor.CONTROL & 0x0D) == TocControl.DataTrack ||
                                            (TocControl)(descriptor.CONTROL & 0x0D) == TocControl.DataTrackIncremental)
                                             currentTrack.TrackType = TrackType.Data;
                                         else
                                             currentTrack.TrackType = TrackType.Audio;
 
-                                        if(!_trackFlags.ContainsKey(descriptor.POINT))
+                                        if (!_trackFlags.ContainsKey(descriptor.POINT))
                                             _trackFlags.Add(descriptor.POINT, descriptor.CONTROL);
 
-                                        if(_subFilter != null)
+                                        if (_subFilter != null)
                                         {
-                                            currentTrack.TrackSubchannelFile   = _subFilter.GetFilename();
+                                            currentTrack.TrackSubchannelFile = _subFilter.GetFilename();
                                             currentTrack.TrackSubchannelFilter = _subFilter;
-                                            currentTrack.TrackSubchannelType   = TrackSubchannelType.Raw;
+                                            currentTrack.TrackSubchannelType = TrackSubchannelType.Raw;
                                         }
                                         else
                                             currentTrack.TrackSubchannelType = TrackSubchannelType.None;
@@ -489,13 +489,13 @@ namespace Aaru.DiscImages
 
                             break;
                         case 5:
-                            switch(descriptor.POINT)
+                            switch (descriptor.POINT)
                             {
                                 case 0xC0:
-                                    if(descriptor.PMIN == 97)
+                                    if (descriptor.PMIN == 97)
                                     {
                                         int type = descriptor.PFRAME % 10;
-                                        int frm  = descriptor.PFRAME - type;
+                                        int frm = descriptor.PFRAME - type;
 
                                         //_imageInfo.MediaManufacturer = ATIP.ManufacturerFromATIP(descriptor.PSEC, frm);
 
@@ -509,17 +509,17 @@ namespace Aaru.DiscImages
 
                             break;
                         case 6:
-                        {
-                            uint id = (uint)((descriptor.Min << 16) + (descriptor.Sec << 8) + descriptor.Frame);
-                            AaruConsole.DebugWriteLine("CloneCD plugin", "Disc ID: {0:X6}", id & 0x00FFFFFF);
-                            _imageInfo.MediaSerialNumber = $"{id                               & 0x00FFFFFF:X6}";
+                            {
+                                uint id = (uint)((descriptor.Min << 16) + (descriptor.Sec << 8) + descriptor.Frame);
+                                AaruConsole.DebugWriteLine("CloneCD plugin", "Disc ID: {0:X6}", id & 0x00FFFFFF);
+                                _imageInfo.MediaSerialNumber = $"{id & 0x00FFFFFF:X6}";
 
-                            break;
-                        }
+                                break;
+                            }
                     }
                 }
 
-                if(!firstTrackInSession)
+                if (!firstTrackInSession)
                 {
                     currentTrack.TrackEndSector = leadOutStart - 1;
                     Tracks.Add(currentTrack);
@@ -527,104 +527,104 @@ namespace Aaru.DiscImages
 
                 Track[] tmpTracks = Tracks.OrderBy(t => t.TrackSequence).ToArray();
 
-                ulong currentDataOffset       = 0;
+                ulong currentDataOffset = 0;
                 ulong currentSubchannelOffset = 0;
 
-                foreach(Track tmpTrack in tmpTracks)
+                foreach (Track tmpTrack in tmpTracks)
                 {
                     tmpTrack.TrackFileOffset = currentDataOffset;
 
                     currentDataOffset += 2352 * ((tmpTrack.TrackEndSector - tmpTrack.TrackStartSector) + 1);
 
-                    if(_subFilter != null)
+                    if (_subFilter != null)
                     {
                         tmpTrack.TrackSubchannelOffset = currentSubchannelOffset;
 
                         currentSubchannelOffset += 96 * ((tmpTrack.TrackEndSector - tmpTrack.TrackStartSector) + 1);
                     }
 
-                    if(tmpTrack.TrackType == TrackType.Data)
+                    if (tmpTrack.TrackType == TrackType.Data)
                     {
-                        for(int s = 0; s < 750; s++)
+                        for (int s = 0; s < 750; s++)
                         {
                             byte[] syncTest = new byte[12];
                             byte[] sectTest = new byte[2352];
 
                             long pos = (long)tmpTrack.TrackFileOffset + (s * 2352);
 
-                            if(pos >= _dataStream.Length + 2352 ||
-                               s   >= (int)(tmpTrack.TrackEndSector - tmpTrack.TrackStartSector))
+                            if (pos >= _dataStream.Length + 2352 ||
+                               s >= (int)(tmpTrack.TrackEndSector - tmpTrack.TrackStartSector))
                                 break;
 
                             _dataStream.Seek(pos, SeekOrigin.Begin);
                             _dataStream.Read(sectTest, 0, 2352);
                             Array.Copy(sectTest, 0, syncTest, 0, 12);
 
-                            if(!Sector.SyncMark.SequenceEqual(syncTest))
+                            if (!Sector.SyncMark.SequenceEqual(syncTest))
                                 continue;
 
-                            if(_scrambled)
+                            if (_scrambled)
                                 sectTest = Sector.Scramble(sectTest);
 
-                            if(sectTest[15] == 1)
+                            if (sectTest[15] == 1)
                             {
                                 tmpTrack.TrackBytesPerSector = 2048;
-                                tmpTrack.TrackType           = TrackType.CdMode1;
+                                tmpTrack.TrackType = TrackType.CdMode1;
 
-                                if(!_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorSync))
+                                if (!_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorSync))
                                     _imageInfo.ReadableSectorTags.Add(SectorTagType.CdSectorSync);
 
-                                if(!_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorHeader))
+                                if (!_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorHeader))
                                     _imageInfo.ReadableSectorTags.Add(SectorTagType.CdSectorHeader);
 
-                                if(!_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorEcc))
+                                if (!_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorEcc))
                                     _imageInfo.ReadableSectorTags.Add(SectorTagType.CdSectorEcc);
 
-                                if(!_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorEccP))
+                                if (!_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorEccP))
                                     _imageInfo.ReadableSectorTags.Add(SectorTagType.CdSectorEccP);
 
-                                if(!_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorEccQ))
+                                if (!_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorEccQ))
                                     _imageInfo.ReadableSectorTags.Add(SectorTagType.CdSectorEccQ);
 
-                                if(!_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorEdc))
+                                if (!_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorEdc))
                                     _imageInfo.ReadableSectorTags.Add(SectorTagType.CdSectorEdc);
 
-                                if(_imageInfo.SectorSize < 2048)
+                                if (_imageInfo.SectorSize < 2048)
                                     _imageInfo.SectorSize = 2048;
 
                                 break;
                             }
 
-                            if(sectTest[15] != 2)
+                            if (sectTest[15] != 2)
                                 continue;
 
                             byte[] subHdr1 = new byte[4];
                             byte[] subHdr2 = new byte[4];
-                            byte[] empHdr  = new byte[4];
+                            byte[] empHdr = new byte[4];
 
                             Array.Copy(sectTest, 16, subHdr1, 0, 4);
                             Array.Copy(sectTest, 20, subHdr2, 0, 4);
 
-                            if(subHdr1.SequenceEqual(subHdr2) &&
+                            if (subHdr1.SequenceEqual(subHdr2) &&
                                !empHdr.SequenceEqual(subHdr1))
-                                if((subHdr1[2] & 0x20) == 0x20)
+                                if ((subHdr1[2] & 0x20) == 0x20)
                                 {
                                     tmpTrack.TrackBytesPerSector = 2324;
-                                    tmpTrack.TrackType           = TrackType.CdMode2Form2;
+                                    tmpTrack.TrackType = TrackType.CdMode2Form2;
 
-                                    if(!_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorSync))
+                                    if (!_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorSync))
                                         _imageInfo.ReadableSectorTags.Add(SectorTagType.CdSectorSync);
 
-                                    if(!_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorHeader))
+                                    if (!_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorHeader))
                                         _imageInfo.ReadableSectorTags.Add(SectorTagType.CdSectorHeader);
 
-                                    if(!_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorSubHeader))
+                                    if (!_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorSubHeader))
                                         _imageInfo.ReadableSectorTags.Add(SectorTagType.CdSectorSubHeader);
 
-                                    if(!_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorEdc))
+                                    if (!_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorEdc))
                                         _imageInfo.ReadableSectorTags.Add(SectorTagType.CdSectorEdc);
 
-                                    if(_imageInfo.SectorSize < 2324)
+                                    if (_imageInfo.SectorSize < 2324)
                                         _imageInfo.SectorSize = 2324;
 
                                     break;
@@ -632,45 +632,45 @@ namespace Aaru.DiscImages
                                 else
                                 {
                                     tmpTrack.TrackBytesPerSector = 2048;
-                                    tmpTrack.TrackType           = TrackType.CdMode2Form1;
+                                    tmpTrack.TrackType = TrackType.CdMode2Form1;
 
-                                    if(!_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorSync))
+                                    if (!_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorSync))
                                         _imageInfo.ReadableSectorTags.Add(SectorTagType.CdSectorSync);
 
-                                    if(!_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorHeader))
+                                    if (!_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorHeader))
                                         _imageInfo.ReadableSectorTags.Add(SectorTagType.CdSectorHeader);
 
-                                    if(!_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorSubHeader))
+                                    if (!_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorSubHeader))
                                         _imageInfo.ReadableSectorTags.Add(SectorTagType.CdSectorSubHeader);
 
-                                    if(!_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorEcc))
+                                    if (!_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorEcc))
                                         _imageInfo.ReadableSectorTags.Add(SectorTagType.CdSectorEcc);
 
-                                    if(!_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorEccP))
+                                    if (!_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorEccP))
                                         _imageInfo.ReadableSectorTags.Add(SectorTagType.CdSectorEccP);
 
-                                    if(!_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorEccQ))
+                                    if (!_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorEccQ))
                                         _imageInfo.ReadableSectorTags.Add(SectorTagType.CdSectorEccQ);
 
-                                    if(!_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorEdc))
+                                    if (!_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorEdc))
                                         _imageInfo.ReadableSectorTags.Add(SectorTagType.CdSectorEdc);
 
-                                    if(_imageInfo.SectorSize < 2048)
+                                    if (_imageInfo.SectorSize < 2048)
                                         _imageInfo.SectorSize = 2048;
 
                                     break;
                                 }
 
                             tmpTrack.TrackBytesPerSector = 2336;
-                            tmpTrack.TrackType           = TrackType.CdMode2Formless;
+                            tmpTrack.TrackType = TrackType.CdMode2Formless;
 
-                            if(!_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorSync))
+                            if (!_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorSync))
                                 _imageInfo.ReadableSectorTags.Add(SectorTagType.CdSectorSync);
 
-                            if(!_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorHeader))
+                            if (!_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorHeader))
                                 _imageInfo.ReadableSectorTags.Add(SectorTagType.CdSectorHeader);
 
-                            if(_imageInfo.SectorSize < 2336)
+                            if (_imageInfo.SectorSize < 2336)
                                 _imageInfo.SectorSize = 2336;
 
                             break;
@@ -678,14 +678,14 @@ namespace Aaru.DiscImages
                     }
                     else
                     {
-                        if(_imageInfo.SectorSize < 2352)
+                        if (_imageInfo.SectorSize < 2352)
                             _imageInfo.SectorSize = 2352;
                     }
                 }
 
                 Tracks = tmpTracks.ToList();
 
-                if(_subFilter != null &&
+                if (_subFilter != null &&
                    !_imageInfo.ReadableSectorTags.Contains(SectorTagType.CdSectorSubchannel))
                     _imageInfo.ReadableSectorTags.Add(SectorTagType.CdSectorSubchannel);
 
@@ -695,28 +695,28 @@ namespace Aaru.DiscImages
 
                 var currentSession = new Session
                 {
-                    EndTrack        = uint.MinValue,
-                    StartTrack      = uint.MaxValue,
+                    EndTrack = uint.MinValue,
+                    StartTrack = uint.MaxValue,
                     SessionSequence = 1
                 };
 
                 Partitions = new List<Partition>();
                 _offsetMap = new Dictionary<uint, ulong>();
 
-                foreach(Track track in Tracks)
+                foreach (Track track in Tracks)
                 {
-                    if(track.TrackSession == currentSession.SessionSequence)
+                    if (track.TrackSession == currentSession.SessionSequence)
                     {
-                        if(track.TrackSequence > currentSession.EndTrack)
+                        if (track.TrackSequence > currentSession.EndTrack)
                         {
                             currentSession.EndSector = track.TrackEndSector;
-                            currentSession.EndTrack  = track.TrackSequence;
+                            currentSession.EndTrack = track.TrackSequence;
                         }
 
-                        if(track.TrackSequence < currentSession.StartTrack)
+                        if (track.TrackSequence < currentSession.StartTrack)
                         {
                             currentSession.StartSector = track.TrackStartSector;
-                            currentSession.StartTrack  = track.TrackSequence;
+                            currentSession.StartTrack = track.TrackSequence;
                         }
                     }
                     else
@@ -725,8 +725,8 @@ namespace Aaru.DiscImages
 
                         currentSession = new Session
                         {
-                            EndTrack        = uint.MinValue,
-                            StartTrack      = uint.MaxValue,
+                            EndTrack = uint.MinValue,
+                            StartTrack = uint.MaxValue,
                             SessionSequence = track.TrackSession
                         };
                     }
@@ -736,11 +736,11 @@ namespace Aaru.DiscImages
                         Description = track.TrackDescription,
                         Size = ((track.TrackEndSector - track.TrackStartSector) + 1) *
                                (ulong)track.TrackRawBytesPerSector,
-                        Length   = (track.TrackEndSector - track.TrackStartSector) + 1,
+                        Length = (track.TrackEndSector - track.TrackStartSector) + 1,
                         Sequence = track.TrackSequence,
-                        Offset   = track.TrackFileOffset,
-                        Start    = track.TrackStartSector,
-                        Type     = track.TrackType.ToString()
+                        Offset = track.TrackFileOffset,
+                        Start = track.TrackStartSector,
+                        Type = track.TrackType.ToString()
                     };
 
                     _imageInfo.Sectors += partition.Length;
@@ -748,13 +748,13 @@ namespace Aaru.DiscImages
                     _offsetMap.Add(track.TrackSequence, track.TrackStartSector);
                 }
 
-                bool data       = false;
-                bool mode2      = false;
+                bool data = false;
+                bool mode2 = false;
                 bool firstAudio = false;
-                bool firstData  = false;
-                bool audio      = false;
+                bool firstData = false;
+                bool audio = false;
 
-                for(int i = 0; i < Tracks.Count; i++)
+                for (int i = 0; i < Tracks.Count; i++)
                 {
                     // First track is audio
                     firstAudio |= i == 0 && Tracks[i].TrackType == TrackType.Audio;
@@ -768,7 +768,7 @@ namespace Aaru.DiscImages
                     // Any non first track is audio
                     audio |= i != 0 && Tracks[i].TrackType == TrackType.Audio;
 
-                    switch(Tracks[i].TrackType)
+                    switch (Tracks[i].TrackType)
                     {
                         case TrackType.CdMode2Form1:
                         case TrackType.CdMode2Form2:
@@ -782,30 +782,30 @@ namespace Aaru.DiscImages
                 // TODO: Check format
                 _cdtext = cdtMs.ToArray();
 
-                if(!data &&
+                if (!data &&
                    !firstData)
                     _imageInfo.MediaType = MediaType.CDDA;
-                else if(firstAudio         &&
-                        data               &&
+                else if (firstAudio &&
+                        data &&
                         Sessions.Count > 1 &&
                         mode2)
                     _imageInfo.MediaType = MediaType.CDPLUS;
-                else if((firstData && audio) || mode2)
+                else if ((firstData && audio) || mode2)
                     _imageInfo.MediaType = MediaType.CDROMXA;
-                else if(!audio)
+                else if (!audio)
                     _imageInfo.MediaType = MediaType.CDROM;
                 else
                     _imageInfo.MediaType = MediaType.CD;
 
-                _imageInfo.Application          = "CloneCD";
-                _imageInfo.ImageSize            = (ulong)imageFilter.GetDataForkLength();
-                _imageInfo.CreationTime         = imageFilter.GetCreationTime();
+                _imageInfo.Application = "CloneCD";
+                _imageInfo.ImageSize = (ulong)imageFilter.GetDataForkLength();
+                _imageInfo.CreationTime = imageFilter.GetCreationTime();
                 _imageInfo.LastModificationTime = imageFilter.GetLastWriteTime();
-                _imageInfo.XmlMediaType         = XmlMediaType.OpticalDisc;
+                _imageInfo.XmlMediaType = XmlMediaType.OpticalDisc;
 
                 return true;
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 AaruConsole.ErrorWriteLine("Exception trying to identify image file {0}", imageFilter.GetFilename());
                 AaruConsole.ErrorWriteLine("Exception: {0}", ex.Message);
@@ -827,17 +827,17 @@ namespace Aaru.DiscImages
 
         public byte[] ReadDiskTag(MediaTagType tag)
         {
-            switch(tag)
+            switch (tag)
             {
                 case MediaTagType.CD_FullTOC: return _fullToc;
                 case MediaTagType.CD_TEXT:
-                {
-                    if(_cdtext        != null &&
-                       _cdtext.Length > 0)
-                        return _cdtext;
+                    {
+                        if (_cdtext != null &&
+                           _cdtext.Length > 0)
+                            return _cdtext;
 
-                    throw new FeatureNotPresentImageException("Image does not contain CD-TEXT information.");
-                }
+                        throw new FeatureNotPresentImageException("Image does not contain CD-TEXT information.");
+                    }
                 default:
                     throw new FeatureSupportedButNotImplementedImageException("Feature not supported by image format");
             }
@@ -854,11 +854,13 @@ namespace Aaru.DiscImages
 
         public byte[] ReadSectors(ulong sectorAddress, uint length)
         {
-            foreach(KeyValuePair<uint, ulong> kvp in from kvp in _offsetMap where sectorAddress     >= kvp.Value
-                                                     from track in Tracks where track.TrackSequence == kvp.Key
-                                                     where sectorAddress                                   - kvp.Value <
-                                                           (track.TrackEndSector - track.TrackStartSector) + 1
-                                                     select kvp)
+            foreach (KeyValuePair<uint, ulong> kvp in from kvp in _offsetMap
+                                                      where sectorAddress >= kvp.Value
+                                                      from track in Tracks
+                                                      where track.TrackSequence == kvp.Key
+                                                      where sectorAddress - kvp.Value <
+                                                            (track.TrackEndSector - track.TrackStartSector) + 1
+                                                      select kvp)
                 return ReadSectors(sectorAddress - kvp.Value, length, kvp.Key);
 
             throw new ArgumentOutOfRangeException(nameof(sectorAddress), $"Sector address {sectorAddress} not found");
@@ -866,7 +868,7 @@ namespace Aaru.DiscImages
 
         public byte[] ReadSectorsTag(ulong sectorAddress, uint length, SectorTagType tag)
         {
-            foreach(KeyValuePair<uint, ulong> kvp in _offsetMap.Where(kvp => sectorAddress >= kvp.Value).
+            foreach (KeyValuePair<uint, ulong> kvp in _offsetMap.Where(kvp => sectorAddress >= kvp.Value).
                                                                 SelectMany(kvp => Tracks, (kvp, track) => new
                                                                 {
                                                                     kvp,
@@ -888,17 +890,17 @@ namespace Aaru.DiscImages
                 TrackSequence = 0
             };
 
-            foreach(Track linqTrack in Tracks.Where(linqTrack => linqTrack.TrackSequence == track))
+            foreach (Track linqTrack in Tracks.Where(linqTrack => linqTrack.TrackSequence == track))
             {
                 aaruTrack = linqTrack;
 
                 break;
             }
 
-            if(aaruTrack is null)
+            if (aaruTrack is null)
                 throw new ArgumentOutOfRangeException(nameof(track), "Track does not exist in disc image");
 
-            if((length + sectorAddress) - 1 > aaruTrack.TrackEndSector)
+            if ((length + sectorAddress) - 1 > aaruTrack.TrackEndSector)
                 throw new ArgumentOutOfRangeException(nameof(length),
                                                       string.
                                                           Format("Requested more sectors ({0} {2}) than present in track ({1}), won't cross tracks",
@@ -910,35 +912,35 @@ namespace Aaru.DiscImages
             uint sectorSkip;
             bool mode2 = false;
 
-            switch(aaruTrack.TrackType)
+            switch (aaruTrack.TrackType)
             {
                 case TrackType.Audio:
-                {
-                    sectorOffset = 0;
-                    sectorSize   = 2352;
-                    sectorSkip   = 0;
+                    {
+                        sectorOffset = 0;
+                        sectorSize = 2352;
+                        sectorSkip = 0;
 
-                    break;
-                }
+                        break;
+                    }
                 case TrackType.CdMode1:
-                {
-                    sectorOffset = 16;
-                    sectorSize   = 2048;
-                    sectorSkip   = 288;
+                    {
+                        sectorOffset = 16;
+                        sectorSize = 2048;
+                        sectorSkip = 288;
 
-                    break;
-                }
+                        break;
+                    }
                 case TrackType.CdMode2Formless:
                 case TrackType.CdMode2Form1:
                 case TrackType.CdMode2Form2:
-                {
-                    mode2        = true;
-                    sectorOffset = 0;
-                    sectorSize   = 2352;
-                    sectorSkip   = 0;
+                    {
+                        mode2 = true;
+                        sectorOffset = 0;
+                        sectorSize = 2352;
+                        sectorSkip = 0;
 
-                    break;
-                }
+                        break;
+                    }
                 default: throw new FeatureSupportedButNotImplementedImageException("Unsupported track type");
             }
 
@@ -946,13 +948,13 @@ namespace Aaru.DiscImages
 
             _dataStream.Seek((long)(aaruTrack.TrackFileOffset + (sectorAddress * 2352)), SeekOrigin.Begin);
 
-            if(mode2)
+            if (mode2)
             {
                 var mode2Ms = new MemoryStream((int)(sectorSize * length));
 
                 _dataStream.Read(buffer, 0, buffer.Length);
 
-                for(int i = 0; i < length; i++)
+                for (int i = 0; i < length; i++)
                 {
                     byte[] sector = new byte[sectorSize];
                     Array.Copy(buffer, sectorSize * i, sector, 0, sectorSize);
@@ -962,11 +964,11 @@ namespace Aaru.DiscImages
 
                 buffer = mode2Ms.ToArray();
             }
-            else if(sectorOffset == 0 &&
-                    sectorSkip   == 0)
+            else if (sectorOffset == 0 &&
+                    sectorSkip == 0)
                 _dataStream.Read(buffer, 0, buffer.Length);
             else
-                for(int i = 0; i < length; i++)
+                for (int i = 0; i < length; i++)
                 {
                     byte[] sector = new byte[sectorSize];
                     _dataStream.Seek(sectorOffset, SeekOrigin.Current);
@@ -980,7 +982,7 @@ namespace Aaru.DiscImages
 
         public byte[] ReadSectorsTag(ulong sectorAddress, uint length, uint track, SectorTagType tag)
         {
-            if(tag == SectorTagType.CdTrackFlags)
+            if (tag == SectorTagType.CdTrackFlags)
                 track = (uint)sectorAddress;
 
             var aaruTrack = new Track
@@ -988,26 +990,26 @@ namespace Aaru.DiscImages
                 TrackSequence = 0
             };
 
-            foreach(Track linqTrack in Tracks.Where(linqTrack => linqTrack.TrackSequence == track))
+            foreach (Track linqTrack in Tracks.Where(linqTrack => linqTrack.TrackSequence == track))
             {
                 aaruTrack = linqTrack;
 
                 break;
             }
 
-            if(aaruTrack is null)
+            if (aaruTrack is null)
                 throw new ArgumentOutOfRangeException(nameof(track), "Track does not exist in disc image");
 
-            if((length + sectorAddress) - 1 > aaruTrack.TrackEndSector)
+            if ((length + sectorAddress) - 1 > aaruTrack.TrackEndSector)
                 throw new ArgumentOutOfRangeException(nameof(length),
                                                       $"Requested more sectors ({length + sectorAddress}) than present in track ({aaruTrack.TrackEndSector}), won't cross tracks");
 
-            if(aaruTrack.TrackType == TrackType.Data)
+            if (aaruTrack.TrackType == TrackType.Data)
                 throw new ArgumentException("Unsupported tag requested", nameof(tag));
 
             byte[] buffer;
 
-            switch(tag)
+            switch (tag)
             {
                 case SectorTagType.CdSectorEcc:
                 case SectorTagType.CdSectorEccP:
@@ -1034,202 +1036,202 @@ namespace Aaru.DiscImages
             uint sectorSize;
             uint sectorSkip;
 
-            switch(aaruTrack.TrackType)
+            switch (aaruTrack.TrackType)
             {
                 case TrackType.CdMode1:
-                    switch(tag)
+                    switch (tag)
                     {
                         case SectorTagType.CdSectorSync:
-                        {
-                            sectorOffset = 0;
-                            sectorSize   = 12;
-                            sectorSkip   = 2340;
+                            {
+                                sectorOffset = 0;
+                                sectorSize = 12;
+                                sectorSkip = 2340;
 
-                            break;
-                        }
+                                break;
+                            }
                         case SectorTagType.CdSectorHeader:
-                        {
-                            sectorOffset = 12;
-                            sectorSize   = 4;
-                            sectorSkip   = 2336;
+                            {
+                                sectorOffset = 12;
+                                sectorSize = 4;
+                                sectorSkip = 2336;
 
-                            break;
-                        }
+                                break;
+                            }
                         case SectorTagType.CdSectorSubHeader:
                             throw new ArgumentException("Unsupported tag requested for this track", nameof(tag));
                         case SectorTagType.CdSectorEcc:
-                        {
-                            sectorOffset = 2076;
-                            sectorSize   = 276;
-                            sectorSkip   = 0;
+                            {
+                                sectorOffset = 2076;
+                                sectorSize = 276;
+                                sectorSkip = 0;
 
-                            break;
-                        }
+                                break;
+                            }
                         case SectorTagType.CdSectorEccP:
-                        {
-                            sectorOffset = 2076;
-                            sectorSize   = 172;
-                            sectorSkip   = 104;
+                            {
+                                sectorOffset = 2076;
+                                sectorSize = 172;
+                                sectorSkip = 104;
 
-                            break;
-                        }
+                                break;
+                            }
                         case SectorTagType.CdSectorEccQ:
-                        {
-                            sectorOffset = 2248;
-                            sectorSize   = 104;
-                            sectorSkip   = 0;
+                            {
+                                sectorOffset = 2248;
+                                sectorSize = 104;
+                                sectorSkip = 0;
 
-                            break;
-                        }
+                                break;
+                            }
                         case SectorTagType.CdSectorEdc:
-                        {
-                            sectorOffset = 2064;
-                            sectorSize   = 4;
-                            sectorSkip   = 284;
+                            {
+                                sectorOffset = 2064;
+                                sectorSize = 4;
+                                sectorSkip = 284;
 
-                            break;
-                        }
+                                break;
+                            }
                         default: throw new ArgumentException("Unsupported tag requested", nameof(tag));
                     }
 
                     break;
                 case TrackType.CdMode2Formless:
-                {
-                    switch(tag)
                     {
-                        case SectorTagType.CdSectorSync:
-                        case SectorTagType.CdSectorHeader:
-                        case SectorTagType.CdSectorEcc:
-                        case SectorTagType.CdSectorEccP:
-                        case SectorTagType.CdSectorEccQ:
-                            throw new ArgumentException("Unsupported tag requested for this track", nameof(tag));
-                        case SectorTagType.CdSectorSubHeader:
+                        switch (tag)
                         {
-                            sectorOffset = 0;
-                            sectorSize   = 8;
-                            sectorSkip   = 2328;
+                            case SectorTagType.CdSectorSync:
+                            case SectorTagType.CdSectorHeader:
+                            case SectorTagType.CdSectorEcc:
+                            case SectorTagType.CdSectorEccP:
+                            case SectorTagType.CdSectorEccQ:
+                                throw new ArgumentException("Unsupported tag requested for this track", nameof(tag));
+                            case SectorTagType.CdSectorSubHeader:
+                                {
+                                    sectorOffset = 0;
+                                    sectorSize = 8;
+                                    sectorSkip = 2328;
 
-                            break;
-                        }
-                        case SectorTagType.CdSectorEdc:
-                        {
-                            sectorOffset = 2332;
-                            sectorSize   = 4;
-                            sectorSkip   = 0;
+                                    break;
+                                }
+                            case SectorTagType.CdSectorEdc:
+                                {
+                                    sectorOffset = 2332;
+                                    sectorSize = 4;
+                                    sectorSkip = 0;
 
-                            break;
+                                    break;
+                                }
+                            default: throw new ArgumentException("Unsupported tag requested", nameof(tag));
                         }
-                        default: throw new ArgumentException("Unsupported tag requested", nameof(tag));
+
+                        break;
                     }
-
-                    break;
-                }
                 case TrackType.CdMode2Form1:
-                    switch(tag)
+                    switch (tag)
                     {
                         case SectorTagType.CdSectorSync:
-                        {
-                            sectorOffset = 0;
-                            sectorSize   = 12;
-                            sectorSkip   = 2340;
+                            {
+                                sectorOffset = 0;
+                                sectorSize = 12;
+                                sectorSkip = 2340;
 
-                            break;
-                        }
+                                break;
+                            }
                         case SectorTagType.CdSectorHeader:
-                        {
-                            sectorOffset = 12;
-                            sectorSize   = 4;
-                            sectorSkip   = 2336;
+                            {
+                                sectorOffset = 12;
+                                sectorSize = 4;
+                                sectorSkip = 2336;
 
-                            break;
-                        }
+                                break;
+                            }
                         case SectorTagType.CdSectorSubHeader:
-                        {
-                            sectorOffset = 16;
-                            sectorSize   = 8;
-                            sectorSkip   = 2328;
+                            {
+                                sectorOffset = 16;
+                                sectorSize = 8;
+                                sectorSkip = 2328;
 
-                            break;
-                        }
+                                break;
+                            }
                         case SectorTagType.CdSectorEcc:
-                        {
-                            sectorOffset = 2076;
-                            sectorSize   = 276;
-                            sectorSkip   = 0;
+                            {
+                                sectorOffset = 2076;
+                                sectorSize = 276;
+                                sectorSkip = 0;
 
-                            break;
-                        }
+                                break;
+                            }
                         case SectorTagType.CdSectorEccP:
-                        {
-                            sectorOffset = 2076;
-                            sectorSize   = 172;
-                            sectorSkip   = 104;
+                            {
+                                sectorOffset = 2076;
+                                sectorSize = 172;
+                                sectorSkip = 104;
 
-                            break;
-                        }
+                                break;
+                            }
                         case SectorTagType.CdSectorEccQ:
-                        {
-                            sectorOffset = 2248;
-                            sectorSize   = 104;
-                            sectorSkip   = 0;
+                            {
+                                sectorOffset = 2248;
+                                sectorSize = 104;
+                                sectorSkip = 0;
 
-                            break;
-                        }
+                                break;
+                            }
                         case SectorTagType.CdSectorEdc:
-                        {
-                            sectorOffset = 2072;
-                            sectorSize   = 4;
-                            sectorSkip   = 276;
+                            {
+                                sectorOffset = 2072;
+                                sectorSize = 4;
+                                sectorSkip = 276;
 
-                            break;
-                        }
+                                break;
+                            }
                         default: throw new ArgumentException("Unsupported tag requested", nameof(tag));
                     }
 
                     break;
                 case TrackType.CdMode2Form2:
-                    switch(tag)
+                    switch (tag)
                     {
                         case SectorTagType.CdSectorSync:
-                        {
-                            sectorOffset = 0;
-                            sectorSize   = 12;
-                            sectorSkip   = 2340;
+                            {
+                                sectorOffset = 0;
+                                sectorSize = 12;
+                                sectorSkip = 2340;
 
-                            break;
-                        }
+                                break;
+                            }
                         case SectorTagType.CdSectorHeader:
-                        {
-                            sectorOffset = 12;
-                            sectorSize   = 4;
-                            sectorSkip   = 2336;
+                            {
+                                sectorOffset = 12;
+                                sectorSize = 4;
+                                sectorSkip = 2336;
 
-                            break;
-                        }
+                                break;
+                            }
                         case SectorTagType.CdSectorSubHeader:
-                        {
-                            sectorOffset = 16;
-                            sectorSize   = 8;
-                            sectorSkip   = 2328;
+                            {
+                                sectorOffset = 16;
+                                sectorSize = 8;
+                                sectorSkip = 2328;
 
-                            break;
-                        }
+                                break;
+                            }
                         case SectorTagType.CdSectorEdc:
-                        {
-                            sectorOffset = 2348;
-                            sectorSize   = 4;
-                            sectorSkip   = 0;
+                            {
+                                sectorOffset = 2348;
+                                sectorSize = 4;
+                                sectorSkip = 0;
 
-                            break;
-                        }
+                                break;
+                            }
                         default: throw new ArgumentException("Unsupported tag requested", nameof(tag));
                     }
 
                     break;
                 case TrackType.Audio:
-                {
-                    throw new ArgumentException("Unsupported tag requested", nameof(tag));
-                }
+                    {
+                        throw new ArgumentException("Unsupported tag requested", nameof(tag));
+                    }
                 default: throw new FeatureSupportedButNotImplementedImageException("Unsupported track type");
             }
 
@@ -1237,11 +1239,11 @@ namespace Aaru.DiscImages
 
             _dataStream.Seek((long)(aaruTrack.TrackFileOffset + (sectorAddress * 2352)), SeekOrigin.Begin);
 
-            if(sectorOffset == 0 &&
-               sectorSkip   == 0)
+            if (sectorOffset == 0 &&
+               sectorSkip == 0)
                 _dataStream.Read(buffer, 0, buffer.Length);
             else
-                for(int i = 0; i < length; i++)
+                for (int i = 0; i < length; i++)
                 {
                     byte[] sector = new byte[sectorSize];
                     _dataStream.Seek(sectorOffset, SeekOrigin.Current);
@@ -1259,11 +1261,13 @@ namespace Aaru.DiscImages
 
         public byte[] ReadSectorsLong(ulong sectorAddress, uint length)
         {
-            foreach(KeyValuePair<uint, ulong> kvp in from kvp in _offsetMap where sectorAddress     >= kvp.Value
-                                                     from track in Tracks where track.TrackSequence == kvp.Key
-                                                     where sectorAddress                                   - kvp.Value <
-                                                           (track.TrackEndSector - track.TrackStartSector) + 1
-                                                     select kvp)
+            foreach (KeyValuePair<uint, ulong> kvp in from kvp in _offsetMap
+                                                      where sectorAddress >= kvp.Value
+                                                      from track in Tracks
+                                                      where track.TrackSequence == kvp.Key
+                                                      where sectorAddress - kvp.Value <
+                                                            (track.TrackEndSector - track.TrackStartSector) + 1
+                                                      select kvp)
                 return ReadSectorsLong(sectorAddress - kvp.Value, length, kvp.Key);
 
             throw new ArgumentOutOfRangeException(nameof(sectorAddress), $"Sector address {sectorAddress} not found");
@@ -1276,17 +1280,17 @@ namespace Aaru.DiscImages
                 TrackSequence = 0
             };
 
-            foreach(Track linqTrack in Tracks.Where(linqTrack => linqTrack.TrackSequence == track))
+            foreach (Track linqTrack in Tracks.Where(linqTrack => linqTrack.TrackSequence == track))
             {
                 aaruTrack = linqTrack;
 
                 break;
             }
 
-            if(aaruTrack is null)
+            if (aaruTrack is null)
                 throw new ArgumentOutOfRangeException(nameof(track), "Track does not exist in disc image");
 
-            if((length + sectorAddress) - 1 > aaruTrack.TrackEndSector)
+            if ((length + sectorAddress) - 1 > aaruTrack.TrackEndSector)
                 throw new ArgumentOutOfRangeException(nameof(length),
                                                       $"Requested more sectors ({length + sectorAddress}) than present in track ({aaruTrack.TrackEndSector}), won't cross tracks");
 
@@ -1300,7 +1304,7 @@ namespace Aaru.DiscImages
 
         public List<Track> GetSessionTracks(Session session)
         {
-            if(Sessions.Contains(session))
+            if (Sessions.Contains(session))
                 return GetSessionTracks(session.SessionSequence);
 
             throw new ImageNotSupportedException("Session does not exist in disc image");

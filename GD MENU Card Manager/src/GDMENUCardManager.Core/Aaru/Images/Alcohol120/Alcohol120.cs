@@ -40,46 +40,46 @@ namespace Aaru.DiscImages
 {
     public sealed partial class Alcohol120 : IOpticalMediaImage//IWritableOpticalImage
     {
-        Footer                                  _alcFooter;
-        IFilter                                 _alcImage;
-        Dictionary<int, Session>                _alcSessions;
+        Footer _alcFooter;
+        IFilter _alcImage;
+        Dictionary<int, Session> _alcSessions;
         Dictionary<int, Dictionary<int, Track>> _alcToc;
-        Dictionary<int, TrackExtra>             _alcTrackExtras;
-        Dictionary<int, Track>                  _alcTracks;
-        byte[]                                  _bca;
+        Dictionary<int, TrackExtra> _alcTrackExtras;
+        Dictionary<int, Track> _alcTracks;
+        byte[] _bca;
         //FileStream                              _descriptorStream;
         //byte[]                                  _dmi;
-        byte[]                                  _fullToc;
-        Header                                  _header;
-        ImageInfo                               _imageInfo;
-        Stream                                  _imageStream;
-        bool                                    _isDvd;
-        Dictionary<uint, ulong>                 _offsetMap;
+        byte[] _fullToc;
+        Header _header;
+        ImageInfo _imageInfo;
+        Stream _imageStream;
+        bool _isDvd;
+        Dictionary<uint, ulong> _offsetMap;
         //byte[]                                  _pfi;
         //Dictionary<byte, byte>                  _trackFlags;
         //List<CommonTypes.Structs.Track>         _writingTracks;
 
         public Alcohol120() => _imageInfo = new ImageInfo
         {
-            ReadableSectorTags    = new List<SectorTagType>(),
-            ReadableMediaTags     = new List<MediaTagType>(),
-            HasPartitions         = true,
-            HasSessions           = true,
-            Version               = null,
-            Application           = null,
-            ApplicationVersion    = null,
-            Creator               = null,
-            Comments              = null,
-            MediaManufacturer     = null,
-            MediaModel            = null,
-            MediaSerialNumber     = null,
-            MediaBarcode          = null,
-            MediaPartNumber       = null,
-            MediaSequence         = 0,
-            LastMediaSequence     = 0,
-            DriveManufacturer     = null,
-            DriveModel            = null,
-            DriveSerialNumber     = null,
+            ReadableSectorTags = new List<SectorTagType>(),
+            ReadableMediaTags = new List<MediaTagType>(),
+            HasPartitions = true,
+            HasSessions = true,
+            Version = null,
+            Application = null,
+            ApplicationVersion = null,
+            Creator = null,
+            Comments = null,
+            MediaManufacturer = null,
+            MediaModel = null,
+            MediaSerialNumber = null,
+            MediaBarcode = null,
+            MediaPartNumber = null,
+            MediaSequence = 0,
+            LastMediaSequence = 0,
+            DriveManufacturer = null,
+            DriveModel = null,
+            DriveSerialNumber = null,
             DriveFirmwareRevision = null
         };
     }

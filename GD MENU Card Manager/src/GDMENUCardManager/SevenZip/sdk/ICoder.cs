@@ -9,7 +9,7 @@ namespace SevenZip.Sdk
     [Serializable]
     internal class DataErrorException : ApplicationException
     {
-        public DataErrorException() : base("Data Error") {}
+        public DataErrorException() : base("Data Error") { }
     }
 
     /// <summary>
@@ -18,7 +18,7 @@ namespace SevenZip.Sdk
     [Serializable]
     internal class InvalidParamException : ApplicationException
     {
-        public InvalidParamException() : base("Invalid Parameter") {}
+        public InvalidParamException() : base("Invalid Parameter") { }
     }
 
     /// <summary>
@@ -36,7 +36,7 @@ namespace SevenZip.Sdk
         /// Processed output size. -1 if unknown.
         /// </param>
         void SetProgress(Int64 inSize, Int64 outSize);
-    } ;
+    };
 
     /// <summary>
     /// Stream coder interface
@@ -66,7 +66,7 @@ namespace SevenZip.Sdk
         /// </exception>
         void Code(Stream inStream, Stream outStream,
                   Int64 inSize, Int64 outSize, ICodeProgress progress);
-    } ;
+    };
 
     /*
 	public interface ICoder2
@@ -144,7 +144,7 @@ namespace SevenZip.Sdk
         /// Specifies mode with end marker.
         /// </summary>
         EndMarker = 0x490
-    } ;
+    };
 
     /// <summary>
     /// The ISetCoderProperties interface
@@ -152,7 +152,7 @@ namespace SevenZip.Sdk
     internal interface ISetCoderProperties
     {
         void SetCoderProperties(CoderPropId[] propIDs, object[] properties);
-    } ;
+    };
 
     /// <summary>
     /// The IWriteCoderProperties interface

@@ -23,7 +23,7 @@ namespace GDMENUCardManager
         public class ItemToShrink : INotifyPropertyChanged
         {
             public GdItem Key { get; set; }
-            
+
             private bool _Value;
             public bool Value
             {

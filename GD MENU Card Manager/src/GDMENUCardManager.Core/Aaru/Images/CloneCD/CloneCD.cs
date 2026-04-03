@@ -41,40 +41,40 @@ namespace Aaru.DiscImages
     // TODO: CloneCD stores subchannel deinterleaved
     public sealed partial class CloneCd : IOpticalMediaImage//IWritableOpticalImage
     {
-        string                  _catalog; // TODO: Use it
-        IFilter                 _ccdFilter;
-        byte[]                  _cdtext;
-        StreamReader            _cueStream;
-        IFilter                 _dataFilter;
-        Stream                  _dataStream;
+        string _catalog; // TODO: Use it
+        IFilter _ccdFilter;
+        byte[] _cdtext;
+        StreamReader _cueStream;
+        IFilter _dataFilter;
+        Stream _dataStream;
         //StreamWriter            _descriptorStream;
-        byte[]                  _fullToc;
-        ImageInfo               _imageInfo;
+        byte[] _fullToc;
+        ImageInfo _imageInfo;
         Dictionary<uint, ulong> _offsetMap;
-        bool                    _scrambled;
-        IFilter                 _subFilter;
-        Stream                  _subStream;
-        Dictionary<byte, byte>  _trackFlags;
+        bool _scrambled;
+        IFilter _subFilter;
+        Stream _subStream;
+        Dictionary<byte, byte> _trackFlags;
         //string                  _writingBaseName;
 
         public CloneCd() => _imageInfo = new ImageInfo
         {
-            ReadableSectorTags    = new List<SectorTagType>(),
-            ReadableMediaTags     = new List<MediaTagType>(),
-            HasPartitions         = true,
-            HasSessions           = true,
-            Version               = null,
-            ApplicationVersion    = null,
-            MediaTitle            = null,
-            Creator               = null,
-            MediaManufacturer     = null,
-            MediaModel            = null,
-            MediaPartNumber       = null,
-            MediaSequence         = 0,
-            LastMediaSequence     = 0,
-            DriveManufacturer     = null,
-            DriveModel            = null,
-            DriveSerialNumber     = null,
+            ReadableSectorTags = new List<SectorTagType>(),
+            ReadableMediaTags = new List<MediaTagType>(),
+            HasPartitions = true,
+            HasSessions = true,
+            Version = null,
+            ApplicationVersion = null,
+            MediaTitle = null,
+            Creator = null,
+            MediaManufacturer = null,
+            MediaModel = null,
+            MediaPartNumber = null,
+            MediaSequence = 0,
+            LastMediaSequence = 0,
+            DriveManufacturer = null,
+            DriveModel = null,
+            DriveSerialNumber = null,
             DriveFirmwareRevision = null
         };
     }

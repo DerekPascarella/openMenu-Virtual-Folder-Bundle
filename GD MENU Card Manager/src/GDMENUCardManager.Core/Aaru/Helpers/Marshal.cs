@@ -268,58 +268,58 @@ namespace Aaru.Helpers
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static object SwapStructureMembersEndian(object str)
         {
-            Type        t         = str.GetType();
+            Type t = str.GetType();
             FieldInfo[] fieldInfo = t.GetFields();
 
-            foreach(FieldInfo fi in fieldInfo)
-                if(fi.FieldType == typeof(short) ||
+            foreach (FieldInfo fi in fieldInfo)
+                if (fi.FieldType == typeof(short) ||
                    (fi.FieldType.IsEnum && fi.FieldType.GetEnumUnderlyingType() == typeof(short)))
                 {
                     short x = (short)fi.GetValue(str);
                     fi.SetValue(str, (short)((x << 8) | ((x >> 8) & 0xFF)));
                 }
-                else if(fi.FieldType == typeof(int) ||
+                else if (fi.FieldType == typeof(int) ||
                         (fi.FieldType.IsEnum && fi.FieldType.GetEnumUnderlyingType() == typeof(int)))
                 {
                     int x = (int)fi.GetValue(str);
-                    x = (int)(((x                   << 8) & 0xFF00FF00) | (((uint)x >> 8) & 0xFF00FF));
+                    x = (int)(((x << 8) & 0xFF00FF00) | (((uint)x >> 8) & 0xFF00FF));
                     fi.SetValue(str, (int)(((uint)x << 16) | (((uint)x >> 16) & 0xFFFF)));
                 }
-                else if(fi.FieldType == typeof(long) ||
+                else if (fi.FieldType == typeof(long) ||
                         (fi.FieldType.IsEnum && fi.FieldType.GetEnumUnderlyingType() == typeof(long)))
                 {
                     long x = (long)fi.GetValue(str);
                     x = ((x & 0x00000000FFFFFFFF) << 32) | (long)(((ulong)x & 0xFFFFFFFF00000000) >> 32);
                     x = ((x & 0x0000FFFF0000FFFF) << 16) | (long)(((ulong)x & 0xFFFF0000FFFF0000) >> 16);
-                    x = ((x & 0x00FF00FF00FF00FF) << 8)  | (long)(((ulong)x & 0xFF00FF00FF00FF00) >> 8);
+                    x = ((x & 0x00FF00FF00FF00FF) << 8) | (long)(((ulong)x & 0xFF00FF00FF00FF00) >> 8);
 
                     fi.SetValue(str, x);
                 }
-                else if(fi.FieldType == typeof(ushort) ||
+                else if (fi.FieldType == typeof(ushort) ||
                         (fi.FieldType.IsEnum && fi.FieldType.GetEnumUnderlyingType() == typeof(ushort)))
                 {
                     ushort x = (ushort)fi.GetValue(str);
                     fi.SetValue(str, (ushort)((x << 8) | (x >> 8)));
                 }
-                else if(fi.FieldType == typeof(uint) ||
+                else if (fi.FieldType == typeof(uint) ||
                         (fi.FieldType.IsEnum && fi.FieldType.GetEnumUnderlyingType() == typeof(uint)))
                 {
                     uint x = (uint)fi.GetValue(str);
-                    x = ((x             << 8) & 0xFF00FF00) | ((x >> 8) & 0xFF00FF);
-                    fi.SetValue(str, (x << 16) | (x               >> 16));
+                    x = ((x << 8) & 0xFF00FF00) | ((x >> 8) & 0xFF00FF);
+                    fi.SetValue(str, (x << 16) | (x >> 16));
                 }
-                else if(fi.FieldType == typeof(ulong) ||
+                else if (fi.FieldType == typeof(ulong) ||
                         (fi.FieldType.IsEnum && fi.FieldType.GetEnumUnderlyingType() == typeof(ulong)))
                 {
                     ulong x = (ulong)fi.GetValue(str);
                     x = ((x & 0x00000000FFFFFFFF) << 32) | ((x & 0xFFFFFFFF00000000) >> 32);
                     x = ((x & 0x0000FFFF0000FFFF) << 16) | ((x & 0xFFFF0000FFFF0000) >> 16);
-                    x = ((x & 0x00FF00FF00FF00FF) << 8)  | ((x & 0xFF00FF00FF00FF00) >> 8);
+                    x = ((x & 0x00FF00FF00FF00FF) << 8) | ((x & 0xFF00FF00FF00FF00) >> 8);
                     fi.SetValue(str, x);
                 }
-                else if(fi.FieldType == typeof(float))
+                else if (fi.FieldType == typeof(float))
                 {
-                    float  flt   = (float)fi.GetValue(str);
+                    float flt = (float)fi.GetValue(str);
                     byte[] flt_b = BitConverter.GetBytes(flt);
 
                     fi.SetValue(str, BitConverter.ToSingle(new[]
@@ -327,9 +327,9 @@ namespace Aaru.Helpers
                         flt_b[3], flt_b[2], flt_b[1], flt_b[0]
                     }, 0));
                 }
-                else if(fi.FieldType == typeof(double))
+                else if (fi.FieldType == typeof(double))
                 {
-                    double dbl   = (double)fi.GetValue(str);
+                    double dbl = (double)fi.GetValue(str);
                     byte[] dbl_b = BitConverter.GetBytes(dbl);
 
                     fi.SetValue(str, BitConverter.ToDouble(new[]
@@ -337,22 +337,22 @@ namespace Aaru.Helpers
                         dbl_b[7], dbl_b[6], dbl_b[5], dbl_b[4], dbl_b[3], dbl_b[2], dbl_b[1], dbl_b[0]
                     }, 0));
                 }
-                else if(fi.FieldType == typeof(byte) ||
+                else if (fi.FieldType == typeof(byte) ||
                         fi.FieldType == typeof(sbyte))
                 {
                     // Do nothing, can't byteswap them!
                 }
-                else if(fi.FieldType == typeof(Guid))
+                else if (fi.FieldType == typeof(Guid))
                 {
                     // TODO: Swap GUID
                 }
 
                 // TODO: Swap arrays
-                else if(fi.FieldType.IsValueType &&
-                        !fi.FieldType.IsEnum     &&
+                else if (fi.FieldType.IsValueType &&
+                        !fi.FieldType.IsEnum &&
                         !fi.FieldType.IsArray)
                 {
-                    object obj  = fi.GetValue(str);
+                    object obj = fi.GetValue(str);
                     object strc = SwapStructureMembersEndian(obj);
                     fi.SetValue(str, strc);
                 }
@@ -363,29 +363,29 @@ namespace Aaru.Helpers
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static object SwapStructureMembersEndianPdp(object str)
         {
-            Type        t         = str.GetType();
+            Type t = str.GetType();
             FieldInfo[] fieldInfo = t.GetFields();
 
-            foreach(FieldInfo fi in fieldInfo)
-                if(fi.FieldType == typeof(short)  ||
-                   fi.FieldType == typeof(long)   ||
+            foreach (FieldInfo fi in fieldInfo)
+                if (fi.FieldType == typeof(short) ||
+                   fi.FieldType == typeof(long) ||
                    fi.FieldType == typeof(ushort) ||
-                   fi.FieldType == typeof(ulong)  ||
-                   fi.FieldType == typeof(float)  ||
+                   fi.FieldType == typeof(ulong) ||
+                   fi.FieldType == typeof(float) ||
                    fi.FieldType == typeof(double) ||
-                   fi.FieldType == typeof(byte)   ||
-                   fi.FieldType == typeof(sbyte)  ||
+                   fi.FieldType == typeof(byte) ||
+                   fi.FieldType == typeof(sbyte) ||
                    fi.FieldType == typeof(Guid))
                 {
                     // Do nothing
                 }
-                else if(fi.FieldType == typeof(int) ||
+                else if (fi.FieldType == typeof(int) ||
                         (fi.FieldType.IsEnum && fi.FieldType.GetEnumUnderlyingType() == typeof(int)))
                 {
                     int x = (int)fi.GetValue(str);
                     fi.SetValue(str, ((x & 0xffffu) << 16) | ((x & 0xffff0000u) >> 16));
                 }
-                else if(fi.FieldType == typeof(uint) ||
+                else if (fi.FieldType == typeof(uint) ||
                         (fi.FieldType.IsEnum && fi.FieldType.GetEnumUnderlyingType() == typeof(uint)))
                 {
                     uint x = (uint)fi.GetValue(str);
@@ -393,11 +393,11 @@ namespace Aaru.Helpers
                 }
 
                 // TODO: Swap arrays
-                else if(fi.FieldType.IsValueType &&
-                        !fi.FieldType.IsEnum     &&
+                else if (fi.FieldType.IsValueType &&
+                        !fi.FieldType.IsEnum &&
                         !fi.FieldType.IsArray)
                 {
-                    object obj  = fi.GetValue(str);
+                    object obj = fi.GetValue(str);
                     object strc = SwapStructureMembersEndianPdp(obj);
                     fi.SetValue(str, strc);
                 }
@@ -413,7 +413,7 @@ namespace Aaru.Helpers
         public static byte[] StructureToByteArrayLittleEndian<T>(T str) where T : struct
         {
             byte[] buf = new byte[SizeOf<T>()];
-            var    ptr = GCHandle.Alloc(buf, GCHandleType.Pinned);
+            var ptr = GCHandle.Alloc(buf, GCHandleType.Pinned);
             System.Runtime.InteropServices.Marshal.StructureToPtr(str, ptr.AddrOfPinnedObject(), false);
             ptr.Free();
 

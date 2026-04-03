@@ -26,7 +26,7 @@ namespace VrSharp.Pvr
 
                 // Twiddle map
                 int[] twiddleMap = MakeTwiddleMap(width);
-                
+
                 // Decode texture data
                 for (int y = 0; y < height; y++)
                 {

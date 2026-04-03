@@ -44,20 +44,20 @@ namespace Aaru.Filesystems
         {
             xattrs = null;
 
-            if(!_mounted)
+            if (!_mounted)
                 return Errno.AccessDenied;
 
             Errno err = GetFileEntry(path, out DecodedDirectoryEntry entry);
 
-            if(err != Errno.NoError)
+            if (err != Errno.NoError)
                 return err;
 
             xattrs = new List<string>();
 
-            if(entry.XattrLength > 0)
+            if (entry.XattrLength > 0)
                 xattrs.Add("org.iso.9660.ea");
 
-            if(entry.AssociatedFile != null)
+            if (entry.AssociatedFile != null)
                 xattrs.Add("org.iso.9660.AssociatedFile");
 
             //if(entry.AppleDosType != null)
@@ -66,7 +66,7 @@ namespace Aaru.Filesystems
             //if(entry.AppleProDosType != null)
             //    xattrs.Add("com.apple.prodos.type");
 
-            if(entry.ResourceFork != null)
+            if (entry.ResourceFork != null)
                 xattrs.Add("com.apple.ResourceFork");
 
             //if(entry.FinderInfo != null)
@@ -78,8 +78,8 @@ namespace Aaru.Filesystems
             //if(entry.AmigaComment != null)
             //    xattrs.Add("com.amiga.comments");
 
-            if(entry.Flags.HasFlag(FileFlags.Directory) ||
-               entry.Extents       == null              ||
+            if (entry.Flags.HasFlag(FileFlags.Directory) ||
+               entry.Extents == null ||
                entry.Extents.Count == 0)
                 return Errno.NoError;
 
@@ -88,7 +88,7 @@ namespace Aaru.Filesystems
             {
                 byte[] sector = _image.ReadSectorLong((entry.Extents[0].extent * _blockSize) / 2048);
 
-                if(sector[15] != 2)
+                if (sector[15] != 2)
                     return Errno.NoError;
             }
             catch
@@ -106,34 +106,34 @@ namespace Aaru.Filesystems
         {
             buf = null;
 
-            if(!_mounted)
+            if (!_mounted)
                 return Errno.AccessDenied;
 
             Errno err = GetFileEntry(path, out DecodedDirectoryEntry entry);
 
-            if(err != Errno.NoError)
+            if (err != Errno.NoError)
                 return err;
 
-            switch(xattr)
+            switch (xattr)
             {
                 case "org.iso.9660.ea":
-                    if(entry.XattrLength == 0)
+                    if (entry.XattrLength == 0)
                         return Errno.NoSuchExtendedAttribute;
 
-                    if(entry.Extents is null)
+                    if (entry.Extents is null)
                         return Errno.InvalidArgument;
 
                     buf = ReadSingleExtent(entry.XattrLength * _blockSize, entry.Extents[0].extent);
 
                     return Errno.NoError;
                 case "org.iso.9660.AssociatedFile":
-                    if(entry.AssociatedFile is null)
+                    if (entry.AssociatedFile is null)
                         return Errno.NoSuchExtendedAttribute;
 
-                    if(entry.AssociatedFile.Extents is null)
+                    if (entry.AssociatedFile.Extents is null)
                         return Errno.InvalidArgument;
 
-                    if(entry.AssociatedFile.Size == 0)
+                    if (entry.AssociatedFile.Size == 0)
                     {
                         buf = new byte[0];
 
@@ -162,13 +162,13 @@ namespace Aaru.Filesystems
 
                 //    return Errno.NoError;
                 case "com.apple.ResourceFork":
-                    if(entry.ResourceFork is null)
+                    if (entry.ResourceFork is null)
                         return Errno.NoSuchExtendedAttribute;
 
-                    if(entry.ResourceFork.Extents is null)
+                    if (entry.ResourceFork.Extents is null)
                         return Errno.InvalidArgument;
 
-                    if(entry.ResourceFork.Size == 0)
+                    if (entry.ResourceFork.Size == 0)
                     {
                         buf = new byte[0];
 

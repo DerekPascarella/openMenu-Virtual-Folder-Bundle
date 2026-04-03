@@ -90,7 +90,7 @@ To accommodate the new openMenu, a modified version of [GD MENU Card Manager](ht
 
 ## Current Version
 
-The latest version of **openMenu Virtual Folder Bundle** is [1.5.1-ateam](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/releases/tag/1.5.1-ateam).
+The latest version of **openMenu Virtual Folder Bundle** is [1.5.2-ateam](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/releases/tag/1.5.2-ateam).
 
 ## Roadmap Ideas
 
@@ -103,6 +103,17 @@ The latest version of **openMenu Virtual Folder Bundle** is [1.5.1-ateam](https:
 
 ## Changelog
 
+- **Version 1.5.2-ateam (2026-04-03)**
+  - **GD MENU Card Manager**
+    - Support extended to arm64 architecture for macOS build (see [Issue 141](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/141)).
+    - Enhanced multi-game automatic rename logic (see [Issue 142](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/142)).
+    - "Sort" button no longer mentions sorting by path if in gdMenu mode (see [Issue 143](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/143)).
+    - Artwork assign/manage window left/right shortcut now supports hold (see [Issue 144](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/144)).
+    - Width of "Size" column increased in Linux/macOS builds in order to not cut off contents (see [Issue 145](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/145)).
+    - SD Drive dropdown now displays filesystem label (see [Issue 146](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/146)).
+    - Non-Dreamcast disc images (e.g., PlayStation discs, audio CDs, video CDs) now automatically converted from CUE to CCD (see [Issue 147](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/147)).
+    - Region/VGA patching no longer performed on any non-Dreamcast disc image (see [Issue 148](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/148)).
+    - "IP.BIN Info" window disabled for non-Dreamcast disc images (see [Issue 149](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/149)).
 - **Version 1.5.1-ateam (2026-03-09)**
   - **openMenu**
     - Fixed errant CMD2 sent in Save/Load window (see [Issue 130](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/130)).
@@ -266,6 +277,7 @@ The latest version of **openMenu Virtual Folder Bundle** is [1.5.1-ateam](https:
   - Virtua Shenmue
   - Nachosonic
   - Patrick Graham
+  - onlycodered
 - **Special Thanks**
   - mrneo240 for his original work on openMenu
   - megavolt85 for forking openMenu and adding new features
@@ -468,6 +480,8 @@ GD MENU Card Manager automatically detects and converts Redump-style CUE/BIN dis
 - **CD-ROM CUE/BIN**: Automatically converted to CDI format using Redump2CDI.
 
 This feature allows users to add Redump-format disc images directly without manual conversion.
+
+Additionally, GD MENU Card Manager automatically detects and converts non-Dreamcast disc images in CUE format to CCD format. Such images include audio CDs, video CDs, and PlayStation discs.
 
 #### Removing Games
 
@@ -822,8 +836,6 @@ The following custom button combinations have been added to Bleemcast!:
 Support also exists for the work-in-progress [Bloom](https://github.com/pcercuei/bloom) emulator. Users can compile Bloom from source and then place `BLOOM.BIN` in the `tools\openMenu\menu_data` folder, after which launching a PlayStation disc will bring up a menu allowing for the selection between Bleemcast! and Bloom.
 
 It's important to note that Bloom is early in its development, and while it impressively places heavy emphasis on accuracy and compatibility, most games are not currently in a playable state.
-
-To add PlayStation discs in CUE/BIN format to an SD card with GD MENU Card Manager, download [CUE2CCD](https://segaxtreme.net/resources/cue2ccd.386/) and drag the CUE file onto the executable. Once the converted disc image in CCD/IMG/SUB format is added to Games List, ensure the value in the **Type** column is "PSX".
 
 ### Multi-Disc Launcher
 

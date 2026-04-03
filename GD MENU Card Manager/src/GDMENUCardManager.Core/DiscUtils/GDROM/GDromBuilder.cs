@@ -138,11 +138,12 @@ namespace DiscUtils.Gdrom
                     if (skip >= 10)
                     {
                         skip = 0;
-                        int percent = (int)((currentBytes*100) / totalBytes);
+                        int percent = (int)((currentBytes * 100) / totalBytes);
                         if (percent > _lastProgress)
                         {
                             _lastProgress = percent;
-                            if(ReportProgress != null){
+                            if (ReportProgress != null)
+                            {
                                 ReportProgress(_lastProgress);
                             }
                         }
@@ -219,7 +220,7 @@ namespace DiscUtils.Gdrom
                 }
             }
         }
-        
+
         private void ExportMultiTrack(BuiltStream isoStream, byte[] ipbinData, List<DiscTrack> tracks)
         {
             //There is a 150 sector gap before and after the CDDA
@@ -611,7 +612,7 @@ namespace DiscUtils.Gdrom
         }
 
         private string GetBootBin(FileStream ipfs)
-        {            
+        {
             byte[] name = new byte[16];
             ipfs.Seek(0x60, SeekOrigin.Begin);
             ipfs.Read(name, 0, name.Length);
@@ -657,11 +658,11 @@ namespace DiscUtils.Gdrom
             else if (bootBin != null)
             {
                 //User doesn't know what they're doing and gave us bad data.
-                throw new FileNotFoundException("IP.BIN requires the boot file " + bootBin + 
+                throw new FileNotFoundException("IP.BIN requires the boot file " + bootBin +
                     " which was not found in the data directory.");
             }
         }
-        
+
         private long RoundUp(long value, long unit)
         {
             return ((value + (unit - 1)) / unit) * unit;

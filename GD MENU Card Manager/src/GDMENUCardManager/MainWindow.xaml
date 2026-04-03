@@ -20,8 +20,10 @@
             <conv:ByteSizeToStringConverter x:Key="ByteSizeToString"/>
             <conv:EnumToBoolConverter x:Key="EnumToBool"/>
             <conv:IsNotMenuItemConverter x:Key="IsNotMenuItem"/>
+            <conv:IsGameDiscConverter x:Key="IsGameDisc"/>
             <conv:ArtworkButtonLabelConverter x:Key="ArtworkButtonLabel"/>
             <conv:IsOpenMenuModeConverter x:Key="IsOpenMenuMode"/>
+            <conv:DriveInfoToLabelConverter x:Key="DriveInfoToLabel"/>
             <conv:BoolAndMultiValueConverter x:Key="BoolAndConverter"/>
 
             <!--icons from materialdesignicons.com-->
@@ -94,7 +96,13 @@
                         <ContentControl Content="{StaticResource ViewOpenFolder}" />
                     </Button>
                     <ComboBox Grid.Column="2" Width="150" VerticalContentAlignment="Center" ItemsSource="{Binding DriveList, Mode=OneWay}" SelectedItem="{Binding SelectedDrive, Mode=TwoWay}" ToolTip="{Binding SelectedDrive.VolumeLabel, Mode=OneWay}"
-                              Visibility="{Binding IsUsingCustomPath, Converter={StaticResource BoolToVisibleOrCollapsed}, ConverterParameter=Inverse}"/>
+                              Visibility="{Binding IsUsingCustomPath, Converter={StaticResource BoolToVisibleOrCollapsed}, ConverterParameter=Inverse}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding Converter={StaticResource DriveInfoToLabel}}"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
                     <TextBox Grid.Column="2" Width="150" VerticalContentAlignment="Center" Text="{Binding CustomSdPath, Mode=OneWay}" IsReadOnly="True"
                              Visibility="{Binding IsUsingCustomPath, Converter={StaticResource BoolToVisibleOrCollapsed}}"/>
                     <Button Grid.Column="3" Width="30" ToolTip="Refresh drive list and clear custom path" Click="ButtonRefreshDrive_Click">
@@ -195,7 +203,7 @@
                     <Button DockPanel.Dock="Right" HorizontalAlignment="Right" Padding="10 5" Margin="0 0 10 0" Click="ButtonDatTools_Click"
                             Visibility="{Binding MenuKindSelected, Converter={StaticResource IsOpenMenuMode}}" ToolTip="Various DAT file maintenance tasks"
                             IsEnabled="{Binding HasSdPath, Mode=OneWay}">DAT Tools</Button>
-                    <Button DockPanel.Dock="Right" HorizontalAlignment="Right" Padding="10 5" Margin="0 0 10 0" Click="ButtonSort_Click" ToolTip="Sort list by folder path + title">
+                    <Button x:Name="ButtonSort" DockPanel.Dock="Right" HorizontalAlignment="Right" Padding="10 5" Margin="0 0 10 0" Click="ButtonSort_Click" ToolTip="Sort list by folder path + title">
                         <Button.IsEnabled>
                             <MultiBinding Converter="{StaticResource BoolAndConverter}">
                                 <Binding Path="HasSdPath" Mode="OneWay"/>
@@ -221,8 +229,8 @@
                                 <MenuItem Header="Lowercase" Click="MenuItemRenameLowercase_Click" CommandParameter="{Binding Path=., Mode=OneWay}"/>
                                 <MenuItem x:Name="MenuItemAutoRename" Header="Automatically Rename Title">
                                     <MenuItem Header="Using IP.BIN _info" Click="MenuItemRenameIP_Click" CommandParameter="{Binding Path=., Mode=OneWay}"/>
-                                    <MenuItem Header="Using its folder name on computer" Click="MenuItemRenameFolder_Click" CommandParameter="{Binding Path=., Mode=OneWay}" IsEnabled="{Binding IsNotOnSdCard}"/>
-                                    <MenuItem Header="Using disc image's base file name" Click="MenuItemRenameFile_Click" CommandParameter="{Binding Path=., Mode=OneWay}" IsEnabled="{Binding IsNotOnSdCard}"/>
+                                    <MenuItem x:Name="MenuItemRenameFolder" Header="Using its folder name on computer" Click="MenuItemRenameFolder_Click" CommandParameter="{Binding Path=., Mode=OneWay}"/>
+                                    <MenuItem x:Name="MenuItemRenameFile" Header="Using disc image's base file name" Click="MenuItemRenameFile_Click" CommandParameter="{Binding Path=., Mode=OneWay}"/>
                                 </MenuItem>
                                 <Separator/>
                                 <MenuItem x:Name="MenuItemAssignFolder" Header="Assign Folder Path" Click="MenuItemAssignFolder_Click" CommandParameter="{Binding Path=., Mode=OneWay}"/>
@@ -250,7 +258,7 @@
                         <DataGridTemplateColumn Width="Auto">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <Button Click="ButtonInfo_Click" ToolTip="View File Info" CommandParameter="{Binding Path=., Mode=OneWay}">
+                                    <Button Click="ButtonInfo_Click" ToolTip="View File Info" CommandParameter="{Binding Path=., Mode=OneWay}" IsEnabled="{Binding Path=., Converter={StaticResource IsGameDisc}}">
                                         <ContentControl Content="{StaticResource ViewInfo}" />
                                     </Button>
                                 </DataTemplate>

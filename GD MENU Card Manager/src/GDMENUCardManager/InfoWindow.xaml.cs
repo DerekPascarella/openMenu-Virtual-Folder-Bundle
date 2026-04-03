@@ -49,7 +49,7 @@ namespace GDMENUCardManager
         {
             InitializeComponent();
             Loaded += InfoWindow_Loaded;
-            
+
             this.item = item;
 
             StringBuilder sb = new StringBuilder();

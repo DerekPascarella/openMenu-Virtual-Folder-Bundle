@@ -54,14 +54,14 @@ namespace Aaru.DiscImages
                 // Check for unexpected control characters that shouldn't be present in a text file and can crash this plugin
                 bool twoConsecutiveNulls = false;
 
-                for(int i = 0; i < 512; i++)
+                for (int i = 0; i < 512; i++)
                 {
-                    if(i >= imageFilter.GetDataForkStream().Length)
+                    if (i >= imageFilter.GetDataForkStream().Length)
                         break;
 
-                    if(testArray[i] == 0)
+                    if (testArray[i] == 0)
                     {
-                        if(twoConsecutiveNulls)
+                        if (twoConsecutiveNulls)
                             return false;
 
                         twoConsecutiveNulls = true;
@@ -69,7 +69,7 @@ namespace Aaru.DiscImages
                     else
                         twoConsecutiveNulls = false;
 
-                    if(testArray[i] < 0x20  &&
+                    if (testArray[i] < 0x20 &&
                        testArray[i] != 0x0A &&
                        testArray[i] != 0x0D &&
                        testArray[i] != 0x00)
@@ -86,7 +86,7 @@ namespace Aaru.DiscImages
 
                 return hdm.Success;
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 AaruConsole.ErrorWriteLine("Exception trying to identify image file {0}", _ccdFilter);
                 AaruConsole.ErrorWriteLine("Exception: {0}", ex.Message);

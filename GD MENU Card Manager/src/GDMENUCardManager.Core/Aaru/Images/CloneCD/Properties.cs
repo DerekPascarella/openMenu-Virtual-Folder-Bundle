@@ -52,14 +52,14 @@ namespace Aaru.DiscImages
         //                                                       OpticalImageCapabilities.CanStoreRawData      |
         //                                                       OpticalImageCapabilities.CanStoreCookedData   |
         //                                                       OpticalImageCapabilities.CanStoreMultipleTracks;
-        public ImageInfo              Info         => _imageInfo;
-        public string                 Name         => "CloneCD";
-        public Guid                   Id           => new Guid("EE9C2975-2E79-427A-8EE9-F86F19165784");
-        public string                 Format       => "CloneCD";
-        public string                 Author       => "Natalia Portillo";
-        public List<Partition>        Partitions   { get; private set; }
-        public List<Track>            Tracks       { get; private set; }
-        public List<Session>          Sessions     { get; private set; }
+        public ImageInfo Info => _imageInfo;
+        public string Name => "CloneCD";
+        public Guid Id => new Guid("EE9C2975-2E79-427A-8EE9-F86F19165784");
+        public string Format => "CloneCD";
+        public string Author => "Natalia Portillo";
+        public List<Partition> Partitions { get; private set; }
+        public List<Track> Tracks { get; private set; }
+        public List<Session> Sessions { get; private set; }
         //public List<DumpHardwareType> DumpHardware => null;
         //public CICMMetadataType       CicmMetadata => null;
         //public IEnumerable<MediaTagType> SupportedMediaTags => new[]

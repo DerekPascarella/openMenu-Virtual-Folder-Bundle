@@ -144,11 +144,11 @@ namespace VrSharp.Pvr
             }
 
             // Read information about the texture
-            textureWidth  = BitConverter.ToUInt16(encodedData, pvrtOffset + 0x0C);
+            textureWidth = BitConverter.ToUInt16(encodedData, pvrtOffset + 0x0C);
             textureHeight = BitConverter.ToUInt16(encodedData, pvrtOffset + 0x0E);
 
             pixelFormat = (PvrPixelFormat)encodedData[pvrtOffset + 0x08];
-            dataFormat  = (PvrDataFormat)encodedData[pvrtOffset + 0x09];
+            dataFormat = (PvrDataFormat)encodedData[pvrtOffset + 0x09];
 
             // Get the codecs and make sure we can decode using them
             pixelCodec = PvrPixelCodec.GetPixelCodec(pixelFormat);
@@ -234,7 +234,7 @@ namespace VrSharp.Pvr
                 mipmapOffsets = new int[(int)Math.Log(textureWidth, 2) + 1];
 
                 int mipmapOffset = 0;
-                
+
                 // Calculate the padding for the first mipmap offset
                 if (dataFormat == PvrDataFormat.SquareTwiddledMipmaps)
                 {

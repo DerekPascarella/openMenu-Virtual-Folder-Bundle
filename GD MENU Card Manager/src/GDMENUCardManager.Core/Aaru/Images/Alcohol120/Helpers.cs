@@ -39,7 +39,7 @@ namespace Aaru.DiscImages
     {
         static ushort TrackModeToCookedBytesPerSector(TrackMode trackMode)
         {
-            switch(trackMode)
+            switch (trackMode)
             {
                 case TrackMode.Mode1:
                 case TrackMode.Mode2F1:
@@ -48,14 +48,14 @@ namespace Aaru.DiscImages
                 case TrackMode.Mode2F2Alt: return 2324;
                 case TrackMode.Mode2: return 2336;
                 case TrackMode.Audio: return 2352;
-                case TrackMode.DVD:   return 2048;
-                default:              return 0;
+                case TrackMode.DVD: return 2048;
+                default: return 0;
             }
         }
 
         static TrackType TrackModeToTrackType(TrackMode trackType)
         {
-            switch(trackType)
+            switch (trackType)
             {
                 case TrackMode.Mode1: return TrackType.CdMode1;
                 case TrackMode.Mode2F1:
@@ -64,20 +64,20 @@ namespace Aaru.DiscImages
                 case TrackMode.Mode2F2Alt: return TrackType.CdMode2Form2;
                 case TrackMode.Mode2: return TrackType.CdMode2Formless;
                 case TrackMode.Audio: return TrackType.Audio;
-                default:              return TrackType.Data;
+                default: return TrackType.Data;
             }
         }
 
         static MediaType MediumTypeToMediaType(MediumType discType)
         {
-            switch(discType)
+            switch (discType)
             {
-                case MediumType.CD:   return MediaType.CD;
-                case MediumType.CDR:  return MediaType.CDR;
+                case MediumType.CD: return MediaType.CD;
+                case MediumType.CDR: return MediaType.CDR;
                 case MediumType.CDRW: return MediaType.CDRW;
-                case MediumType.DVD:  return MediaType.DVDROM;
+                case MediumType.DVD: return MediaType.DVDROM;
                 case MediumType.DVDR: return MediaType.DVDR;
-                default:              return MediaType.Unknown;
+                default: return MediaType.Unknown;
             }
         }
 

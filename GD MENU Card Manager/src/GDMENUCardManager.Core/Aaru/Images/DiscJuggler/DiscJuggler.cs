@@ -43,31 +43,31 @@ namespace Aaru.DiscImages
     // TODO: Too many unknowns to make this writable
     public sealed partial class DiscJuggler : IOpticalMediaImage
     {
-        byte[]                  _cdtext;
-        ImageInfo               _imageInfo;
-        Stream                  _imageStream;
+        byte[] _cdtext;
+        ImageInfo _imageInfo;
+        Stream _imageStream;
         Dictionary<uint, ulong> _offsetMap;
-        SectorBuilder           _sectorBuilder;
-        Dictionary<uint, byte>  _trackFlags;
+        SectorBuilder _sectorBuilder;
+        Dictionary<uint, byte> _trackFlags;
 
         public DiscJuggler() => _imageInfo = new ImageInfo
         {
-            ReadableSectorTags    = new List<SectorTagType>(),
-            ReadableMediaTags     = new List<MediaTagType>(),
-            HasPartitions         = true,
-            HasSessions           = true,
-            Version               = null,
-            ApplicationVersion    = null,
-            MediaTitle            = null,
-            Creator               = null,
-            MediaManufacturer     = null,
-            MediaModel            = null,
-            MediaPartNumber       = null,
-            MediaSequence         = 0,
-            LastMediaSequence     = 0,
-            DriveManufacturer     = null,
-            DriveModel            = null,
-            DriveSerialNumber     = null,
+            ReadableSectorTags = new List<SectorTagType>(),
+            ReadableMediaTags = new List<MediaTagType>(),
+            HasPartitions = true,
+            HasSessions = true,
+            Version = null,
+            ApplicationVersion = null,
+            MediaTitle = null,
+            Creator = null,
+            MediaManufacturer = null,
+            MediaModel = null,
+            MediaPartNumber = null,
+            MediaSequence = 0,
+            LastMediaSequence = 0,
+            DriveManufacturer = null,
+            DriveModel = null,
+            DriveSerialNumber = null,
             DriveFirmwareRevision = null
         };
     }

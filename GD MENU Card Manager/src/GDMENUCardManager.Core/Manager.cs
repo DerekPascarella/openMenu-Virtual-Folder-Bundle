@@ -90,7 +90,7 @@ namespace GDMENUCardManager.Core
         public bool EnableVgaPatch;
         public bool EnableVgaPatchExisting;
 
-        // Lock check option - when true, checks for locked files/folders before save
+        // When true, checks for locked files/folders before save
         public bool EnableLockCheck = true;
 
 
@@ -724,7 +724,7 @@ namespace GDMENUCardManager.Core
             if (boxExists && !iconExists)
                 return DatFileStatus.BoxExistsIconMissing;
 
-            // Both exist - check if serials match
+            // both exist, check if serials match
             if (BoxDat != null && BoxDat.IsLoaded && IconDat != null && IconDat.IsLoaded)
             {
                 var boxSerials = BoxDat.GetAllSerials();
@@ -1393,7 +1393,7 @@ namespace GDMENUCardManager.Core
                 }
                 else
                 {
-                    // Linux/macOS - find the drive/mount that contains this path
+                    // Linux/macOS: find the mount that contains this path
                     var fullPath = Path.GetFullPath(sdPath);
                     // Normalize path with trailing separator to prevent /mnt/sd matching /mnt/sdcard
                     if (!fullPath.EndsWith(Path.DirectorySeparatorChar))
@@ -1447,7 +1447,7 @@ namespace GDMENUCardManager.Core
             }
             else
             {
-                // Use template size if no existing 01 folder - this WILL need space
+                // No existing 01 folder, use template size
                 // The menu is built from both menu_gdi and menu_data folders
                 var menuGdiPath = Path.Combine(currentAppPath, "tools", MenuKindSelected.ToString(), "menu_gdi");
                 var menuDataPath = Path.Combine(currentAppPath, "tools", MenuKindSelected.ToString(), "menu_data");
@@ -1478,7 +1478,7 @@ namespace GDMENUCardManager.Core
                 // Item will be new if SdNumber is 0 (not yet on card)
                 if (item.SdNumber == 0)
                 {
-                    if (item.FileFormat == FileFormat.Uncompressed || item.FileFormat == FileFormat.RedumpCueBin)
+                    if (item.FileFormat == FileFormat.Uncompressed || item.FileFormat == FileFormat.RedumpCueBin || item.FileFormat == FileFormat.CueBinNonGame)
                     {
                         // Sum actual file sizes
                         if (string.IsNullOrEmpty(item.FullFolderPath) || item.ImageFiles == null)
@@ -1503,7 +1503,7 @@ namespace GDMENUCardManager.Core
                     }
                     else
                     {
-                        // Compressed file (SevenZip) - get uncompressed size from archive
+                        // SevenZip: get uncompressed size from archive
                         if (string.IsNullOrEmpty(item.FullFolderPath) || string.IsNullOrEmpty(item.ImageFile))
                             continue;
 
@@ -1544,7 +1544,7 @@ namespace GDMENUCardManager.Core
         {
             var paths = new List<string>();
 
-            // Menu folder (01) - always gets modified
+            // Menu folder (01), always gets modified
             var folder01 = Path.Combine(sdPath, "01");
             if (Directory.Exists(folder01))
             {
@@ -1679,7 +1679,7 @@ namespace GDMENUCardManager.Core
                         if (lockedFiles.Count == 0)
                             break; // All files accessible, proceed with save
 
-                        // Show locked files dialog - returns true to retry, false to cancel
+                        // true = retry, false = cancel
                         if (!await Helper.DependencyManager.ShowLockedFilesDialog(lockedFiles))
                         {
                             return false; // User cancelled
@@ -1766,7 +1766,7 @@ namespace GDMENUCardManager.Core
                                 menu.Ip = menuIpBin;
                             }
 
-                            // Remove the old menu from ItemList - GenerateMenuImageAsync will insert a fresh one
+                            // GenerateMenuImageAsync will insert a fresh one
                             ItemList.Remove(menu);
                         }
                     }
@@ -1800,7 +1800,7 @@ namespace GDMENUCardManager.Core
                     if (hasBoxChanges || hasIconChanges)
                     {
                         // If DAT files aren't writable and user cancels, skip DAT update
-                        // but continue with the save - DAT update failure shouldn't block save
+                        // but continue with save anyway
                         if (await EnsureDatFilesWritable())
                         {
                             var datProgress = Helper.DependencyManager.CreateAndShowProgressWindow();
@@ -1813,7 +1813,7 @@ namespace GDMENUCardManager.Core
                                 var (success, errorMessage) = SaveBothDats(true); // Proceed without backup prompt
                                 if (!success)
                                 {
-                                    // Log error but continue - DAT update failure shouldn't block save
+                                    // non-fatal, continue
                                 }
                             }
                             finally
@@ -2071,8 +2071,8 @@ namespace GDMENUCardManager.Core
                 var colType = Math.Max(4, sortedItems.Max(x => (x.DiscType ?? "Game").Length));
 
                 // Box-drawing characters
-                string TopLine()    => $"┌{"".PadRight(colNum + 2, '─')}┬{"".PadRight(colFolder + 2, '─')}┬{"".PadRight(colTitle + 2, '─')}┬{"".PadRight(colDisc + 2, '─')}┬{"".PadRight(colSerial + 2, '─')}┬{"".PadRight(colRegion + 2, '─')}┬{"".PadRight(colArt + 2, '─')}┬{"".PadRight(colType + 2, '─')}┐";
-                string MidLine()    => $"├{"".PadRight(colNum + 2, '─')}┼{"".PadRight(colFolder + 2, '─')}┼{"".PadRight(colTitle + 2, '─')}┼{"".PadRight(colDisc + 2, '─')}┼{"".PadRight(colSerial + 2, '─')}┼{"".PadRight(colRegion + 2, '─')}┼{"".PadRight(colArt + 2, '─')}┼{"".PadRight(colType + 2, '─')}┤";
+                string TopLine() => $"┌{"".PadRight(colNum + 2, '─')}┬{"".PadRight(colFolder + 2, '─')}┬{"".PadRight(colTitle + 2, '─')}┬{"".PadRight(colDisc + 2, '─')}┬{"".PadRight(colSerial + 2, '─')}┬{"".PadRight(colRegion + 2, '─')}┬{"".PadRight(colArt + 2, '─')}┬{"".PadRight(colType + 2, '─')}┐";
+                string MidLine() => $"├{"".PadRight(colNum + 2, '─')}┼{"".PadRight(colFolder + 2, '─')}┼{"".PadRight(colTitle + 2, '─')}┼{"".PadRight(colDisc + 2, '─')}┼{"".PadRight(colSerial + 2, '─')}┼{"".PadRight(colRegion + 2, '─')}┼{"".PadRight(colArt + 2, '─')}┼{"".PadRight(colType + 2, '─')}┤";
                 string BottomLine() => $"└{"".PadRight(colNum + 2, '─')}┴{"".PadRight(colFolder + 2, '─')}┴{"".PadRight(colTitle + 2, '─')}┴{"".PadRight(colDisc + 2, '─')}┴{"".PadRight(colSerial + 2, '─')}┴{"".PadRight(colRegion + 2, '─')}┴{"".PadRight(colArt + 2, '─')}┴{"".PadRight(colType + 2, '─')}┘";
                 string DataRow(string num, string folder, string title, string disc, string serial, string region, string art, string type) =>
                     $"│ {num.PadLeft(colNum)} │ {folder.PadRight(colFolder)} │ {title.PadRight(colTitle)} │ {disc.PadRight(colDisc)} │ {serial.PadRight(colSerial)} │ {region.PadRight(colRegion)} │ {art.PadRight(colArt)} │ {type.PadRight(colType)} │";
@@ -2128,7 +2128,7 @@ namespace GDMENUCardManager.Core
                     headerRange.Style.Font.Bold = true;
                     headerRange.Style.Fill.BackgroundColor = XLColor.FromHtml("#d6d4d4");
 
-                    // Data rows - all values as explicit text
+                    // Data rows (all text)
                     int row = 2;
                     foreach (var item in sortedItems)
                     {
@@ -2234,7 +2234,7 @@ namespace GDMENUCardManager.Core
                 /* Write to high density */
                 await Helper.WriteTextFileAsync(Path.Combine(dataPath, "LIST.INI"), listText);
                 /*@Debug*/
-                if(debugEnabled)
+                if (debugEnabled)
                     await Helper.WriteTextFileAsync(Path.Combine(tempDirectory, "MENU_DEBUG.TXT"), listText);
                 //await Helper.WriteTextFileAsync(Path.Combine(currentAppPath, "LIST.INI"), listText);
             }
@@ -2341,7 +2341,7 @@ namespace GDMENUCardManager.Core
             }
         }
 
-        private void FillListText(StringBuilder sb, IpBin ip, string name, string serial, int number, bool is_openmenu=false, string folder=null, string type=null, List<string> altFolders=null)
+        private void FillListText(StringBuilder sb, IpBin ip, string name, string serial, int number, bool is_openmenu = false, string folder = null, string type = null, List<string> altFolders = null)
         {
             string strnumber = FormatFolderNumber(number);
 
@@ -2359,7 +2359,7 @@ namespace GDMENUCardManager.Core
             sb.AppendLine($"{strnumber}.version={versionValue}");
             sb.AppendLine($"{strnumber}.date={dateValue}");
 
-            if(is_openmenu)
+            if (is_openmenu)
             {
                 string productid = GdItem.CleanSerial(serial);
                 sb.AppendLine($"{strnumber}.product={productid}");
@@ -2616,6 +2616,49 @@ namespace GDMENUCardManager.Core
                                 }
                             }
                         }
+                        else if (item.FileFormat == FileFormat.CueBinNonGame)
+                        {
+                            var folderNumber = i + 1;
+                            var newPath = Path.Combine(sdPath, FormatFolderNumber(folderNumber));
+                            var originalFolderPath = item.FullFolderPath;
+
+                            // Get the CUE file path
+                            if (item.ImageFiles == null || !item.ImageFiles.Any())
+                                throw new Exception("Image files list is empty for CUE/BIN item");
+
+                            var cueFile = item.ImageFiles.FirstOrDefault(f => f.EndsWith(".cue", StringComparison.OrdinalIgnoreCase));
+                            if (string.IsNullOrEmpty(cueFile))
+                                throw new Exception("CUE file not found in image files list");
+
+                            var cuePath = Path.Combine(originalFolderPath, cueFile);
+
+                            // Create target directory
+                            if (!await Helper.DirectoryExistsAsync(newPath))
+                                await Helper.CreateDirectoryAsync(newPath);
+
+                            // Convert CUE to CCD/IMG/SUB
+                            progress.TextContent = $"Converting {item.Name} to CCD...";
+
+                            await Cue2CcdConverter.ConvertAsync(cuePath, newPath);
+
+                            var baseName = Path.GetFileNameWithoutExtension(cueFile);
+                            item.FullFolderPath = newPath;
+                            item.Work = WorkMode.None;
+                            item.SdNumber = folderNumber;
+                            item.FileFormat = FileFormat.Uncompressed;
+                            item.ImageFiles.Clear();
+                            item.ImageFiles.Add(baseName + ".ccd");
+                            item.ImageFiles.Add(baseName + ".img");
+                            item.ImageFiles.Add(baseName + ".sub");
+                            item.CanApplyGDIShrink = false;
+
+                            // Copy name.txt if it exists in original folder
+                            var nameFilePath = Path.Combine(originalFolderPath, Constants.NameTextFile);
+                            if (await Helper.FileExistsAsync(nameFilePath))
+                                await Task.Run(() => File.Copy(nameFilePath, Path.Combine(newPath, Constants.NameTextFile), overwrite: true));
+
+                            UpdateItemLength(item);
+                        }
                         else if (item.FileFormat == FileFormat.Chd)
                         {
                             var folderNumber = i + 1;
@@ -2755,7 +2798,7 @@ namespace GDMENUCardManager.Core
 
                                 var gdi = await ImageHelper.CreateGdItemAsync(tempExtractDir);
 
-                                // Check if extracted content is CUE/BIN - needs conversion, not shrinking
+                                // CUE/BIN needs conversion, not shrinking
                                 if (gdi.FileFormat == FileFormat.RedumpCueBin)
                                 {
                                     // Get the CUE file from extracted content
@@ -2815,9 +2858,38 @@ namespace GDMENUCardManager.Core
                                         item.Ip = gdi.Ip;
                                     }
                                 }
+                                else if (gdi.FileFormat == FileFormat.CueBinNonGame)
+                                {
+                                    // CUE/BIN (non-DC), convert to CCD
+                                    var cueFile = gdi.ImageFiles.FirstOrDefault(f => f.EndsWith(".cue", StringComparison.OrdinalIgnoreCase));
+                                    if (string.IsNullOrEmpty(cueFile))
+                                        throw new Exception("CUE file not found after extraction");
+
+                                    var cuePath = Path.Combine(tempExtractDir, cueFile);
+
+                                    if (!await Helper.DirectoryExistsAsync(newPath))
+                                        await Helper.CreateDirectoryAsync(newPath);
+
+                                    progress.TextContent = $"Converting {item.Name} to CCD...";
+
+                                    await Cue2CcdConverter.ConvertAsync(cuePath, newPath);
+
+                                    await Helper.DeleteDirectoryAsync(tempExtractDir);
+
+                                    var baseName = Path.GetFileNameWithoutExtension(cueFile);
+                                    item.FullFolderPath = newPath;
+                                    item.Work = WorkMode.None;
+                                    item.SdNumber = folderNumber;
+                                    item.FileFormat = FileFormat.Uncompressed;
+                                    item.ImageFiles.Clear();
+                                    item.ImageFiles.Add(baseName + ".ccd");
+                                    item.ImageFiles.Add(baseName + ".img");
+                                    item.ImageFiles.Add(baseName + ".sub");
+                                    item.Ip = gdi.Ip;
+                                }
                                 else if (gdi.FileFormat == FileFormat.Chd)
                                 {
-                                    // CHD extracted from archive - convert to GDI or CDI
+                                    // CHD, convert to GDI or CDI
                                     var chdFile = gdi.ImageFiles.FirstOrDefault(f => f.EndsWith(".chd", StringComparison.OrdinalIgnoreCase));
                                     if (string.IsNullOrEmpty(chdFile))
                                         throw new Exception("CHD file not found after extraction");
@@ -3260,9 +3332,33 @@ namespace GDMENUCardManager.Core
                     item.Ip = extracted.Ip;
                 }
             }
+            else if (extracted.FileFormat == FileFormat.CueBinNonGame)
+            {
+                // CUE/BIN (non-DC), convert to CCD
+                var cueFile = extracted.ImageFiles.FirstOrDefault(f => f.EndsWith(".cue", StringComparison.OrdinalIgnoreCase));
+                if (string.IsNullOrEmpty(cueFile))
+                    throw new Exception("CUE file not found after extraction");
+
+                var cuePath = Path.Combine(tempExtractDir, cueFile);
+
+                if (!await Helper.DirectoryExistsAsync(newPath))
+                    await Helper.CreateDirectoryAsync(newPath);
+
+                if (progress != null)
+                    progress.TextContent = $"Converting {item.Name} to CCD...";
+
+                await Cue2CcdConverter.ConvertAsync(cuePath, newPath);
+
+                var baseName = Path.GetFileNameWithoutExtension(cueFile);
+                item.ImageFiles.Clear();
+                item.ImageFiles.Add(baseName + ".ccd");
+                item.ImageFiles.Add(baseName + ".img");
+                item.ImageFiles.Add(baseName + ".sub");
+                item.Ip = extracted.Ip;
+            }
             else if (extracted.FileFormat == FileFormat.Chd)
             {
-                // CHD extracted from archive - convert to GDI or CDI
+                // CHD, convert to GDI or CDI
                 var chdFile = extracted.ImageFiles.FirstOrDefault(f => f.EndsWith(".chd", StringComparison.OrdinalIgnoreCase));
                 if (string.IsNullOrEmpty(chdFile))
                     throw new Exception("CHD file not found after extraction");
@@ -3318,7 +3414,7 @@ namespace GDMENUCardManager.Core
             }
             else
             {
-                // Not CUE/BIN or CHD - copy extracted files to SD card
+                // Normal extraction, copy to SD card
                 if (!await Helper.DirectoryExistsAsync(newPath))
                     await Helper.CreateDirectoryAsync(newPath);
 
@@ -3360,7 +3456,7 @@ namespace GDMENUCardManager.Core
                 Directory.CreateDirectory(outputFolderPath);
 
             p.StartInfo.ArgumentList.Clear();
-            
+
             p.StartInfo.ArgumentList.Add(inputFilePath);
             p.StartInfo.ArgumentList.Add(outputFolderPath);
 
@@ -3443,6 +3539,9 @@ namespace GDMENUCardManager.Core
         private async Task<PatchResult> PatchItemAsync(GdItem item, bool patchRegion, bool patchVga)
         {
             if (!patchRegion && !patchVga)
+                return new PatchResult { Success = true };
+
+            if (item.DiscType != "Game")
                 return new PatchResult { Success = true };
 
             var imagePath = Path.Combine(item.FullFolderPath, item.ImageFile);
@@ -3571,7 +3670,7 @@ namespace GDMENUCardManager.Core
                             File.Move(file, destPath);
                         }
 
-                        // Success - delete backup and temp folders
+                        // done, clean up
                         await Helper.DeleteDirectoryAsync(backupDir);
                         await Helper.DeleteDirectoryAsync(tempOutputDir);
 

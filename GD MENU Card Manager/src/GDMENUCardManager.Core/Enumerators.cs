@@ -12,6 +12,7 @@
         Uncompressed,
         SevenZip,
         RedumpCueBin,
+        CueBinNonGame,
         Chd
     }
 

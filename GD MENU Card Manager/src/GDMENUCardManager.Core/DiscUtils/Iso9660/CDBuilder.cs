@@ -46,7 +46,7 @@ namespace DiscUtils.Iso9660
         private List<BuildFileInfo> _files;
         private List<BuildDirectoryInfo> _dirs;
         private BuildDirectoryInfo _rootDirectory;
-        
+
         private BuildParameters _buildParams;
 
         /// <summary>
@@ -193,7 +193,7 @@ namespace DiscUtils.Iso9660
             get { return _buildParams.EndSector; }
             set { _buildParams.EndSector = value; }
         }
-        
+
         /// <summary>
         /// Adds a directory to the ISO image.
         /// </summary>
@@ -374,7 +374,7 @@ namespace DiscUtils.Iso9660
             //so lets find out how big it is then move all of the files
             long unfocused = focus;
             focus = FirstDataExtent;
-            
+
             // Find start of the second set of directory data, fixing ASCII directories in place.
             long startOfFirstDirData = focus;
             foreach (BuildDirectoryInfo di in _dirs)
@@ -421,7 +421,7 @@ namespace DiscUtils.Iso9660
             //  2. BE, ASCII
             //  3. LE, Supp Encoding (Joliet)
             //  4. BE, Supp Encoding (Joliet)
-            
+
             // Find end of the path table
             long startOfFirstPathTable = focus;
             PathTable pathTable = new PathTable(false, Encoding.ASCII, _dirs, primaryLocationTable, focus);
@@ -470,7 +470,7 @@ namespace DiscUtils.Iso9660
             // # 3a. Correct the file locations
             // ####################################################################
 
-            if(_buildParams.LastFileStartSector > 0)
+            if (_buildParams.LastFileStartSector > 0)
             {
                 long highFileSector = highestFileLocation / IsoUtilities.SectorSize;
                 if (_buildParams.LastFileStartSector < highFileSector + _buildParams.LBAoffset)
@@ -483,7 +483,7 @@ namespace DiscUtils.Iso9660
                 }
                 PushDataBack(primaryLocationTable, supplementaryLocationTable, fixedRegions, pushFilesBackAmt, regionIdx + numDirExtents, false);
             }
-            
+
             // Find the end of the disk
             totalLength = unfocused;
             if (_buildParams.EndSector.HasValue)
@@ -567,7 +567,7 @@ namespace DiscUtils.Iso9660
                 else
                 {
                     //Don't modify directories, those already have their moved offsets
-                    rebuiltPrimary.Add(item.Key, item.Value + (applyLBA?_buildParams.LBAoffset:0));
+                    rebuiltPrimary.Add(item.Key, item.Value + (applyLBA ? _buildParams.LBAoffset : 0));
                 }
             }
             primaryLocationTable.Clear();

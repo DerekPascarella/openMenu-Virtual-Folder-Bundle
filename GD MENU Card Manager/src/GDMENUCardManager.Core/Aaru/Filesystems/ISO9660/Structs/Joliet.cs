@@ -57,40 +57,40 @@ namespace Aaru.Filesystems
                                                  Replace('\u0000', ' ').TrimEnd()
             };
 
-            if(jolietvd.creation_date[0] < 0x31 ||
+            if (jolietvd.creation_date[0] < 0x31 ||
                jolietvd.creation_date[0] > 0x39)
                 decodedVd.CreationTime = DateTime.MinValue;
             else
                 decodedVd.CreationTime = DateHandlers.Iso9660ToDateTime(jolietvd.creation_date);
 
-            if(jolietvd.modification_date[0] < 0x31 ||
+            if (jolietvd.modification_date[0] < 0x31 ||
                jolietvd.modification_date[0] > 0x39)
                 decodedVd.HasModificationTime = false;
             else
             {
                 decodedVd.HasModificationTime = true;
-                decodedVd.ModificationTime    = DateHandlers.Iso9660ToDateTime(jolietvd.modification_date);
+                decodedVd.ModificationTime = DateHandlers.Iso9660ToDateTime(jolietvd.modification_date);
             }
 
-            if(jolietvd.expiration_date[0] < 0x31 ||
+            if (jolietvd.expiration_date[0] < 0x31 ||
                jolietvd.expiration_date[0] > 0x39)
                 decodedVd.HasExpirationTime = false;
             else
             {
                 decodedVd.HasExpirationTime = true;
-                decodedVd.ExpirationTime    = DateHandlers.Iso9660ToDateTime(jolietvd.expiration_date);
+                decodedVd.ExpirationTime = DateHandlers.Iso9660ToDateTime(jolietvd.expiration_date);
             }
 
-            if(jolietvd.effective_date[0] < 0x31 ||
+            if (jolietvd.effective_date[0] < 0x31 ||
                jolietvd.effective_date[0] > 0x39)
                 decodedVd.HasEffectiveTime = false;
             else
             {
                 decodedVd.HasEffectiveTime = true;
-                decodedVd.EffectiveTime    = DateHandlers.Iso9660ToDateTime(jolietvd.effective_date);
+                decodedVd.EffectiveTime = DateHandlers.Iso9660ToDateTime(jolietvd.effective_date);
             }
 
-            decodedVd.Blocks    = jolietvd.volume_space_size;
+            decodedVd.Blocks = jolietvd.volume_space_size;
             decodedVd.BlockSize = jolietvd.logical_block_size;
 
             return decodedVd;

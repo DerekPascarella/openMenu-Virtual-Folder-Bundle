@@ -41,17 +41,17 @@ namespace Aaru.Checksums
     /// <summary>Implements a CRC16 algorithm</summary>
     public class Crc16Context : IChecksum
     {
-        readonly ushort   _finalSeed;
-        readonly bool     _inverse;
+        readonly ushort _finalSeed;
+        readonly bool _inverse;
         readonly ushort[] _table;
-        ushort            _hashInt;
+        ushort _hashInt;
 
         /// <summary>Initializes the CRC16 table with a custom polynomial and seed</summary>
         public Crc16Context(ushort polynomial, ushort seed, ushort[] table, bool inverse)
         {
-            _hashInt   = seed;
+            _hashInt = seed;
             _finalSeed = seed;
-            _inverse   = inverse;
+            _inverse = inverse;
 
             _table = table ?? GenerateTable(polynomial, inverse);
         }
@@ -62,9 +62,9 @@ namespace Aaru.Checksums
         /// <param name="len">Length of buffer to hash.</param>
         public void Update(byte[] data, uint len)
         {
-            for(int i = 0; i < len; i++)
+            for (int i = 0; i < len; i++)
             {
-                if(_inverse)
+                if (_inverse)
                     _hashInt = (ushort)(_table[(_hashInt >> 8) ^ data[i]] ^ (_hashInt << 8));
                 else
                     _hashInt = (ushort)((_hashInt >> 8) ^ _table[data[i] ^ (_hashInt & 0xFF)]);
@@ -88,12 +88,12 @@ namespace Aaru.Checksums
 
             ushort final = (ushort)(_hashInt ^ _finalSeed);
 
-            if(_inverse)
+            if (_inverse)
                 final = (ushort)~final;
 
             byte[] finalBytes = BigEndianBitConverter.GetBytes(final);
 
-            for(int i = 0; i < finalBytes.Length; i++)
+            for (int i = 0; i < finalBytes.Length; i++)
                 crc16Output.Append(finalBytes[i].ToString("x2"));
 
             return crc16Output.ToString();
@@ -103,13 +103,13 @@ namespace Aaru.Checksums
         {
             ushort[] table = new ushort[256];
 
-            if(!inverseTable)
-                for(uint i = 0; i < 256; i++)
+            if (!inverseTable)
+                for (uint i = 0; i < 256; i++)
                 {
                     uint entry = i;
 
-                    for(int j = 0; j < 8; j++)
-                        if((entry & 1) == 1)
+                    for (int j = 0; j < 8; j++)
+                        if ((entry & 1) == 1)
                             entry = (entry >> 1) ^ polynomial;
                         else
                             entry = entry >> 1;
@@ -118,13 +118,13 @@ namespace Aaru.Checksums
                 }
             else
             {
-                for(uint i = 0; i < 256; i++)
+                for (uint i = 0; i < 256; i++)
                 {
                     uint entry = i << 8;
 
-                    for(uint j = 0; j < 8; j++)
+                    for (uint j = 0; j < 8; j++)
                     {
-                        if((entry & 0x8000) > 0)
+                        if ((entry & 0x8000) > 0)
                             entry = (entry << 1) ^ polynomial;
                         else
                             entry <<= 1;
@@ -153,8 +153,8 @@ namespace Aaru.Checksums
 
             ushort[] localTable = table ?? GenerateTable(polynomial, inverse);
 
-            for(int i = 0; i < fileStream.Length; i++)
-                if(inverse)
+            for (int i = 0; i < fileStream.Length; i++)
+                if (inverse)
                     localHashInt =
                         (ushort)(localTable[(localHashInt >> 8) ^ fileStream.ReadByte()] ^ (localHashInt << 8));
                 else
@@ -163,14 +163,14 @@ namespace Aaru.Checksums
 
             localHashInt ^= seed;
 
-            if(inverse)
+            if (inverse)
                 localHashInt = (ushort)~localHashInt;
 
             hash = BigEndianBitConverter.GetBytes(localHashInt);
 
             var crc16Output = new StringBuilder();
 
-            foreach(byte h in hash)
+            foreach (byte h in hash)
                 crc16Output.Append(h.ToString("x2"));
 
             fileStream.Close();
@@ -193,22 +193,22 @@ namespace Aaru.Checksums
 
             ushort[] localTable = table ?? GenerateTable(polynomial, inverse);
 
-            for(int i = 0; i < len; i++)
-                if(inverse)
+            for (int i = 0; i < len; i++)
+                if (inverse)
                     localHashInt = (ushort)(localTable[(localHashInt >> 8) ^ data[i]] ^ (localHashInt << 8));
                 else
                     localHashInt = (ushort)((localHashInt >> 8) ^ localTable[data[i] ^ (localHashInt & 0xff)]);
 
             localHashInt ^= seed;
 
-            if(inverse)
+            if (inverse)
                 localHashInt = (ushort)~localHashInt;
 
             hash = BigEndianBitConverter.GetBytes(localHashInt);
 
             var crc16Output = new StringBuilder();
 
-            foreach(byte h in hash)
+            foreach (byte h in hash)
                 crc16Output.Append(h.ToString("x2"));
 
             return crc16Output.ToString();
@@ -226,7 +226,7 @@ namespace Aaru.Checksums
 
             crc16 ^= seed;
 
-            if(inverse)
+            if (inverse)
                 crc16 = (ushort)~crc16;
 
             return crc16;

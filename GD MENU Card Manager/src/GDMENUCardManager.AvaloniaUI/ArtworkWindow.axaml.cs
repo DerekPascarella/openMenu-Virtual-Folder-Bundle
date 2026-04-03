@@ -31,6 +31,8 @@ namespace GDMENUCardManager
         // Navigation
         private readonly IList<GdItem> _navigableItems;
         private int _currentIndex;
+        private int _keyHoldCount;
+        private bool _isNavigating;
 
         public new event PropertyChangedEventHandler PropertyChanged;
 
@@ -92,11 +94,23 @@ namespace GDMENUCardManager
             LoadCurrentArtwork();
 
             this.Closing += ArtworkWindow_Closing;
+            this.KeyDown += (s, e) =>
+            {
+                if (e.Key == Avalonia.Input.Key.Left || e.Key == Avalonia.Input.Key.Right)
+                {
+                    _keyHoldCount++;
+                    int step = _keyHoldCount > 4 ? 5 : 1;
+
+                    if (e.Key == Avalonia.Input.Key.Left) Navigate(-step);
+                    else Navigate(step);
+                    e.Handled = true;
+                }
+            };
             this.KeyUp += (s, e) =>
             {
                 if (e.Key == Avalonia.Input.Key.Escape) Close();
-                else if (e.Key == Avalonia.Input.Key.Left) NavigatePrev_Click(this, null);
-                else if (e.Key == Avalonia.Input.Key.Right) NavigateNext_Click(this, null);
+                else if (e.Key == Avalonia.Input.Key.Left || e.Key == Avalonia.Input.Key.Right)
+                    _keyHoldCount = 0;
             };
             DataContext = this;
         }
@@ -175,22 +189,36 @@ namespace GDMENUCardManager
             return true;
         }
 
-        private async void NavigatePrev_Click(object sender, RoutedEventArgs e)
+        private async void Navigate(int step)
         {
-            if (!CanNavigatePrev || !await PromptUnsavedChanges())
-                return;
+            if (_isNavigating) return;
+            _isNavigating = true;
+            try
+            {
+                if (_navigableItems == null || !await PromptUnsavedChanges())
+                    return;
 
-            _currentIndex--;
-            LoadItem(_navigableItems[_currentIndex]);
+                int newIndex = Math.Clamp(_currentIndex + step, 0, _navigableItems.Count - 1);
+                if (newIndex == _currentIndex)
+                    return;
+
+                _currentIndex = newIndex;
+                LoadItem(_navigableItems[_currentIndex]);
+            }
+            finally
+            {
+                _isNavigating = false;
+            }
         }
 
-        private async void NavigateNext_Click(object sender, RoutedEventArgs e)
+        private void NavigatePrev_Click(object sender, RoutedEventArgs e)
         {
-            if (!CanNavigateNext || !await PromptUnsavedChanges())
-                return;
+            Navigate(-1);
+        }
 
-            _currentIndex++;
-            LoadItem(_navigableItems[_currentIndex]);
+        private void NavigateNext_Click(object sender, RoutedEventArgs e)
+        {
+            Navigate(1);
         }
 
         private void DisplayPvrData(byte[] pvrData)

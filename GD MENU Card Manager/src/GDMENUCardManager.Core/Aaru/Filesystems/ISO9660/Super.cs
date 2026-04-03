@@ -57,22 +57,22 @@ namespace Aaru.Filesystems
 
             options ??= GetDefaultOptions();
 
-            if(options.TryGetValue("debug", out string debugString))
+            if (options.TryGetValue("debug", out string debugString))
                 bool.TryParse(debugString, out _debug);
 
-            if(options.TryGetValue("use_path_table", out string usePathTableString))
+            if (options.TryGetValue("use_path_table", out string usePathTableString))
                 bool.TryParse(usePathTableString, out _usePathTable);
 
-            if(options.TryGetValue("use_trans_tbl", out string useTransTblString))
+            if (options.TryGetValue("use_trans_tbl", out string useTransTblString))
                 bool.TryParse(useTransTblString, out _useTransTbl);
 
-            if(options.TryGetValue("use_evd", out string useEvdString))
+            if (options.TryGetValue("use_evd", out string useEvdString))
                 bool.TryParse(useEvdString, out _useEvd);
 
             // Default namespace
             @namespace ??= "joliet";
 
-            switch(@namespace.ToLowerInvariant())
+            switch (@namespace.ToLowerInvariant())
             {
                 case "normal":
                     _namespace = Namespace.Normal;
@@ -97,24 +97,24 @@ namespace Aaru.Filesystems
                 default: return Errno.InvalidArgument;
             }
 
-            PrimaryVolumeDescriptor?           pvd      = null;
-            PrimaryVolumeDescriptor?           jolietvd = null;
+            PrimaryVolumeDescriptor? pvd = null;
+            PrimaryVolumeDescriptor? jolietvd = null;
             //BootRecord?                        bvd      = null;
             //HighSierraPrimaryVolumeDescriptor? hsvd     = null;
             //FileStructureVolumeDescriptor?     fsvd     = null;
 
             // ISO9660 is designed for 2048 bytes/sector devices
-            if(imagePlugin.Info.SectorSize < 2048)
+            if (imagePlugin.Info.SectorSize < 2048)
                 return Errno.InvalidArgument;
 
             // ISO9660 Primary Volume Descriptor starts at sector 16, so that's minimal size.
-            if(partition.End < 16)
+            if (partition.End < 16)
                 return Errno.InvalidArgument;
 
             ulong counter = 0;
 
             byte[] vdSector = imagePlugin.ReadSector(16 + counter + partition.Start);
-            int    xaOff    = vdSector.Length == 2336 ? 8 : 0;
+            int xaOff = vdSector.Length == 2336 ? 8 : 0;
             //Array.Copy(vdSector, 0x009 + xaOff, hsMagic, 0, 5);
             //_highSierra = Encoding.GetString(hsMagic) == HIGH_SIERRA_MAGIC;
             int hsOff = 0;
@@ -129,7 +129,7 @@ namespace Aaru.Filesystems
             List<ulong> evdSectors = new List<ulong>();
             List<ulong> vpdSectors = new List<ulong>();
 
-            while(true)
+            while (true)
             {
                 AaruConsole.DebugWriteLine("ISO9660 plugin", "Processing VD loop no. {0}", counter);
 
@@ -142,9 +142,9 @@ namespace Aaru.Filesystems
                 byte vdType = vdSector[0 + hsOff]; // Volume Descriptor Type, should be 1 or 2.
                 AaruConsole.DebugWriteLine("ISO9660 plugin", "VDType = {0}", vdType);
 
-                if(vdType == 255) // Supposedly we are in the PVD.
+                if (vdType == 255) // Supposedly we are in the PVD.
                 {
-                    if(counter == 0)
+                    if (counter == 0)
                         return Errno.InvalidArgument;
 
                     break;
@@ -153,9 +153,9 @@ namespace Aaru.Filesystems
                 Array.Copy(vdSector, 0x001, vdMagic, 0, 5);
                 //Array.Copy(vdSector, 0x009, hsMagic, 0, 5);
 
-                if(Encoding.GetString(vdMagic) != ISO_MAGIC) // Recognized, it is an ISO9660, now check for rest of data.
+                if (Encoding.GetString(vdMagic) != ISO_MAGIC) // Recognized, it is an ISO9660, now check for rest of data.
                 {
-                    if(counter == 0)
+                    if (counter == 0)
                         return Errno.InvalidArgument;
 
                     break;
@@ -163,83 +163,83 @@ namespace Aaru.Filesystems
 
                 //_cdi |= Encoding.GetString(vdMagic) == CDI_MAGIC;
 
-                switch(vdType)
+                switch (vdType)
                 {
                     case 0:
-                    {
-                        if(_debug)
-                            bvdSectors.Add(16 + counter + partition.Start);
+                        {
+                            if (_debug)
+                                bvdSectors.Add(16 + counter + partition.Start);
 
-                        break;
-                    }
+                            break;
+                        }
 
                     case 1:
-                    {
-                        pvd = Marshal.ByteArrayToStructureLittleEndian<PrimaryVolumeDescriptor>(vdSector);
+                        {
+                            pvd = Marshal.ByteArrayToStructureLittleEndian<PrimaryVolumeDescriptor>(vdSector);
 
-                        if(_debug)
-                            pvdSectors.Add(16 + counter + partition.Start);
+                            if (_debug)
+                                pvdSectors.Add(16 + counter + partition.Start);
 
-                        break;
-                    }
+                            break;
+                        }
 
                     case 2:
-                    {
-                        PrimaryVolumeDescriptor svd =
-                            Marshal.ByteArrayToStructureLittleEndian<PrimaryVolumeDescriptor>(vdSector);
-
-                        // TODO: Other escape sequences
-                        // Check if this is Joliet
-                        if(svd.version == 1)
                         {
-                            if(svd.escape_sequences[0] == '%' &&
-                               svd.escape_sequences[1] == '/')
-                                if(svd.escape_sequences[2] == '@' ||
-                                   svd.escape_sequences[2] == 'C' ||
-                                   svd.escape_sequences[2] == 'E')
-                                    jolietvd = svd;
-                                else
-                                    AaruConsole.DebugWriteLine("ISO9660 plugin",
-                                                               "Found unknown supplementary volume descriptor");
+                            PrimaryVolumeDescriptor svd =
+                                Marshal.ByteArrayToStructureLittleEndian<PrimaryVolumeDescriptor>(vdSector);
 
-                            if(_debug)
-                                svdSectors.Add(16 + counter + partition.Start);
-                        }
-                        else
-                        {
-                            if(_debug)
-                                evdSectors.Add(16 + counter + partition.Start);
-
-                            if(_useEvd)
+                            // TODO: Other escape sequences
+                            // Check if this is Joliet
+                            if (svd.version == 1)
                             {
-                                // Basically until escape sequences are implemented, let the user chose the encoding.
-                                // This is the same as user choosing Romeo namespace, but using the EVD instead of the PVD
-                                _namespace = Namespace.Romeo;
-                                pvd        = svd;
-                            }
-                        }
+                                if (svd.escape_sequences[0] == '%' &&
+                                   svd.escape_sequences[1] == '/')
+                                    if (svd.escape_sequences[2] == '@' ||
+                                       svd.escape_sequences[2] == 'C' ||
+                                       svd.escape_sequences[2] == 'E')
+                                        jolietvd = svd;
+                                    else
+                                        AaruConsole.DebugWriteLine("ISO9660 plugin",
+                                                                   "Found unknown supplementary volume descriptor");
 
-                        break;
-                    }
+                                if (_debug)
+                                    svdSectors.Add(16 + counter + partition.Start);
+                            }
+                            else
+                            {
+                                if (_debug)
+                                    evdSectors.Add(16 + counter + partition.Start);
+
+                                if (_useEvd)
+                                {
+                                    // Basically until escape sequences are implemented, let the user chose the encoding.
+                                    // This is the same as user choosing Romeo namespace, but using the EVD instead of the PVD
+                                    _namespace = Namespace.Romeo;
+                                    pvd = svd;
+                                }
+                            }
+
+                            break;
+                        }
 
                     case 3:
-                    {
-                        if(_debug)
-                            vpdSectors.Add(16 + counter + partition.Start);
+                        {
+                            if (_debug)
+                                vpdSectors.Add(16 + counter + partition.Start);
 
-                        break;
-                    }
+                            break;
+                        }
                 }
 
                 counter++;
             }
 
             DecodedVolumeDescriptor decodedVd;
-            var                     decodedJolietVd = new DecodedVolumeDescriptor();
+            var decodedJolietVd = new DecodedVolumeDescriptor();
 
             //XmlFsType = new FileSystemType();
 
-            if(pvd  == null) //&& hsvd == null &&fsvd == null)
+            if (pvd == null) //&& hsvd == null &&fsvd == null)
             {
                 AaruConsole.ErrorWriteLine("ERROR: Could not find primary volume descriptor");
 
@@ -248,10 +248,10 @@ namespace Aaru.Filesystems
 
             decodedVd = DecodeVolumeDescriptor(pvd.Value);
 
-            if(jolietvd != null)
+            if (jolietvd != null)
                 decodedJolietVd = DecodeJolietDescriptor(jolietvd.Value);
 
-            if(_namespace != Namespace.Romeo)
+            if (_namespace != Namespace.Romeo)
                 Encoding = Encoding.ASCII;
 
             string fsFormat;
@@ -270,11 +270,11 @@ namespace Aaru.Filesystems
 
             pathTableMsbLocation = pvd.Value.type_m_path_table;
             pathTableLsbLocation = pvd.Value.type_l_path_table;
-            
+
 
             _pathTable = DecodePathTable(pathTableData);
 
-            if(jolietvd is null &&
+            if (jolietvd is null &&
                _namespace == Namespace.Joliet)
                 _namespace = Namespace.Normal;
 
@@ -337,10 +337,10 @@ namespace Aaru.Filesystems
                 }
             }
 
-            if(_usePathTable && pathTableData.Length == 1)
+            if (_usePathTable && pathTableData.Length == 1)
                 _usePathTable = false;
 
-            if(_usePathTable)
+            if (_usePathTable)
             {
                 rootLocation = _pathTable[0].Extent;
 
@@ -365,24 +365,24 @@ namespace Aaru.Filesystems
                 return Errno.InvalidArgument;
             }
 
-            if(_namespace == Namespace.Joliet ||
+            if (_namespace == Namespace.Joliet ||
                _namespace == Namespace.Rrip)
             {
                 _usePathTable = false;
-                _useTransTbl  = false;
+                _useTransTbl = false;
             }
 
             // Cannot traverse path table if we substitute the names for the ones in TRANS.TBL
-            if(_useTransTbl)
+            if (_useTransTbl)
                 _usePathTable = false;
 
-            if(_namespace != Namespace.Joliet)
+            if (_namespace != Namespace.Joliet)
                 _rootDirectoryCache = DecodeIsoDirectory(rootLocation + rootXattrLength, rootSize);
 
-            if(jolietvd != null &&
+            if (jolietvd != null &&
                (_namespace == Namespace.Joliet || _namespace == Namespace.Rrip))
             {
-                rootLocation    = jolietvd.Value.root_directory_record.extent;
+                rootLocation = jolietvd.Value.root_directory_record.extent;
                 rootXattrLength = jolietvd.Value.root_directory_record.xattr_len;
 
                 rootSize = jolietvd.Value.root_directory_record.size;
@@ -394,7 +394,7 @@ namespace Aaru.Filesystems
                 decodedVd = decodedJolietVd;
             }
 
-            if(_debug)
+            if (_debug)
             {
                 _rootDirectoryCache.Add("$", new DecodedDirectoryEntry
                 {
@@ -402,8 +402,8 @@ namespace Aaru.Filesystems
                     {
                         (rootLocation, rootSize)
                     },
-                    Filename  = "$",
-                    Size      = rootSize,
+                    Filename = "$",
+                    Size = rootSize,
                     Timestamp = decodedVd.CreationTime
                 });
 
@@ -414,8 +414,8 @@ namespace Aaru.Filesystems
                     {
                         (pathTableLsbLocation, (uint)pathTableData.Length)
                     },
-                    Filename  = "$PATH_TABLE.LSB",
-                    Size      = (uint)pathTableData.Length,
+                    Filename = "$PATH_TABLE.LSB",
+                    Size = (uint)pathTableData.Length,
                     Timestamp = decodedVd.CreationTime
                 });
 
@@ -425,68 +425,68 @@ namespace Aaru.Filesystems
                     {
                         (Swapping.Swap(pathTableMsbLocation), (uint)pathTableData.Length)
                     },
-                    Filename  = "$PATH_TABLE.MSB",
-                    Size      = (uint)pathTableData.Length,
+                    Filename = "$PATH_TABLE.MSB",
+                    Size = (uint)pathTableData.Length,
                     Timestamp = decodedVd.CreationTime
                 });
 
-                for(int i = 0; i < bvdSectors.Count; i++)
+                for (int i = 0; i < bvdSectors.Count; i++)
                     _rootDirectoryCache.Add(i == 0 ? "$BOOT" : $"$BOOT_{i}", new DecodedDirectoryEntry
                     {
                         Extents = new List<(uint extent, uint size)>
                         {
                             ((uint)i, 2048)
                         },
-                        Filename  = i == 0 ? "$BOOT" : $"$BOOT_{i}",
-                        Size      = 2048,
+                        Filename = i == 0 ? "$BOOT" : $"$BOOT_{i}",
+                        Size = 2048,
                         Timestamp = decodedVd.CreationTime
                     });
 
-                for(int i = 0; i < pvdSectors.Count; i++)
+                for (int i = 0; i < pvdSectors.Count; i++)
                     _rootDirectoryCache.Add(i == 0 ? "$PVD" : $"$PVD{i}", new DecodedDirectoryEntry
                     {
                         Extents = new List<(uint extent, uint size)>
                         {
                             ((uint)i, 2048)
                         },
-                        Filename  = i == 0 ? "$PVD" : $"PVD_{i}",
-                        Size      = 2048,
+                        Filename = i == 0 ? "$PVD" : $"PVD_{i}",
+                        Size = 2048,
                         Timestamp = decodedVd.CreationTime
                     });
 
-                for(int i = 0; i < svdSectors.Count; i++)
+                for (int i = 0; i < svdSectors.Count; i++)
                     _rootDirectoryCache.Add(i == 0 ? "$SVD" : $"$SVD_{i}", new DecodedDirectoryEntry
                     {
                         Extents = new List<(uint extent, uint size)>
                         {
                             ((uint)i, 2048)
                         },
-                        Filename  = i == 0 ? "$SVD" : $"$SVD_{i}",
-                        Size      = 2048,
+                        Filename = i == 0 ? "$SVD" : $"$SVD_{i}",
+                        Size = 2048,
                         Timestamp = decodedVd.CreationTime
                     });
 
-                for(int i = 0; i < evdSectors.Count; i++)
+                for (int i = 0; i < evdSectors.Count; i++)
                     _rootDirectoryCache.Add(i == 0 ? "$EVD" : $"$EVD_{i}", new DecodedDirectoryEntry
                     {
                         Extents = new List<(uint extent, uint size)>
                         {
                             ((uint)i, 2048)
                         },
-                        Filename  = i == 0 ? "$EVD" : $"$EVD_{i}",
-                        Size      = 2048,
+                        Filename = i == 0 ? "$EVD" : $"$EVD_{i}",
+                        Size = 2048,
                         Timestamp = decodedVd.CreationTime
                     });
 
-                for(int i = 0; i < vpdSectors.Count; i++)
+                for (int i = 0; i < vpdSectors.Count; i++)
                     _rootDirectoryCache.Add(i == 0 ? "$VPD" : $"$VPD_{i}", new DecodedDirectoryEntry
                     {
                         Extents = new List<(uint extent, uint size)>
                         {
                             ((uint)i, 2048)
                         },
-                        Filename  = i == 0 ? "$VPD" : $"$VPD_{i}",
-                        Size      = 2048,
+                        Filename = i == 0 ? "$VPD" : $"$VPD_{i}",
+                        Size = 2048,
                         Timestamp = decodedVd.CreationTime
                     });
             }
@@ -498,13 +498,13 @@ namespace Aaru.Filesystems
                                                                  ? 110
                                                                  : 255 : 255),
                 PluginId = Id,
-                Type     = fsFormat
+                Type = fsFormat
             };
 
             _directoryCache = new Dictionary<string, Dictionary<string, DecodedDirectoryEntry>>();
 
-            if(_usePathTable)
-                foreach(DecodedDirectoryEntry subDirectory in GetSubdirsFromIsoPathTable(""))
+            if (_usePathTable)
+                foreach (DecodedDirectoryEntry subDirectory in GetSubdirsFromIsoPathTable(""))
                     _rootDirectoryCache[subDirectory.Filename] = subDirectory;
 
             _mounted = true;
@@ -514,12 +514,12 @@ namespace Aaru.Filesystems
 
         public Errno Unmount()
         {
-            if(!_mounted)
+            if (!_mounted)
                 return Errno.AccessDenied;
 
             _rootDirectoryCache = null;
-            _directoryCache     = null;
-            _mounted            = false;
+            _directoryCache = null;
+            _mounted = false;
 
             return Errno.NoError;
         }
@@ -528,7 +528,7 @@ namespace Aaru.Filesystems
         {
             stat = null;
 
-            if(!_mounted)
+            if (!_mounted)
                 return Errno.AccessDenied;
 
             stat = _statfs.ShallowCopy();

@@ -57,8 +57,8 @@ namespace Aaru.Filesystems
         readonly struct ElToritoValidationEntry
         {
             public readonly ElToritoIndicator header_id;
-            public readonly ElToritoPlatform  platform_id;
-            public readonly ushort            reserved;
+            public readonly ElToritoPlatform platform_id;
+            public readonly ushort reserved;
             [MarshalAs(UnmanagedType.ByValArray, SizeConst = 24)]
             public readonly byte[] developer_id;
             public readonly ushort checksum;
@@ -69,12 +69,12 @@ namespace Aaru.Filesystems
         struct ElToritoInitialEntry
         {
             public readonly ElToritoIndicator bootable;
-            public          ElToritoEmulation boot_type;
-            public readonly ushort            load_seg;
-            public readonly byte              system_type;
-            public readonly byte              reserved1;
-            public readonly ushort            sector_count;
-            public readonly uint              load_rba;
+            public ElToritoEmulation boot_type;
+            public readonly ushort load_seg;
+            public readonly byte system_type;
+            public readonly byte reserved1;
+            public readonly ushort sector_count;
+            public readonly uint load_rba;
             [MarshalAs(UnmanagedType.ByValArray, SizeConst = 20)]
             public readonly byte[] reserved2;
         }
@@ -83,8 +83,8 @@ namespace Aaru.Filesystems
         readonly struct ElToritoSectionHeaderEntry
         {
             public readonly ElToritoIndicator header_id;
-            public readonly ElToritoPlatform  platform_id;
-            public readonly ushort            entries;
+            public readonly ElToritoPlatform platform_id;
+            public readonly ushort entries;
             [MarshalAs(UnmanagedType.ByValArray, SizeConst = 28)]
             public readonly byte[] identifier;
         }
@@ -94,12 +94,12 @@ namespace Aaru.Filesystems
         {
             public readonly ElToritoIndicator bootable;
             public readonly ElToritoEmulation boot_type;
-            public readonly ushort            load_seg;
-            public readonly byte              system_type;
-            public readonly byte              reserved1;
-            public readonly ushort            sector_count;
-            public readonly uint              load_rba;
-            public readonly byte              selection_criteria_type;
+            public readonly ushort load_seg;
+            public readonly byte system_type;
+            public readonly byte reserved1;
+            public readonly ushort sector_count;
+            public readonly uint load_rba;
+            public readonly byte selection_criteria_type;
             [MarshalAs(UnmanagedType.ByValArray, SizeConst = 19)]
             public readonly byte[] selection_criterias;
         }
@@ -108,7 +108,7 @@ namespace Aaru.Filesystems
         readonly struct ElToritoSectionEntryExtension
         {
             public readonly ElToritoIndicator extension_indicator;
-            public readonly ElToritoFlags     extension_flags;
+            public readonly ElToritoFlags extension_flags;
             [MarshalAs(UnmanagedType.ByValArray, SizeConst = 30)]
             public readonly byte[] selection_criterias;
         }

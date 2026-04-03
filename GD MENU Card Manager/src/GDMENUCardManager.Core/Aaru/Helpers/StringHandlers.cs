@@ -50,17 +50,17 @@ namespace Aaru.Helpers
         /// <param name="start">Start decoding at this position</param>
         public static string CToString(byte[] cString, Encoding encoding, bool twoBytes = false, int start = 0)
         {
-            if(cString == null)
+            if (cString == null)
                 return null;
 
             int len = 0;
 
-            for(int i = start; i < cString.Length; i++)
+            for (int i = start; i < cString.Length; i++)
             {
-                if(cString[i] == 0)
-                    if(twoBytes)
+                if (cString[i] == 0)
+                    if (twoBytes)
                     {
-                        if(i + 1          < cString.Length &&
+                        if (i + 1 < cString.Length &&
                            cString[i + 1] == 0)
                         {
                             len++;
@@ -74,7 +74,7 @@ namespace Aaru.Helpers
                 len++;
             }
 
-            if(twoBytes && len % 2 > 0)
+            if (twoBytes && len % 2 > 0)
                 len--;
 
             byte[] dest = new byte[len];
@@ -95,15 +95,15 @@ namespace Aaru.Helpers
         /// <param name="start">Start decoding at this position</param>
         public static string PascalToString(byte[] pascalString, Encoding encoding, int start = 0)
         {
-            if(pascalString == null)
+            if (pascalString == null)
                 return null;
 
             byte length = pascalString[start];
-            int  len    = 0;
+            int len = 0;
 
-            for(int i = start + 1; i < length + 1 && i < pascalString.Length; i++)
+            for (int i = start + 1; i < length + 1 && i < pascalString.Length; i++)
             {
-                if(pascalString[i] == 0)
+                if (pascalString[i] == 0)
                     break;
 
                 len++;

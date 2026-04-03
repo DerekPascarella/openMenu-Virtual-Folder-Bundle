@@ -39,22 +39,22 @@ namespace Aaru.Filters
     /// <summary>No filter for reading files not recognized by any filter</summary>
     public sealed class ZZZNoFilter : IFilter
     {
-        string   _basePath;
+        string _basePath;
         DateTime _creationTime;
-        Stream   _dataStream;
+        Stream _dataStream;
         DateTime _lastWriteTime;
-        bool     _opened;
+        bool _opened;
 
-        public string Name   => "No filter";
-        public Guid   Id     => new Guid("12345678-AAAA-BBBB-CCCC-123456789000");
+        public string Name => "No filter";
+        public Guid Id => new Guid("12345678-AAAA-BBBB-CCCC-123456789000");
         public string Author => "Natalia Portillo";
 
         public void Close()
         {
             _dataStream?.Close();
             _dataStream = null;
-            _basePath   = null;
-            _opened     = false;
+            _basePath = null;
+            _opened = false;
         }
 
         public string GetBasePath() => _basePath;
@@ -75,30 +75,30 @@ namespace Aaru.Filters
 
         public void Open(byte[] buffer)
         {
-            _dataStream    = new MemoryStream(buffer);
-            _basePath      = null;
-            _creationTime  = DateTime.UtcNow;
+            _dataStream = new MemoryStream(buffer);
+            _basePath = null;
+            _creationTime = DateTime.UtcNow;
             _lastWriteTime = _creationTime;
-            _opened        = true;
+            _opened = true;
         }
 
         public void Open(Stream stream)
         {
-            _dataStream    = stream;
-            _basePath      = null;
-            _creationTime  = DateTime.UtcNow;
+            _dataStream = stream;
+            _basePath = null;
+            _creationTime = DateTime.UtcNow;
             _lastWriteTime = _creationTime;
-            _opened        = true;
+            _opened = true;
         }
 
         public void Open(string path)
         {
             _dataStream = new FileStream(path, FileMode.Open, FileAccess.Read);
-            _basePath   = Path.GetFullPath(path);
+            _basePath = Path.GetFullPath(path);
             var fi = new FileInfo(path);
-            _creationTime  = fi.CreationTimeUtc;
+            _creationTime = fi.CreationTimeUtc;
             _lastWriteTime = fi.LastWriteTimeUtc;
-            _opened        = true;
+            _opened = true;
         }
 
         public DateTime GetCreationTime() => _creationTime;

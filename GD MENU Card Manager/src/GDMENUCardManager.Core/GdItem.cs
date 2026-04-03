@@ -44,7 +44,7 @@ namespace GDMENUCardManager.Core
                 RaisePropertyChanged();
             }
         }
-        
+
         private string _ProductNumber;
         public string ProductNumber
         {

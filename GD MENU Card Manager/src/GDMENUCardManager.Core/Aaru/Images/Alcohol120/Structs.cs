@@ -44,7 +44,7 @@ namespace Aaru.DiscImages
             [MarshalAs(UnmanagedType.ByValArray, SizeConst = 2)]
             public byte[] version;
             public MediumType type;
-            public ushort     sessions;
+            public ushort sessions;
             [MarshalAs(UnmanagedType.ByValArray, SizeConst = 2)]
             public ushort[] unknown1;
             public readonly ushort bcaLength;
@@ -56,47 +56,47 @@ namespace Aaru.DiscImages
             public uint structuresOffset;
             [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)]
             public uint[] unknown4;
-            public          uint sessionOffset;
+            public uint sessionOffset;
             public readonly uint dpmOffset;
         }
 
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
         struct Session
         {
-            public          int    sessionStart;
-            public          int    sessionEnd;
-            public          ushort sessionSequence;
-            public          byte   allBlocks;
-            public          byte   nonTrackBlocks;
-            public          ushort firstTrack;
-            public          ushort lastTrack;
-            public readonly uint   unknown;
-            public          uint   trackOffset;
+            public int sessionStart;
+            public int sessionEnd;
+            public ushort sessionSequence;
+            public byte allBlocks;
+            public byte nonTrackBlocks;
+            public ushort firstTrack;
+            public ushort lastTrack;
+            public readonly uint unknown;
+            public uint trackOffset;
         }
 
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
         struct Track
         {
-            public TrackMode      mode;
+            public TrackMode mode;
             public SubchannelMode subMode;
-            public byte           adrCtl;
-            public byte           tno;
-            public byte           point;
-            public byte           min;
-            public byte           sec;
-            public byte           frame;
-            public byte           zero;
-            public byte           pmin;
-            public byte           psec;
-            public byte           pframe;
-            public uint           extraOffset;
-            public ushort         sectorSize;
+            public byte adrCtl;
+            public byte tno;
+            public byte point;
+            public byte min;
+            public byte sec;
+            public byte frame;
+            public byte zero;
+            public byte pmin;
+            public byte psec;
+            public byte pframe;
+            public uint extraOffset;
+            public ushort sectorSize;
             [MarshalAs(UnmanagedType.ByValArray, SizeConst = 18)]
             public byte[] unknown;
-            public uint  startLba;
+            public uint startLba;
             public ulong startOffset;
-            public uint  files;
-            public uint  footerOffset;
+            public uint files;
+            public uint footerOffset;
             [MarshalAs(UnmanagedType.ByValArray, SizeConst = 24)]
             public byte[] unknown2;
         }
@@ -111,8 +111,8 @@ namespace Aaru.DiscImages
         [StructLayout(LayoutKind.Sequential, Pack = 1)]
         struct Footer
         {
-            public          uint filenameOffset;
-            public          uint widechar;
+            public uint filenameOffset;
+            public uint widechar;
             public readonly uint unknown1;
             public readonly uint unknown2;
         }

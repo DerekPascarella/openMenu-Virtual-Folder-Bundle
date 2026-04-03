@@ -42,20 +42,20 @@ namespace Aaru.DiscImages
 {
     public sealed partial class Alcohol120
     {
-        public OpticalImageCapabilities OpticalCapabilities => OpticalImageCapabilities.CanStoreAudioTracks  |
-                                                               OpticalImageCapabilities.CanStoreDataTracks   |
+        public OpticalImageCapabilities OpticalCapabilities => OpticalImageCapabilities.CanStoreAudioTracks |
+                                                               OpticalImageCapabilities.CanStoreDataTracks |
                                                                OpticalImageCapabilities.CanStoreSubchannelRw |
-                                                               OpticalImageCapabilities.CanStoreSessions     |
-                                                               OpticalImageCapabilities.CanStoreIsrc         |
-                                                               OpticalImageCapabilities.CanStoreCdText       |
-                                                               OpticalImageCapabilities.CanStoreMcn          |
-                                                               OpticalImageCapabilities.CanStoreRawData      |
-                                                               OpticalImageCapabilities.CanStoreCookedData   |
+                                                               OpticalImageCapabilities.CanStoreSessions |
+                                                               OpticalImageCapabilities.CanStoreIsrc |
+                                                               OpticalImageCapabilities.CanStoreCdText |
+                                                               OpticalImageCapabilities.CanStoreMcn |
+                                                               OpticalImageCapabilities.CanStoreRawData |
+                                                               OpticalImageCapabilities.CanStoreCookedData |
                                                                OpticalImageCapabilities.CanStoreMultipleTracks;
-        public ImageInfo Info   => _imageInfo;
-        public string    Name   => "Alcohol 120% Media Descriptor Structure";
-        public Guid      Id     => new Guid("A78FBEBA-0307-4915-BDE3-B8A3B57F843F");
-        public string    Author => "Natalia Portillo";
+        public ImageInfo Info => _imageInfo;
+        public string Name => "Alcohol 120% Media Descriptor Structure";
+        public Guid Id => new Guid("A78FBEBA-0307-4915-BDE3-B8A3B57F843F");
+        public string Author => "Natalia Portillo";
 
         public string Format => "Alcohol 120% Media Descriptor Structure";
 
@@ -70,44 +70,44 @@ namespace Aaru.DiscImages
                 if (_alcTracks == null)
                     return tracks;
 
-                foreach(Track alcTrack in _alcTracks.Values)
+                foreach (Track alcTrack in _alcTracks.Values)
                 {
                     ushort sessionNo =
                         (from session in Sessions
                          where alcTrack.point >= session.StartTrack || alcTrack.point <= session.EndTrack
                          select session.SessionSequence).FirstOrDefault();
 
-                    if(!_alcTrackExtras.TryGetValue(alcTrack.point, out TrackExtra alcExtra))
+                    if (!_alcTrackExtras.TryGetValue(alcTrack.point, out TrackExtra alcExtra))
                         continue;
 
                     var aaruTrack = new CommonTypes.Structs.Track
                     {
-                        TrackStartSector       = alcTrack.startLba,
-                        TrackEndSector         = alcTrack.startLba + alcExtra.sectors - 1,
-                        TrackPregap            = alcExtra.pregap,
-                        TrackSession           = sessionNo,
-                        TrackSequence          = alcTrack.point,
-                        TrackType              = TrackModeToTrackType(alcTrack.mode),
-                        TrackFilter            = _alcImage,
-                        TrackFile              = _alcImage.GetFilename(),
-                        TrackFileOffset        = alcTrack.startOffset,
-                        TrackFileType          = "BINARY",
+                        TrackStartSector = alcTrack.startLba,
+                        TrackEndSector = alcTrack.startLba + alcExtra.sectors - 1,
+                        TrackPregap = alcExtra.pregap,
+                        TrackSession = sessionNo,
+                        TrackSequence = alcTrack.point,
+                        TrackType = TrackModeToTrackType(alcTrack.mode),
+                        TrackFilter = _alcImage,
+                        TrackFile = _alcImage.GetFilename(),
+                        TrackFileOffset = alcTrack.startOffset,
+                        TrackFileType = "BINARY",
                         TrackRawBytesPerSector = alcTrack.sectorSize,
-                        TrackBytesPerSector    = TrackModeToCookedBytesPerSector(alcTrack.mode)
+                        TrackBytesPerSector = TrackModeToCookedBytesPerSector(alcTrack.mode)
                     };
 
-                    if(alcExtra.pregap > 0)
+                    if (alcExtra.pregap > 0)
                         aaruTrack.Indexes.Add(0, (int)(alcTrack.startLba - alcExtra.pregap));
 
                     aaruTrack.Indexes.Add(1, (int)alcTrack.startLba);
 
-                    switch(alcTrack.subMode)
+                    switch (alcTrack.subMode)
                     {
                         case SubchannelMode.Interleaved:
                             aaruTrack.TrackSubchannelFilter = _alcImage;
-                            aaruTrack.TrackSubchannelFile   = _alcImage.GetFilename();
+                            aaruTrack.TrackSubchannelFile = _alcImage.GetFilename();
                             aaruTrack.TrackSubchannelOffset = alcTrack.startOffset;
-                            aaruTrack.TrackSubchannelType   = TrackSubchannelType.RawInterleaved;
+                            aaruTrack.TrackSubchannelType = TrackSubchannelType.RawInterleaved;
 
                             break;
                         case SubchannelMode.None:
@@ -116,7 +116,7 @@ namespace Aaru.DiscImages
                             break;
                     }
 
-                    if(_header.type != MediumType.CD  &&
+                    if (_header.type != MediumType.CD &&
                        _header.type != MediumType.CDR &&
                        _header.type != MediumType.CDRW)
                     {

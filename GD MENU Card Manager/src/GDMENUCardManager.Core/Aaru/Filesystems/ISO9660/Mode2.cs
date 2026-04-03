@@ -43,11 +43,11 @@ namespace Aaru.Filesystems
         byte[] ReadSector(ulong sector, bool interleaved = false, byte fileNumber = 0)
         {
             ulong realSector;
-            uint  sectorCount;
+            uint sectorCount;
 
             sectorCount = (uint)_blockSize / 2048;
 
-            if(_blockSize % 2048 > 0)
+            if (_blockSize % 2048 > 0)
                 sectorCount++;
 
             realSector = (sector * _blockSize) / 2048;
@@ -56,7 +56,7 @@ namespace Aaru.Filesystems
 
             byte[] data;
 
-            if(sectorCount == 1)
+            if (sectorCount == 1)
             {
                 // TODO: No more exceptions
                 try
@@ -68,9 +68,9 @@ namespace Aaru.Filesystems
                     data = _image.ReadSector(realSector);
                 }
 
-                if(_debug)
+                if (_debug)
                 {
-                    switch(data.Length)
+                    switch (data.Length)
                     {
                         case 2048:
                             AaruConsole.DebugWriteLine("ISO9660 Plugin", "Sector {0}, Cooked, Mode 0/1 / Mode 2 Form 1",
@@ -90,8 +90,8 @@ namespace Aaru.Filesystems
                                                        data[0], data[1], (Mode2Submode)data[2], data[3]);
 
                             break;
-                        case 2352 when data[0] != 0x00 || data[1] != 0xFF || data[2]  != 0xFF || data[3]  != 0xFF ||
-                                       data[4] != 0xFF || data[5] != 0xFF || data[6]  != 0xFF || data[7]  != 0xFF ||
+                        case 2352 when data[0] != 0x00 || data[1] != 0xFF || data[2] != 0xFF || data[3] != 0xFF ||
+                                       data[4] != 0xFF || data[5] != 0xFF || data[6] != 0xFF || data[7] != 0xFF ||
                                        data[8] != 0xFF || data[9] != 0xFF || data[10] != 0xFF || data[11] != 0x00:
                             AaruConsole.DebugWriteLine("ISO9660 Plugin", "Sector {0}, Raw, Audio", realSector);
 
@@ -113,7 +113,7 @@ namespace Aaru.Filesystems
                     }
                 }
 
-                if(_blockSize == 2048)
+                if (_blockSize == 2048)
                     return Sector.GetUserData(data, interleaved, fileNumber);
 
                 byte[] tmp = new byte[_blockSize];
@@ -125,7 +125,7 @@ namespace Aaru.Filesystems
             {
                 var ms = new MemoryStream();
 
-                for(uint i = 0; i < sectorCount; i++)
+                for (uint i = 0; i < sectorCount; i++)
                 {
                     ulong dstSector = realSector + 1;
 
@@ -139,9 +139,9 @@ namespace Aaru.Filesystems
                         data = _image.ReadSector(dstSector);
                     }
 
-                    if(_debug)
+                    if (_debug)
                     {
-                        switch(data.Length)
+                        switch (data.Length)
                         {
                             case 2048:
                                 AaruConsole.DebugWriteLine("ISO9660 Plugin",
@@ -161,8 +161,8 @@ namespace Aaru.Filesystems
                                                            data[0], data[1], (Mode2Submode)data[2], data[3]);
 
                                 break;
-                            case 2352 when data[0] != 0x00 || data[1] != 0xFF || data[2]  != 0xFF || data[3]  != 0xFF ||
-                                           data[4] != 0xFF || data[5] != 0xFF || data[6]  != 0xFF || data[7]  != 0xFF ||
+                            case 2352 when data[0] != 0x00 || data[1] != 0xFF || data[2] != 0xFF || data[3] != 0xFF ||
+                                           data[4] != 0xFF || data[5] != 0xFF || data[6] != 0xFF || data[7] != 0xFF ||
                                            data[8] != 0xFF || data[9] != 0xFF || data[10] != 0xFF || data[11] != 0x00:
                                 AaruConsole.DebugWriteLine("ISO9660 Plugin", "Sector {0}, Raw, Audio", dstSector);
 

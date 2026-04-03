@@ -81,12 +81,12 @@ namespace Aaru.CommonTypes
         /// <returns>A value that indicates the relative equality of the partitions being compared.</returns>
         public int CompareTo(Partition other)
         {
-            if(Start == other.Start &&
-               End   == other.End)
+            if (Start == other.Start &&
+               End == other.End)
                 return 0;
 
-            if(Start > other.Start ||
-               End   > other.End)
+            if (Start > other.Start ||
+               End > other.End)
                 return 1;
 
             return -1;

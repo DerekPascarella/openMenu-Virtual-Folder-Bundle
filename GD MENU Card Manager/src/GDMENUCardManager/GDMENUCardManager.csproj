@@ -48,4 +48,6 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
+
+  <Import Project="..\GDMENUCardManager.Core\libchdr.targets" />
 </Project>

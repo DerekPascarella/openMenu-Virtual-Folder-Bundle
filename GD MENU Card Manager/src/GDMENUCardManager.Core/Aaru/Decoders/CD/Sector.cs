@@ -185,25 +185,25 @@ namespace Aaru.Decoders.CD
 
         public static byte[] Scramble(byte[] sector)
         {
-            if(sector        == null ||
+            if (sector == null ||
                sector.Length < 2352)
                 return sector;
 
             byte[] sync = new byte[12];
             Array.Copy(sector, 0, sync, 0, 12);
 
-            if(!SyncMark.SequenceEqual(sync))
+            if (!SyncMark.SequenceEqual(sync))
                 return sector;
 
             byte[] scrambled = new byte[sector.Length];
 
-            for(int i = 0; i < 2352; i++)
+            for (int i = 0; i < 2352; i++)
                 scrambled[i] = (byte)(sector[i] ^ ScrambleTable[i]);
 
-            if(sector.Length <= 2352)
+            if (sector.Length <= 2352)
                 return scrambled;
 
-            for(int i = 2352; i < sector.Length; i++)
+            for (int i = 2352; i < sector.Length; i++)
                 scrambled[i] = sector[i];
 
             return scrambled;
@@ -212,13 +212,14 @@ namespace Aaru.Decoders.CD
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static byte[] GetUserData(byte[] data, bool interleaved = false, byte fileNumber = 0)
         {
-            switch(data.Length)
+            switch (data.Length)
             {
-                case 2352 when data[0] != 0x00 || data[1] != 0xFF || data[2]  != 0xFF || data[3]  != 0xFF ||
-                               data[4] != 0xFF || data[5] != 0xFF || data[6]  != 0xFF || data[7]  != 0xFF ||
-                               data[8] != 0xFF || data[9] != 0xFF || data[10] != 0xFF || data[11] != 0x00: return data;
+                case 2352 when data[0] != 0x00 || data[1] != 0xFF || data[2] != 0xFF || data[3] != 0xFF ||
+                               data[4] != 0xFF || data[5] != 0xFF || data[6] != 0xFF || data[7] != 0xFF ||
+                               data[8] != 0xFF || data[9] != 0xFF || data[10] != 0xFF || data[11] != 0x00:
+                    return data;
                 case 2352:
-                    switch(data[15])
+                    switch (data[15])
                     {
                         case 0: return new byte[2048];
                         case 1:
@@ -226,35 +227,35 @@ namespace Aaru.Decoders.CD
                             Array.Copy(data, 16, sector, 0, 2048);
 
                             return sector;
-                        case 2:  return GetUserDataFromMode2(data, interleaved, fileNumber);
+                        case 2: return GetUserDataFromMode2(data, interleaved, fileNumber);
                         default: return data;
                     }
                 case 2336: return GetUserDataFromMode2(data, interleaved, fileNumber);
-                default:   return data;
+                default: return data;
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static byte[] GetUserDataFromMode2(byte[] data, bool interleaved = false, byte fileNumber = 0)
         {
-            if(data.Length != 2352 &&
+            if (data.Length != 2352 &&
                data.Length != 2336)
                 return data;
 
             int pos = 0;
 
-            if(data.Length == 2352)
+            if (data.Length == 2352)
             {
-                if(data[0]  != 0x00 ||
-                   data[1]  != 0xFF ||
-                   data[2]  != 0xFF ||
-                   data[3]  != 0xFF ||
-                   data[4]  != 0xFF ||
-                   data[5]  != 0xFF ||
-                   data[6]  != 0xFF ||
-                   data[7]  != 0xFF ||
-                   data[8]  != 0xFF ||
-                   data[9]  != 0xFF ||
+                if (data[0] != 0x00 ||
+                   data[1] != 0xFF ||
+                   data[2] != 0xFF ||
+                   data[3] != 0xFF ||
+                   data[4] != 0xFF ||
+                   data[5] != 0xFF ||
+                   data[6] != 0xFF ||
+                   data[7] != 0xFF ||
+                   data[8] != 0xFF ||
+                   data[9] != 0xFF ||
                    data[10] != 0xFF ||
                    data[11] != 0x00 ||
                    data[15] != 0x02)
@@ -264,7 +265,7 @@ namespace Aaru.Decoders.CD
             }
 
             // This is not the sector you are looking for
-            if(interleaved && data[pos] != fileNumber)
+            if (interleaved && data[pos] != fileNumber)
                 return null;
 
             int len = (data[pos + 2] & 0x20) == 0x20 ? 2324 : 2048;

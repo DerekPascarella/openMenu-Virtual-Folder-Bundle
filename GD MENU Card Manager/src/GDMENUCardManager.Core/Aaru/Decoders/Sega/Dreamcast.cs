@@ -46,10 +46,10 @@ namespace Aaru.Decoders.Sega
     {
         public static IPBin? DecodeIPBin(byte[] ipbin_sector)
         {
-            if(ipbin_sector == null)
+            if (ipbin_sector == null)
                 return null;
 
-            if(ipbin_sector.Length < 512)
+            if (ipbin_sector.Length < 512)
                 return null;
 
             IPBin ipbin = Marshal.ByteArrayToStructureLittleEndian<IPBin>(ipbin_sector);

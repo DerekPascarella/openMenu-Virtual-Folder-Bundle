@@ -17,9 +17,11 @@
       <conv:ByteSizeToStringConverter x:Key="ByteSizeToString"/>
       <conv:EnumToBoolConverter x:Key="EnumToBool"/>
       <conv:IsNotMenuItemConverter x:Key="IsNotMenuItem"/>
+      <conv:IsGameDiscConverter x:Key="IsGameDisc"/>
       <conv:ArtworkButtonLabelConverter x:Key="ArtworkButtonLabel"/>
       <conv:ArtworkButtonFontWeightConverter x:Key="ArtworkButtonFontWeight"/>
       <conv:IsOpenMenuModeConverter x:Key="IsOpenMenuMode"/>
+      <conv:DriveInfoToLabelConverter x:Key="DriveInfoToLabel"/>
       <conv:BoolAndMultiValueConverter x:Key="BoolAndConverter"/>
       <conv:BoolToOpacityConverter x:Key="BoolToOpacity"/>
 
@@ -87,7 +89,13 @@
             </Viewbox>
           </Button>
           <ComboBox Grid.Column="2" Width="150" Items="{Binding DriveList, Mode=OneWay}" SelectedItem="{Binding SelectedDrive}" ToolTip.Tip="{Binding Path=SelectedDrive.VolumeLabel, Mode=OneWay}"
-                    IsVisible="{Binding !IsUsingCustomPath}" />
+                    IsVisible="{Binding !IsUsingCustomPath}">
+            <ComboBox.ItemTemplate>
+              <DataTemplate>
+                <TextBlock Text="{Binding Converter={StaticResource DriveInfoToLabel}}"/>
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
           <TextBox Grid.Column="2" Width="150" VerticalContentAlignment="Center" Text="{Binding CustomSdPath, Mode=OneWay}" IsReadOnly="True"
                    IsVisible="{Binding IsUsingCustomPath}"/>
           <Button Grid.Column="3" Width="30" ToolTip.Tip="Refresh drive list and clear custom path" Click="ButtonRefreshDrive_Click">
@@ -175,7 +183,7 @@
           <Button DockPanel.Dock="Right" HorizontalAlignment="Right" Padding="10 5" Margin="0 0 10 0" Click="ButtonDatTools_Click"
                   IsVisible="{Binding MenuKindSelected, Converter={StaticResource IsOpenMenuMode}}" ToolTip.Tip="Various DAT file maintenance tasks"
                   IsEnabled="{Binding HasSdPath}">DAT Tools</Button>
-          <Button DockPanel.Dock="Right" HorizontalAlignment="Right" Padding="10 5" Margin="0 0 10 0" Click="ButtonSort_Click" ToolTip.Tip="Sort list by folder path + title">
+          <Button x:Name="ButtonSort" DockPanel.Dock="Right" HorizontalAlignment="Right" Padding="10 5" Margin="0 0 10 0" Click="ButtonSort_Click" ToolTip.Tip="Sort list by folder path + title">
             <Button.IsEnabled>
               <MultiBinding Converter="{StaticResource BoolAndConverter}">
                 <Binding Path="HasSdPath"/>
@@ -206,8 +214,8 @@
                 <MenuItem Header="Lowercase" Click="MenuItemRenameLowercase_Click" CommandParameter="{Binding}"/>
                 <MenuItem x:Name="MenuItemAutoRename" Header="Automatically Rename Title">
                   <MenuItem Header="Using IP.BIN _info" Click="MenuItemRenameIP_Click" CommandParameter="{Binding}"/>
-                  <MenuItem Header="Using its folder name on computer" Click="MenuItemRenameFolder_Click" CommandParameter="{Binding}" IsEnabled="{Binding IsNotOnSdCard}"/>
-                  <MenuItem Header="Using disc image's base file name" Click="MenuItemRenameFile_Click" CommandParameter="{Binding}" IsEnabled="{Binding IsNotOnSdCard}"/>
+                  <MenuItem x:Name="MenuItemRenameFolder" Header="Using its folder name on computer" Click="MenuItemRenameFolder_Click" CommandParameter="{Binding}"/>
+                  <MenuItem x:Name="MenuItemRenameFile" Header="Using disc image's base file name" Click="MenuItemRenameFile_Click" CommandParameter="{Binding}"/>
                 </MenuItem>
                 <Separator/>
                 <MenuItem x:Name="MenuItemAssignFolder" Header="Assign Folder Path" Click="MenuItemAssignFolder_Click" CommandParameter="{Binding}"/>
@@ -225,7 +233,7 @@
             <DataGridTemplateColumn Width="Auto">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate>
-                  <Button Click="ButtonInfo_Click" ToolTip.Tip="View File Info" CommandParameter="{Binding}">
+                  <Button Click="ButtonInfo_Click" ToolTip.Tip="View File Info" CommandParameter="{Binding}" IsEnabled="{Binding Path=., Converter={StaticResource IsGameDisc}}">
                     <!--<ContentControl Content="{StaticResource ViewInfo}"/>-->
                     <!--until this issue is fixed https://github.com/AvaloniaUI/Avalonia/issues/2735-->
                     <Viewbox Width="18" Height="18">
@@ -243,7 +251,7 @@
                 <TextBlock Text="SD #" ToolTip.Tip="Current item folder on SD card"/>
               </DataGridTextColumn.Header>
             </DataGridTextColumn>
-            <DataGridTextColumn Header="Size" Width="67" IsReadOnly="True" Binding="{Binding Length, Mode=OneWay, Converter={StaticResource ByteSizeToString}}"/>
+            <DataGridTextColumn Header="Size" Width="81" IsReadOnly="True" Binding="{Binding Length, Mode=OneWay, Converter={StaticResource ByteSizeToString}}"/>
             <DataGridTemplateColumn Header="Title" Width="2*">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate>

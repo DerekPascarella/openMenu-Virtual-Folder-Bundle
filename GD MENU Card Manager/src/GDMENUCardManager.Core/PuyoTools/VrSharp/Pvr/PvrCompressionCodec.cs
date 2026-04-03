@@ -11,10 +11,10 @@ namespace VrSharp.Pvr
         {
             public override byte[] Decompress(byte[] input, int DataOffset, VrPixelCodec PixelCodec, VrDataCodec DataCodec)
             {
-                byte[] output     = new byte[BitConverter.ToUInt32(input, 0x00)];
+                byte[] output = new byte[BitConverter.ToUInt32(input, 0x00)];
                 int SourcePointer = DataOffset;
-                int DestPointer   = 0x00;
-                int PixelSize     = (DataCodec.Bpp >> 3);
+                int DestPointer = 0x00;
+                int PixelSize = (DataCodec.Bpp >> 3);
 
                 // Copy the header
                 if (DataOffset - 4 > 0)
@@ -46,8 +46,8 @@ namespace VrSharp.Pvr
                     return input;
 
                 MemoryStream output = new MemoryStream();
-                int SourcePointer   = DataOffset;
-                int DestPointer     = DataOffset + 4;
+                int SourcePointer = DataOffset;
+                int DestPointer = DataOffset + 4;
                 int PixelSize = (DataCodec.Bpp >> 3);
 
                 using (BinaryWriter Writer = new BinaryWriter(output))
@@ -61,7 +61,7 @@ namespace VrSharp.Pvr
                         Array.Copy(input, SourcePointer, pixel, 0x00, PixelSize);
                         Writer.Write(pixel);
                         SourcePointer += PixelSize;
-                        DestPointer   += PixelSize;
+                        DestPointer += PixelSize;
 
                         int repeat = 0;
                         while (SourcePointer + PixelSize < input.Length && repeat < 255)

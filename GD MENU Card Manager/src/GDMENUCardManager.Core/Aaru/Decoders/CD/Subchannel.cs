@@ -86,13 +86,13 @@ namespace Aaru.Decoders.CD
 
         public static byte[] ConvertQToRaw(byte[] subchannel)
         {
-            int    pos    = 0;
+            int pos = 0;
             byte[] subBuf = new byte[subchannel.Length * 6];
 
-            for(int i = 0; i < subchannel.Length; i += 16)
+            for (int i = 0; i < subchannel.Length; i += 16)
             {
                 // P
-                if((subchannel[i + 15] & 0x80) <= 0)
+                if ((subchannel[i + 15] & 0x80) <= 0)
                 {
                     pos += 12;
                 }
@@ -139,9 +139,9 @@ namespace Aaru.Decoders.CD
 
             int outPos = 0;
 
-            for(int inPos = 0; inPos < subchannel.Length; inPos += 96)
+            for (int inPos = 0; inPos < subchannel.Length; inPos += 96)
             {
-                for(int i = 0; i < 12; i++)
+                for (int i = 0; i < 12; i++)
                 {
                     // P
                     subBuf[outPos + 0] += (byte)(subchannel[inPos + i + 0] & 0x80);
@@ -222,7 +222,7 @@ namespace Aaru.Decoders.CD
                     subBuf[outPos + 5] += (byte)((subchannel[inPos + i + 84] & 0x04) >> 2);
                     subBuf[outPos + 6] += (byte)((subchannel[inPos + i + 84] & 0x02) >> 1);
                     subBuf[outPos + 7] += (byte)(subchannel[inPos + i + 84] & 0x01);
-                    outPos             += 8;
+                    outPos += 8;
                 }
             }
 

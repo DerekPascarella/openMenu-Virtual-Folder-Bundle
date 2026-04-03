@@ -63,8 +63,8 @@ namespace VrSharp.Pvr
 
                 destination[destinationIndex + 3] = 0xFF;
                 destination[destinationIndex + 2] = (byte)(((pixel >> 11) & 0x1F) * 0xFF / 0x1F);
-                destination[destinationIndex + 1] = (byte)(((pixel >> 5)  & 0x3F) * 0xFF / 0x3F);
-                destination[destinationIndex + 0] = (byte)(((pixel >> 0)  & 0x1F) * 0xFF / 0x1F);
+                destination[destinationIndex + 1] = (byte)(((pixel >> 5) & 0x3F) * 0xFF / 0x3F);
+                destination[destinationIndex + 0] = (byte)(((pixel >> 0) & 0x1F) * 0xFF / 0x1F);
             }
 
             public override void EncodePixel(byte[] source, int sourceIndex, byte[] destination, int destinationIndex)
@@ -99,9 +99,9 @@ namespace VrSharp.Pvr
                 ushort pixel = BitConverter.ToUInt16(source, sourceIndex);
 
                 destination[destinationIndex + 3] = (byte)(((pixel >> 12) & 0x0F) * 0xFF / 0x0F);
-                destination[destinationIndex + 2] = (byte)(((pixel >> 8)  & 0x0F) * 0xFF / 0x0F);
-                destination[destinationIndex + 1] = (byte)(((pixel >> 4)  & 0x0F) * 0xFF / 0x0F);
-                destination[destinationIndex + 0] = (byte)(((pixel >> 0)  & 0x0F) * 0xFF / 0x0F);
+                destination[destinationIndex + 2] = (byte)(((pixel >> 8) & 0x0F) * 0xFF / 0x0F);
+                destination[destinationIndex + 1] = (byte)(((pixel >> 4) & 0x0F) * 0xFF / 0x0F);
+                destination[destinationIndex + 0] = (byte)(((pixel >> 0) & 0x0F) * 0xFF / 0x0F);
             }
 
             public override void EncodePixel(byte[] source, int sourceIndex, byte[] destination, int destinationIndex)

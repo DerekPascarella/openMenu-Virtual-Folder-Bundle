@@ -41,16 +41,16 @@ namespace Aaru.Decoders.CD
         {
             _eccFTable = new byte[256];
             _eccBTable = new byte[256];
-            _edcTable  = new uint[256];
+            _edcTable = new uint[256];
 
-            for(uint i = 0; i < 256; i++)
+            for (uint i = 0; i < 256; i++)
             {
                 uint edc = i;
-                uint j   = (uint)((i << 1) ^ ((i & 0x80) == 0x80 ? 0x11D : 0));
-                _eccFTable[i]     = (byte)j;
+                uint j = (uint)((i << 1) ^ ((i & 0x80) == 0x80 ? 0x11D : 0));
+                _eccFTable[i] = (byte)j;
                 _eccBTable[i ^ j] = (byte)i;
 
-                for(j = 0; j < 8; j++)
+                for (j = 0; j < 8; j++)
                     edc = (edc >> 1) ^ ((edc & 1) > 0 ? 0xD8018001 : 0);
 
                 _edcTable[i] = edc;
@@ -83,9 +83,9 @@ namespace Aaru.Decoders.CD
 
             sector[0x00C] = (byte)(((msf.minute / 10) << 4) + (msf.minute % 10));
             sector[0x00D] = (byte)(((msf.second / 10) << 4) + (msf.second % 10));
-            sector[0x00E] = (byte)(((msf.frame  / 10) << 4) + (msf.frame  % 10));
+            sector[0x00E] = (byte)(((msf.frame / 10) << 4) + (msf.frame % 10));
 
-            switch(type)
+            switch (type)
             {
                 case TrackType.CdMode1:
                     //
@@ -119,7 +119,7 @@ namespace Aaru.Decoders.CD
         {
             int pos = srcOffset;
 
-            for(; size > 0; size--)
+            for (; size > 0; size--)
                 edc = (edc >> 8) ^ _edcTable[(edc ^ src[pos++]) & 0xFF];
 
             return edc;
@@ -130,13 +130,13 @@ namespace Aaru.Decoders.CD
         {
             byte[] computedEdc;
 
-            switch(type)
+            switch (type)
             {
                 //
                 // Compute EDC
                 //
                 case TrackType.CdMode1:
-                    computedEdc   = BitConverter.GetBytes(ComputeEdc(0, sector, 0x810));
+                    computedEdc = BitConverter.GetBytes(ComputeEdc(0, sector, 0x810));
                     sector[0x810] = computedEdc[0];
                     sector[0x811] = computedEdc[1];
                     sector[0x812] = computedEdc[2];
@@ -144,7 +144,7 @@ namespace Aaru.Decoders.CD
 
                     break;
                 case TrackType.CdMode2Form1:
-                    computedEdc   = BitConverter.GetBytes(ComputeEdc(0, sector, 0x808, 0x10));
+                    computedEdc = BitConverter.GetBytes(ComputeEdc(0, sector, 0x808, 0x10));
                     sector[0x818] = computedEdc[0];
                     sector[0x819] = computedEdc[1];
                     sector[0x81A] = computedEdc[2];
@@ -152,7 +152,7 @@ namespace Aaru.Decoders.CD
 
                     break;
                 case TrackType.CdMode2Form2:
-                    computedEdc   = BitConverter.GetBytes(ComputeEdc(0, sector, 0x91C, 0x10));
+                    computedEdc = BitConverter.GetBytes(ComputeEdc(0, sector, 0x91C, 0x10));
                     sector[0x92C] = computedEdc[0];
                     sector[0x92D] = computedEdc[1];
                     sector[0x92E] = computedEdc[2];
@@ -164,7 +164,7 @@ namespace Aaru.Decoders.CD
 
             byte[] zeroaddress = new byte[4];
 
-            switch(type)
+            switch (type)
             {
                 //
                 // Compute ECC
@@ -209,28 +209,28 @@ namespace Aaru.Decoders.CD
             uint size = majorCount * minorCount;
             uint major;
 
-            for(major = 0; major < majorCount; major++)
+            for (major = 0; major < majorCount; major++)
             {
-                uint idx  = ((major >> 1) * majorMult) + (major & 1);
+                uint idx = ((major >> 1) * majorMult) + (major & 1);
                 byte eccA = 0;
                 byte eccB = 0;
                 uint minor;
 
-                for(minor = 0; minor < minorCount; minor++)
+                for (minor = 0; minor < minorCount; minor++)
                 {
                     byte temp = idx < 4 ? address[idx + addressOffset] : data[(idx + dataOffset) - 4];
                     idx += minorInc;
 
-                    if(idx >= size)
+                    if (idx >= size)
                         idx -= size;
 
                     eccA ^= temp;
                     eccB ^= temp;
-                    eccA =  _eccFTable[eccA];
+                    eccA = _eccFTable[eccA];
                 }
 
-                eccA                                = _eccBTable[_eccFTable[eccA] ^ eccB];
-                ecc[major + eccOffset]              = eccA;
+                eccA = _eccBTable[_eccFTable[eccA] ^ eccB];
+                ecc[major + eccOffset] = eccA;
                 ecc[major + majorCount + eccOffset] = (byte)(eccA ^ eccB);
             }
         }

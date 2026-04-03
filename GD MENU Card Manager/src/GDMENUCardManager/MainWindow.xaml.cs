@@ -177,6 +177,7 @@ namespace GDMENUCardManager
                 Manager.MenuKindSelected = value;
                 RaisePropertyChanged();
                 UpdateFolderColumnVisibility();
+                UpdateSortButtonTooltip();
             }
         }
 
@@ -308,16 +309,20 @@ namespace GDMENUCardManager
             if (e.PropertyName == nameof(SelectedDrive) && SelectedDrive != null)
                 await LoadItemsFromCard();
             else if (e.PropertyName == nameof(MenuKindSelected))
+            {
                 UpdateFolderColumnVisibility();
+                UpdateSortButtonTooltip();
+            }
         }
 
         private void Manager_MenuKindChanged(object sender, EventArgs e)
         {
-            // Update column visibility immediately when menu kind is detected during loading
+            // Update column visibility and sort tooltip immediately when menu kind is detected during loading
             Dispatcher.Invoke(new Action(() =>
             {
                 RaisePropertyChanged(nameof(MenuKindSelected));
                 UpdateFolderColumnVisibility();
+                UpdateSortButtonTooltip();
             }));
         }
 
@@ -369,7 +374,7 @@ namespace GDMENUCardManager
                 }
             }
 
-            // Art column - visible in openMenu mode (buttons disabled if ArtworkDisabled)
+            // Art column: only visible in openMenu mode
             if (artColumn != null)
             {
                 bool showArt = MenuKindSelected == MenuKind.openMenu;
@@ -381,6 +386,14 @@ namespace GDMENUCardManager
                 // Make Disc column editable only in openMenu mode
                 discColumn.IsReadOnly = (MenuKindSelected != MenuKind.openMenu);
             }
+        }
+
+        private void UpdateSortButtonTooltip()
+        {
+            if (ButtonSort == null) return;
+            ButtonSort.ToolTip = MenuKindSelected == MenuKind.openMenu
+                ? "Sort list by folder path + title"
+                : "Sort list by title";
         }
 
         private void ItemList_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
@@ -465,7 +478,7 @@ namespace GDMENUCardManager
                     }
                     else
                     {
-                        // User chose to quit - close the application
+                        // quit
                         Application.Current.Shutdown();
                         return;
                     }
@@ -562,7 +575,7 @@ namespace GDMENUCardManager
                         }
                         else if (result == MessageBoxResult.No)
                         {
-                            // User wants to close and add manually - clear drive selection
+                            // close and let user add manually
                             SelectedDrive = null;
                         }
                         else
@@ -697,7 +710,7 @@ namespace GDMENUCardManager
                         return;
                     }
 
-                    // User chose to proceed - reset disc values to 1/1 for items without serial
+                    // reset disc to 1/1 for items without serial
                     ResetDiscValuesForItemsWithoutSerial();
                 }
 
@@ -740,7 +753,7 @@ namespace GDMENUCardManager
                 // Skip menu items and compressed files (serial assigned during extraction)
                 if (item.Ip?.Name == "GDMENU" || item.Ip?.Name == "openMenu")
                     return false;
-                if (item.FileFormat == Core.FileFormat.SevenZip)
+                if (item.FileFormat == Core.FileFormat.SevenZip || item.FileFormat == Core.FileFormat.CueBinNonGame)
                     return false;
 
                 if (string.IsNullOrWhiteSpace(item.ProductNumber))
@@ -828,7 +841,7 @@ namespace GDMENUCardManager
                     var error = Core.Helper.CheckFileAccessibility(configPath);
                     if (error == null) break; // writable
 
-                    // Show dialog — returns true=retry, false=proceed without saving
+                    // true=retry, false=proceed without saving
                     if (!await Core.Helper.DependencyManager.ShowConfigReadOnlyDialog(configPath, error))
                     {
                         Core.Manager.ConfigReadOnly = true;
@@ -1029,7 +1042,7 @@ namespace GDMENUCardManager
             }
         }
 
-        
+
 
         private async void ButtonSaveChanges_Click(object sender, RoutedEventArgs e)
         {
@@ -1039,6 +1052,7 @@ namespace GDMENUCardManager
             var emptySerials = Manager.ItemList
                 .Where(x => x.Ip?.Name != "GDMENU" && x.Ip?.Name != "openMenu"
                     && x.FileFormat != Core.FileFormat.SevenZip
+                    && x.FileFormat != Core.FileFormat.CueBinNonGame
                     && string.IsNullOrWhiteSpace(x.ProductNumber))
                 .ToList();
 
@@ -1113,9 +1127,9 @@ namespace GDMENUCardManager
                 if (item.Ip == null)
                     await Manager.LoadIP(item);
 
-                new InfoWindow(item) { Owner = this}.ShowDialog();
+                new InfoWindow(item) { Owner = this }.ShowDialog();
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 MessageBox.Show(ex.Message, "Error Loading data", MessageBoxButton.OK, MessageBoxImage.Error);
             }
@@ -1137,7 +1151,7 @@ namespace GDMENUCardManager
                 if (item == null || !item.CanManageArtwork)
                     return;
 
-                // Check if serial was just translated - must handle before opening artwork window
+                // handle serial translation before opening artwork window
                 if (item.WasSerialTranslated)
                 {
                     _handlingSerialTranslation = true;
@@ -1181,8 +1195,11 @@ namespace GDMENUCardManager
         {
             if (IsFilterActive)
                 return;
+            var sortDescription = MenuKindSelected == MenuKind.openMenu
+                ? "Your disc images will be automatically sorted in alphanumeric order based on a combination of Folder and Title.\n\nDo you want to continue?"
+                : "Your disc images will be automatically sorted in alphanumeric order based on Title.\n\nDo you want to continue?";
             var result = MessageBox.Show(
-                "Your disc images will be automatically sorted in alphanumeric order based on a combination of Folder and Title.\n\nDo you want to continue?",
+                sortDescription,
                 "Sort List",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Question);
@@ -1459,12 +1476,27 @@ namespace GDMENUCardManager
                     titleItem.Header = isMultiple ? $"{count} Disc Images" : ((GdItem)dg1.SelectedItem)?.Name;
                 }
 
-                // Update auto rename header
+                // Update auto rename header and folder/file sub-items
                 var autoRenameItem = menu.Items.OfType<MenuItem>()
                     .FirstOrDefault(m => m.Name == "MenuItemAutoRename");
                 if (autoRenameItem != null)
                 {
                     autoRenameItem.Header = isMultiple ? "Automatically Rename Titles" : "Automatically Rename Title";
+
+                    // Folder/file rename only available when ALL selected non-menu items are off the SD card
+                    bool allOffSdCard = dg1.SelectedItems.Cast<GdItem>()
+                        .Where(g => g.SdNumber != 1)
+                        .All(g => g.IsNotOnSdCard);
+
+                    var renameFolderItem = autoRenameItem.Items.OfType<MenuItem>()
+                        .FirstOrDefault(m => m.Name == "MenuItemRenameFolder");
+                    if (renameFolderItem != null)
+                        renameFolderItem.IsEnabled = allOffSdCard;
+
+                    var renameFileItem = autoRenameItem.Items.OfType<MenuItem>()
+                        .FirstOrDefault(m => m.Name == "MenuItemRenameFile");
+                    if (renameFileItem != null)
+                        renameFileItem.IsEnabled = allOffSdCard;
                 }
 
                 // Update assign folder header
@@ -1672,7 +1704,7 @@ namespace GDMENUCardManager
                 return;
             }
 
-            // Check if any serials were just translated - must handle before proceeding
+            // handle serial translations before proceeding
             var translatedItems = selectedItems.Where(item => item.WasSerialTranslated).ToList();
             if (translatedItems.Count > 0)
             {
@@ -1904,8 +1936,7 @@ namespace GDMENUCardManager
                     }
                 }
                 e.Cancel = true;
-                // Don't clear editing state - cell stays in edit mode and
-                // the next commit attempt needs this state for validation
+                // keep editing state so the next commit attempt can validate
                 return;
             }
 

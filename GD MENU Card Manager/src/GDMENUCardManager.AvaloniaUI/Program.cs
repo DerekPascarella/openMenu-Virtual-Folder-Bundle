@@ -32,6 +32,6 @@ namespace GDMENUCardManager
             //.UseManagedSystemDialogs()
             //.UseManagedSystemDialogs<AppBuilder, MyCustomWindowType>();
             .LogToTrace();
-        
+
     }
 }

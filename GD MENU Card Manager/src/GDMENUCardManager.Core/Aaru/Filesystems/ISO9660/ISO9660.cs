@@ -46,25 +46,25 @@ namespace Aaru.Filesystems
     public sealed partial class ISO9660 : IReadOnlyFilesystem
     {
         //bool                                      _cdi;
-        bool                                      _debug;
+        bool _debug;
         //bool                                      _highSierra;
-        IMediaImage                               _image;
-        bool                                      _joliet;
-        bool                                      _mounted;
-        Namespace                                 _namespace;
-        PathTableEntryInternal[]                  _pathTable;
+        IMediaImage _image;
+        bool _joliet;
+        bool _mounted;
+        Namespace _namespace;
+        PathTableEntryInternal[] _pathTable;
         Dictionary<string, DecodedDirectoryEntry> _rootDirectoryCache;
-        FileSystemInfo                            _statfs;
-        bool                                      _useEvd;
-        bool                                      _usePathTable;
-        bool                                      _useTransTbl;
-        ushort                                    _blockSize;
+        FileSystemInfo _statfs;
+        bool _useEvd;
+        bool _usePathTable;
+        bool _useTransTbl;
+        ushort _blockSize;
 
         //public FileSystemType XmlFsType { get; private set; }
-        public Encoding       Encoding  { get; private set; }
-        public string         Name      => "ISO9660 Filesystem";
-        public Guid           Id        => new Guid("d812f4d3-c357-400d-90fd-3b22ef786aa8");
-        public string         Author    => "Natalia Portillo";
+        public Encoding Encoding { get; private set; }
+        public string Name => "ISO9660 Filesystem";
+        public Guid Id => new Guid("d812f4d3-c357-400d-90fd-3b22ef786aa8");
+        public string Author => "Natalia Portillo";
 
         public IEnumerable<(string name, Type type, string description)> SupportedOptions =>
             new (string name, Type type, string description)[]

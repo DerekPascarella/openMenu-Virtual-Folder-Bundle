@@ -51,20 +51,20 @@ namespace Aaru.Filesystems
         {
             deviceBlock = 0;
 
-            if(!_mounted)
+            if (!_mounted)
                 return Errno.AccessDenied;
 
             Errno err = GetFileEntry(path, out DecodedDirectoryEntry entry);
 
-            if(err != Errno.NoError)
+            if (err != Errno.NoError)
                 return err;
 
-            if(entry.Flags.HasFlag(FileFlags.Directory) &&
+            if (entry.Flags.HasFlag(FileFlags.Directory) &&
                !_debug)
                 return Errno.IsDirectory;
 
             // TODO: Multi-extents
-            if(entry.Extents.Count > 1)
+            if (entry.Extents.Count > 1)
                 return Errno.NotImplemented;
 
             deviceBlock = entry.Extents[0].extent + fileBlock;
@@ -76,12 +76,12 @@ namespace Aaru.Filesystems
         {
             attributes = new FileAttributes();
 
-            if(!_mounted)
+            if (!_mounted)
                 return Errno.AccessDenied;
 
             Errno err = Stat(path, out FileEntryInfo stat);
 
-            if(err != Errno.NoError)
+            if (err != Errno.NoError)
                 return err;
 
             attributes = stat.Attributes;
@@ -94,32 +94,32 @@ namespace Aaru.Filesystems
         {
             buf = null;
 
-            if(!_mounted)
+            if (!_mounted)
                 return Errno.AccessDenied;
 
             Errno err = GetFileEntry(path, out DecodedDirectoryEntry entry);
 
-            if(err != Errno.NoError)
+            if (err != Errno.NoError)
                 return err;
 
-            if(entry.Flags.HasFlag(FileFlags.Directory) &&
+            if (entry.Flags.HasFlag(FileFlags.Directory) &&
                !_debug)
                 return Errno.IsDirectory;
 
-            if(entry.Extents is null)
+            if (entry.Extents is null)
                 return Errno.InvalidArgument;
 
-            if(entry.Size == 0)
+            if (entry.Size == 0)
             {
                 buf = new byte[0];
 
                 return Errno.NoError;
             }
 
-            if(offset >= (long)entry.Size)
+            if (offset >= (long)entry.Size)
                 return Errno.InvalidArgument;
 
-            if(size + offset >= (long)entry.Size)
+            if (size + offset >= (long)entry.Size)
                 size = (long)entry.Size - offset;
 
             offset += entry.XattrLength * _blockSize;
@@ -154,7 +154,7 @@ namespace Aaru.Filesystems
             //}
 
             buf = ReadWithExtents(offset, size, entry.Extents,
-                                  entry.XA?.signature                                    == XA_MAGIC &&
+                                  entry.XA?.signature == XA_MAGIC &&
                                   entry.XA?.attributes.HasFlag(XaAttributes.Interleaved) == true,
                                   entry.XA?.filenumber ?? 0);
 
@@ -165,34 +165,34 @@ namespace Aaru.Filesystems
         {
             stat = null;
 
-            if(!_mounted)
+            if (!_mounted)
                 return Errno.AccessDenied;
 
             Errno err = GetFileEntry(path, out DecodedDirectoryEntry entry);
 
-            if(err != Errno.NoError)
+            if (err != Errno.NoError)
                 return err;
 
             stat = new FileEntryInfo
             {
-                Attributes       = new FileAttributes(),
-                Blocks           = (long)(entry.Size / 2048), // TODO: XA
-                BlockSize        = 2048,
-                Length           = (long)entry.Size,
-                Links            = 1,
+                Attributes = new FileAttributes(),
+                Blocks = (long)(entry.Size / 2048), // TODO: XA
+                BlockSize = 2048,
+                Length = (long)entry.Size,
+                Links = 1,
                 LastWriteTimeUtc = entry.Timestamp
             };
 
-            if(entry.Extents?.Count > 0)
+            if (entry.Extents?.Count > 0)
                 stat.Inode = entry.Extents[0].extent;
 
-            if(entry.Size % 2048 > 0)
+            if (entry.Size % 2048 > 0)
                 stat.Blocks++;
 
-            if(entry.Flags.HasFlag(FileFlags.Directory))
+            if (entry.Flags.HasFlag(FileFlags.Directory))
                 stat.Attributes |= FileAttributes.Directory;
 
-            if(entry.Flags.HasFlag(FileFlags.Hidden))
+            if (entry.Flags.HasFlag(FileFlags.Hidden))
                 stat.Attributes |= FileAttributes.Hidden;
 
             //if(entry.FinderInfo?.fdFlags.HasFlag(AppleCommon.FinderFlags.kIsAlias) == true)
@@ -225,77 +225,77 @@ namespace Aaru.Filesystems
             //if(entry.AppleIcon != null)
             //    stat.Attributes |= FileAttributes.HasCustomIcon;
 
-            if(entry.XA != null)
+            if (entry.XA != null)
             {
-                if(entry.XA.Value.attributes.HasFlag(XaAttributes.GroupExecute))
+                if (entry.XA.Value.attributes.HasFlag(XaAttributes.GroupExecute))
                     stat.Mode |= 8;
 
-                if(entry.XA.Value.attributes.HasFlag(XaAttributes.GroupRead))
+                if (entry.XA.Value.attributes.HasFlag(XaAttributes.GroupRead))
                     stat.Mode |= 32;
 
-                if(entry.XA.Value.attributes.HasFlag(XaAttributes.OwnerExecute))
+                if (entry.XA.Value.attributes.HasFlag(XaAttributes.OwnerExecute))
                     stat.Mode |= 64;
 
-                if(entry.XA.Value.attributes.HasFlag(XaAttributes.OwnerRead))
+                if (entry.XA.Value.attributes.HasFlag(XaAttributes.OwnerRead))
                     stat.Mode |= 256;
 
-                if(entry.XA.Value.attributes.HasFlag(XaAttributes.SystemExecute))
+                if (entry.XA.Value.attributes.HasFlag(XaAttributes.SystemExecute))
                     stat.Mode |= 1;
 
-                if(entry.XA.Value.attributes.HasFlag(XaAttributes.SystemRead))
+                if (entry.XA.Value.attributes.HasFlag(XaAttributes.SystemRead))
                     stat.Mode |= 4;
 
-                stat.UID   = entry.XA.Value.user;
-                stat.GID   = entry.XA.Value.group;
+                stat.UID = entry.XA.Value.user;
+                stat.GID = entry.XA.Value.group;
                 stat.Inode = entry.XA.Value.filenumber;
             }
 
-            if(entry.PosixAttributes != null)
+            if (entry.PosixAttributes != null)
             {
                 stat.Mode = (uint?)entry.PosixAttributes.Value.st_mode & 0x0FFF;
 
-                if(entry.PosixAttributes.Value.st_mode.HasFlag(PosixMode.Block))
+                if (entry.PosixAttributes.Value.st_mode.HasFlag(PosixMode.Block))
                     stat.Attributes |= FileAttributes.BlockDevice;
 
-                if(entry.PosixAttributes.Value.st_mode.HasFlag(PosixMode.Character))
+                if (entry.PosixAttributes.Value.st_mode.HasFlag(PosixMode.Character))
                     stat.Attributes |= FileAttributes.CharDevice;
 
-                if(entry.PosixAttributes.Value.st_mode.HasFlag(PosixMode.Pipe))
+                if (entry.PosixAttributes.Value.st_mode.HasFlag(PosixMode.Pipe))
                     stat.Attributes |= FileAttributes.Pipe;
 
-                if(entry.PosixAttributes.Value.st_mode.HasFlag(PosixMode.Socket))
+                if (entry.PosixAttributes.Value.st_mode.HasFlag(PosixMode.Socket))
                     stat.Attributes |= FileAttributes.Socket;
 
-                if(entry.PosixAttributes.Value.st_mode.HasFlag(PosixMode.Symlink))
+                if (entry.PosixAttributes.Value.st_mode.HasFlag(PosixMode.Symlink))
                     stat.Attributes |= FileAttributes.Symlink;
 
                 stat.Links = entry.PosixAttributes.Value.st_nlink;
-                stat.UID   = entry.PosixAttributes.Value.st_uid;
-                stat.GID   = entry.PosixAttributes.Value.st_gid;
+                stat.UID = entry.PosixAttributes.Value.st_uid;
+                stat.GID = entry.PosixAttributes.Value.st_gid;
                 stat.Inode = entry.PosixAttributes.Value.st_ino;
             }
-            else if(entry.PosixAttributesOld != null)
+            else if (entry.PosixAttributesOld != null)
             {
                 stat.Mode = (uint?)entry.PosixAttributesOld.Value.st_mode & 0x0FFF;
 
-                if(entry.PosixAttributesOld.Value.st_mode.HasFlag(PosixMode.Block))
+                if (entry.PosixAttributesOld.Value.st_mode.HasFlag(PosixMode.Block))
                     stat.Attributes |= FileAttributes.BlockDevice;
 
-                if(entry.PosixAttributesOld.Value.st_mode.HasFlag(PosixMode.Character))
+                if (entry.PosixAttributesOld.Value.st_mode.HasFlag(PosixMode.Character))
                     stat.Attributes |= FileAttributes.CharDevice;
 
-                if(entry.PosixAttributesOld.Value.st_mode.HasFlag(PosixMode.Pipe))
+                if (entry.PosixAttributesOld.Value.st_mode.HasFlag(PosixMode.Pipe))
                     stat.Attributes |= FileAttributes.Pipe;
 
-                if(entry.PosixAttributesOld.Value.st_mode.HasFlag(PosixMode.Socket))
+                if (entry.PosixAttributesOld.Value.st_mode.HasFlag(PosixMode.Socket))
                     stat.Attributes |= FileAttributes.Socket;
 
-                if(entry.PosixAttributesOld.Value.st_mode.HasFlag(PosixMode.Symlink))
+                if (entry.PosixAttributesOld.Value.st_mode.HasFlag(PosixMode.Symlink))
                     stat.Attributes |= FileAttributes.Symlink;
 
                 stat.Links = entry.PosixAttributesOld.Value.st_nlink;
-                stat.UID   = entry.PosixAttributesOld.Value.st_uid;
-                stat.GID   = entry.PosixAttributesOld.Value.st_gid;
+                stat.UID = entry.PosixAttributesOld.Value.st_uid;
+                stat.GID = entry.PosixAttributesOld.Value.st_gid;
             }
 
             //if(entry.AmigaProtection != null)
@@ -331,26 +331,26 @@ namespace Aaru.Filesystems
             //        stat.Attributes |= FileAttributes.Archive;
             //}
 
-            if(entry.PosixDeviceNumber != null)
+            if (entry.PosixDeviceNumber != null)
                 stat.DeviceNo = ((ulong)entry.PosixDeviceNumber.Value.dev_t_high << 32) +
                                 entry.PosixDeviceNumber.Value.dev_t_low;
 
-            if(entry.RripModify != null)
+            if (entry.RripModify != null)
                 stat.LastWriteTimeUtc = DecodeIsoDateTime(entry.RripModify);
 
-            if(entry.RripAccess != null)
+            if (entry.RripAccess != null)
                 stat.AccessTimeUtc = DecodeIsoDateTime(entry.RripAccess);
 
-            if(entry.RripAttributeChange != null)
+            if (entry.RripAttributeChange != null)
                 stat.StatusChangeTimeUtc = DecodeIsoDateTime(entry.RripAttributeChange);
 
-            if(entry.RripBackup != null)
+            if (entry.RripBackup != null)
                 stat.BackupTimeUtc = DecodeIsoDateTime(entry.RripBackup);
 
-            if(entry.SymbolicLink != null)
+            if (entry.SymbolicLink != null)
                 stat.Attributes |= FileAttributes.Symlink;
 
-            if(entry.XattrLength == 0)
+            if (entry.XattrLength == 0)
                 return Errno.NoError;
 
             //if(entry.CdiSystemArea != null)
@@ -386,25 +386,25 @@ namespace Aaru.Filesystems
 
             stat.Mode = 0;
 
-            if(ear.permissions.HasFlag(Permissions.GroupExecute))
+            if (ear.permissions.HasFlag(Permissions.GroupExecute))
                 stat.Mode |= 8;
 
-            if(ear.permissions.HasFlag(Permissions.GroupRead))
+            if (ear.permissions.HasFlag(Permissions.GroupRead))
                 stat.Mode |= 32;
 
-            if(ear.permissions.HasFlag(Permissions.OwnerExecute))
+            if (ear.permissions.HasFlag(Permissions.OwnerExecute))
                 stat.Mode |= 64;
 
-            if(ear.permissions.HasFlag(Permissions.OwnerRead))
+            if (ear.permissions.HasFlag(Permissions.OwnerRead))
                 stat.Mode |= 256;
 
-            if(ear.permissions.HasFlag(Permissions.OtherExecute))
+            if (ear.permissions.HasFlag(Permissions.OtherExecute))
                 stat.Mode |= 1;
 
-            if(ear.permissions.HasFlag(Permissions.OtherRead))
+            if (ear.permissions.HasFlag(Permissions.OtherRead))
                 stat.Mode |= 4;
 
-            stat.CreationTimeUtc  = DateHandlers.Iso9660ToDateTime(ear.creation_date);
+            stat.CreationTimeUtc = DateHandlers.Iso9660ToDateTime(ear.creation_date);
             stat.LastWriteTimeUtc = DateHandlers.Iso9660ToDateTime(ear.modification_date);
 
             return Errno.NoError;
@@ -416,10 +416,10 @@ namespace Aaru.Filesystems
 
             Errno err = GetFileEntry(path, out DecodedDirectoryEntry entry);
 
-            if(err != Errno.NoError)
+            if (err != Errno.NoError)
                 return err;
 
-            if(entry.SymbolicLink is null)
+            if (entry.SymbolicLink is null)
                 return Errno.InvalidArgument;
 
             dest = entry.SymbolicLink;
@@ -440,38 +440,38 @@ namespace Aaru.Filesystems
                 '/'
             }, StringSplitOptions.RemoveEmptyEntries);
 
-            if(pieces.Length == 0)
+            if (pieces.Length == 0)
                 return Errno.InvalidArgument;
 
             string parentPath = string.Join("/", pieces, 0, pieces.Length - 1);
 
-            if(!_directoryCache.TryGetValue(parentPath, out _))
+            if (!_directoryCache.TryGetValue(parentPath, out _))
             {
                 Errno err = ReadDir(parentPath, out _);
 
-                if(err != Errno.NoError)
+                if (err != Errno.NoError)
                     return err;
             }
 
             Dictionary<string, DecodedDirectoryEntry> parent;
 
-            if(pieces.Length == 1)
+            if (pieces.Length == 1)
                 parent = _rootDirectoryCache;
-            else if(!_directoryCache.TryGetValue(parentPath, out parent))
+            else if (!_directoryCache.TryGetValue(parentPath, out parent))
                 return Errno.InvalidArgument;
 
             KeyValuePair<string, DecodedDirectoryEntry> dirent =
                 parent.FirstOrDefault(t => t.Key.ToLower(CultureInfo.CurrentUICulture) == pieces[^1]);
 
-            if(string.IsNullOrEmpty(dirent.Key))
+            if (string.IsNullOrEmpty(dirent.Key))
             {
-                if(!_joliet &&
+                if (!_joliet &&
                    !pieces[^1].EndsWith(";1", StringComparison.Ordinal))
                 {
                     dirent = parent.FirstOrDefault(t => t.Key.ToLower(CultureInfo.CurrentUICulture) ==
                                                         pieces[^1] + ";1");
 
-                    if(string.IsNullOrEmpty(dirent.Key))
+                    if (string.IsNullOrEmpty(dirent.Key))
                         return Errno.NoSuchFile;
                 }
                 else
@@ -501,33 +501,33 @@ namespace Aaru.Filesystems
         byte[] ReadWithExtents(long offset, long size, List<(uint extent, uint size)> extents, bool interleaved,
                                byte fileNumber)
         {
-            var  ms             = new MemoryStream();
+            var ms = new MemoryStream();
             long currentFilePos = 0;
 
-            for(int i = 0; i < extents.Count; i++)
+            for (int i = 0; i < extents.Count; i++)
             {
-                if(offset - currentFilePos >= extents[i].size)
+                if (offset - currentFilePos >= extents[i].size)
                 {
                     currentFilePos += extents[i].size;
 
                     continue;
                 }
 
-                long leftExtentSize      = extents[i].size;
+                long leftExtentSize = extents[i].size;
                 uint currentExtentSector = 0;
 
-                while(leftExtentSize > 0)
+                while (leftExtentSize > 0)
                 {
                     byte[] sector = ReadSector(extents[i].extent + currentExtentSector, interleaved, fileNumber);
 
-                    if(sector is null)
+                    if (sector is null)
                     {
                         currentExtentSector++;
 
                         continue;
                     }
 
-                    if(offset - currentFilePos > sector.Length)
+                    if (offset - currentFilePos > sector.Length)
                     {
                         currentExtentSector++;
                         leftExtentSize -= sector.Length;
@@ -536,9 +536,9 @@ namespace Aaru.Filesystems
                         continue;
                     }
 
-                    if(offset - currentFilePos > 0)
+                    if (offset - currentFilePos > 0)
                         ms.Write(sector, (int)(offset - currentFilePos),
-                                 (int)(sector.Length  - (offset - currentFilePos)));
+                                 (int)(sector.Length - (offset - currentFilePos)));
                     else
                         ms.Write(sector, 0, sector.Length);
 
@@ -546,15 +546,15 @@ namespace Aaru.Filesystems
                     leftExtentSize -= sector.Length;
                     currentFilePos += sector.Length;
 
-                    if(ms.Length >= size)
+                    if (ms.Length >= size)
                         break;
                 }
 
-                if(ms.Length >= size)
+                if (ms.Length >= size)
                     break;
             }
 
-            if(ms.Length >= size)
+            if (ms.Length >= size)
                 ms.SetLength(size);
 
             return ms.ToArray();
@@ -564,12 +564,12 @@ namespace Aaru.Filesystems
         {
             var ms = new MemoryStream();
 
-            for(int i = 0; i < extents.Count; i++)
+            for (int i = 0; i < extents.Count; i++)
             {
-                long leftExtentSize      = extents[i].size;
+                long leftExtentSize = extents[i].size;
                 uint currentExtentSector = 0;
 
-                while(leftExtentSize > 0)
+                while (leftExtentSize > 0)
                 {
                     try
                     {

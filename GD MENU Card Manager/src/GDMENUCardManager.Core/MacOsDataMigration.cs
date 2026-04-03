@@ -54,7 +54,7 @@ namespace GDMENUCardManager.Core
         /// Ensures the Application Support directory structure exists and that the
         /// settings config file has been seeded from the bundle defaults.
         /// Creates: UserDataDir/ and UserDataDir/dat_backups/
-        /// Does NOT create menu_data/ — that is PerformFirstTimeDatCopy's job (used as sentinel).
+        /// Does NOT create menu_data/ - that is PerformFirstTimeDatCopy's job (used as sentinel).
         /// This method is entirely wrapped in try-catch for graceful degradation.
         /// </summary>
         public static void EnsureApplicationSupportExists(string bundleBasePath)
@@ -95,7 +95,7 @@ namespace GDMENUCardManager.Core
         /// directory to ~/Library/Application Support/GDMENUCardManager/menu_data/.
         /// Creates the menu_data directory (the sentinel for NeedsFirstTimeDatSetup).
         /// Reports progress as (current, total, filename).
-        /// Safe to call even if source files are missing — each copy is individually guarded.
+        /// Safe to call even if source files are missing - each copy is individually guarded.
         /// </summary>
         public static void PerformFirstTimeDatCopy(
             string bundleBasePath,

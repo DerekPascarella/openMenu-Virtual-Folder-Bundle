@@ -38,11 +38,11 @@ namespace Aaru.DiscImages
     {
         static MediaType DecodeCdiMediumType(ushort type)
         {
-            switch(type)
+            switch (type)
             {
-                case 56:  return MediaType.DVDROM;
+                case 56: return MediaType.DVDROM;
                 case 152: return MediaType.CDROM;
-                default:  return MediaType.Unknown;
+                default: return MediaType.Unknown;
             }
         }
     }

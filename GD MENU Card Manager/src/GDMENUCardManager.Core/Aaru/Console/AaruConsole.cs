@@ -56,16 +56,16 @@ namespace Aaru.Console
     /// </summary>
     public static class AaruConsole
     {
-        public static event WriteLineHandler                WriteLineEvent;
-        public static event ErrorWriteLineHandler           ErrorWriteLineEvent;
-        public static event VerboseWriteLineHandler         VerboseWriteLineEvent;
-        public static event DebugWriteLineHandler           DebugWriteLineEvent;
+        public static event WriteLineHandler WriteLineEvent;
+        public static event ErrorWriteLineHandler ErrorWriteLineEvent;
+        public static event VerboseWriteLineHandler VerboseWriteLineEvent;
+        public static event DebugWriteLineHandler DebugWriteLineEvent;
         public static event DebugWithModuleWriteLineHandler DebugWithModuleWriteLineEvent;
 
-        public static event WriteHandler        WriteEvent;
-        public static event ErrorWriteHandler   ErrorWriteEvent;
+        public static event WriteHandler WriteEvent;
+        public static event ErrorWriteHandler ErrorWriteEvent;
         public static event VerboseWriteHandler VerboseWriteEvent;
-        public static event DebugWriteHandler   DebugWriteEvent;
+        public static event DebugWriteHandler DebugWriteEvent;
 
         public static void WriteLine(string format, params object[] arg) => WriteLineEvent?.Invoke(format, arg);
 

@@ -55,9 +55,9 @@ namespace Aaru.Filesystems
 
         static DateTime? DecodeIsoDateTime(byte[] timestamp)
         {
-            switch(timestamp?.Length)
+            switch (timestamp?.Length)
             {
-                case 7:  return DecodeIsoDateTime(Marshal.ByteArrayToStructureLittleEndian<IsoTimestamp>(timestamp));
+                case 7: return DecodeIsoDateTime(Marshal.ByteArrayToStructureLittleEndian<IsoTimestamp>(timestamp));
                 case 17: return DateHandlers.Iso9660ToDateTime(timestamp);
                 default: return null;
             }
@@ -74,7 +74,7 @@ namespace Aaru.Filesystems
 
                 return TimeZoneInfo.ConvertTimeToUtc(date, GMT);
             }
-            catch(Exception)
+            catch (Exception)
             {
                 // ISO says timestamp can be unspecified
                 return null;

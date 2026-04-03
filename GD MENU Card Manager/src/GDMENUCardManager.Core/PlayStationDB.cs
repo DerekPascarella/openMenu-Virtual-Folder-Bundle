@@ -34,7 +34,7 @@ namespace GDMENUCardManager.Core
             }
             catch
             {
-                
+
             }
         }
 

@@ -292,7 +292,7 @@ namespace SevenZip
                         }
 
                         #endregion
-                        
+
                         try
                         {
                             fileName = Path.Combine(RemoveIllegalCharacters(_directory, true), RemoveIllegalCharacters(_directoryStructure ? entryName : Path.GetFileName(entryName)));
@@ -452,7 +452,7 @@ namespace SevenZip
                     case OperationResult.UnexpectedEnd:
                         AddException(new ExtractionFailedException("Unexpected end of file."));
                         break;
-                    case OperationResult.DataAfterEnd: 
+                    case OperationResult.DataAfterEnd:
                         AddException(new ExtractionFailedException("Data after end of archive."));
                         break;
                     case OperationResult.IsNotArc:
@@ -482,7 +482,7 @@ namespace SevenZip
                     _fileStream = null;
                 }
                 var iea = new FileInfoEventArgs(
-                    _extractor.ArchiveFileData[_currentIndex], PercentDoneEventArgs.ProducePercentDone(_doneRate));                
+                    _extractor.ArchiveFileData[_currentIndex], PercentDoneEventArgs.ProducePercentDone(_doneRate));
                 OnFileExtractionFinished(iea);
                 if (iea.Cancel)
                 {

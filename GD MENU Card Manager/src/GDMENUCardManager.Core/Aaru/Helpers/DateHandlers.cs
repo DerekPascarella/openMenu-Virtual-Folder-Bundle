@@ -39,7 +39,7 @@ namespace Aaru.Helpers
     public static class DateHandlers
     {
         static readonly DateTime _lisaEpoch = new DateTime(1901, 1, 1, 0, 0, 0);
-        static readonly DateTime _macEpoch  = new DateTime(1904, 1, 1, 0, 0, 0);
+        static readonly DateTime _macEpoch = new DateTime(1904, 1, 1, 0, 0, 0);
         static readonly DateTime _unixEpoch = new DateTime(1970, 1, 1, 0, 0, 0);
         /// <summary>Day 0 of Julian Date system</summary>
         static readonly DateTime _julianEpoch = new DateTime(1858, 11, 17, 0, 0, 0);
@@ -99,7 +99,7 @@ namespace Aaru.Helpers
         /// <returns>.NET DateTime</returns>
         public static DateTime Iso9660ToDateTime(byte[] vdDateTime)
         {
-            byte[] twoCharValue  = new byte[2];
+            byte[] twoCharValue = new byte[2];
             byte[] fourCharValue = new byte[4];
 
             fourCharValue[0] = vdDateTime[0];
@@ -110,7 +110,7 @@ namespace Aaru.Helpers
             AaruConsole.DebugWriteLine("ISO9600ToDateTime handler", "year = \"{0}\"",
                                        StringHandlers.CToString(fourCharValue, Encoding.ASCII));
 
-            if(!int.TryParse(StringHandlers.CToString(fourCharValue, Encoding.ASCII), out int year))
+            if (!int.TryParse(StringHandlers.CToString(fourCharValue, Encoding.ASCII), out int year))
                 year = 0;
 
             twoCharValue[0] = vdDateTime[4];
@@ -119,7 +119,7 @@ namespace Aaru.Helpers
             AaruConsole.DebugWriteLine("ISO9600ToDateTime handler", "month = \"{0}\"",
                                        StringHandlers.CToString(twoCharValue, Encoding.ASCII));
 
-            if(!int.TryParse(StringHandlers.CToString(twoCharValue, Encoding.ASCII), out int month))
+            if (!int.TryParse(StringHandlers.CToString(twoCharValue, Encoding.ASCII), out int month))
                 month = 0;
 
             twoCharValue[0] = vdDateTime[6];
@@ -128,7 +128,7 @@ namespace Aaru.Helpers
             AaruConsole.DebugWriteLine("ISO9600ToDateTime handler", "day = \"{0}\"",
                                        StringHandlers.CToString(twoCharValue, Encoding.ASCII));
 
-            if(!int.TryParse(StringHandlers.CToString(twoCharValue, Encoding.ASCII), out int day))
+            if (!int.TryParse(StringHandlers.CToString(twoCharValue, Encoding.ASCII), out int day))
                 day = 0;
 
             twoCharValue[0] = vdDateTime[8];
@@ -137,7 +137,7 @@ namespace Aaru.Helpers
             AaruConsole.DebugWriteLine("ISO9600ToDateTime handler", "hour = \"{0}\"",
                                        StringHandlers.CToString(twoCharValue, Encoding.ASCII));
 
-            if(!int.TryParse(StringHandlers.CToString(twoCharValue, Encoding.ASCII), out int hour))
+            if (!int.TryParse(StringHandlers.CToString(twoCharValue, Encoding.ASCII), out int hour))
                 hour = 0;
 
             twoCharValue[0] = vdDateTime[10];
@@ -146,7 +146,7 @@ namespace Aaru.Helpers
             AaruConsole.DebugWriteLine("ISO9600ToDateTime handler", "minute = \"{0}\"",
                                        StringHandlers.CToString(twoCharValue, Encoding.ASCII));
 
-            if(!int.TryParse(StringHandlers.CToString(twoCharValue, Encoding.ASCII), out int minute))
+            if (!int.TryParse(StringHandlers.CToString(twoCharValue, Encoding.ASCII), out int minute))
                 minute = 0;
 
             twoCharValue[0] = vdDateTime[12];
@@ -155,7 +155,7 @@ namespace Aaru.Helpers
             AaruConsole.DebugWriteLine("ISO9600ToDateTime handler", "second = \"{0}\"",
                                        StringHandlers.CToString(twoCharValue, Encoding.ASCII));
 
-            if(!int.TryParse(StringHandlers.CToString(twoCharValue, Encoding.ASCII), out int second))
+            if (!int.TryParse(StringHandlers.CToString(twoCharValue, Encoding.ASCII), out int second))
                 second = 0;
 
             twoCharValue[0] = vdDateTime[14];
@@ -164,7 +164,7 @@ namespace Aaru.Helpers
             AaruConsole.DebugWriteLine("ISO9600ToDateTime handler", "hundredths = \"{0}\"",
                                        StringHandlers.CToString(twoCharValue, Encoding.ASCII));
 
-            if(!int.TryParse(StringHandlers.CToString(twoCharValue, Encoding.ASCII), out int hundredths))
+            if (!int.TryParse(StringHandlers.CToString(twoCharValue, Encoding.ASCII), out int hundredths))
                 hundredths = 0;
 
             AaruConsole.DebugWriteLine("ISO9600ToDateTime handler",

@@ -391,7 +391,7 @@
                 {InArchiveFormat.MachO,     new Guid("23170f69-40c1-278a-1000-000110DF0000")}
             };
 
-            #endregion
+        #endregion
 
         /// <summary>
         /// List of writable archive format interface guids for 7-zip COM interop.
@@ -406,10 +406,10 @@
                 {OutArchiveFormat.BZip2,        new Guid("23170f69-40c1-278a-1000-000110020000")},
                 {OutArchiveFormat.GZip,         new Guid("23170f69-40c1-278a-1000-000110ef0000")},
                 {OutArchiveFormat.Tar,          new Guid("23170f69-40c1-278a-1000-000110ee0000")},
-                {OutArchiveFormat.XZ,           new Guid("23170f69-40c1-278a-1000-0001100C0000")},                
+                {OutArchiveFormat.XZ,           new Guid("23170f69-40c1-278a-1000-0001100C0000")},
             };
 
-            #endregion
+        #endregion
 
         internal static readonly Dictionary<CompressionMethod, string> MethodNames =
             new Dictionary<CompressionMethod, string>
@@ -425,7 +425,7 @@
                 {CompressionMethod.BZip2, "BZip2"}
             };
 
-            #endregion
+        #endregion
 
         internal static readonly Dictionary<OutArchiveFormat, InArchiveFormat> InForOutFormats =
             new Dictionary<OutArchiveFormat, InArchiveFormat>
@@ -440,7 +440,7 @@
                 {OutArchiveFormat.Zip, InArchiveFormat.Zip}
             };
 
-            #endregion
+        #endregion
 
         /// <summary>
         /// List of archive formats corresponding to specific extensions
@@ -494,33 +494,33 @@
             //257 byte offset
             {"52-61-72-21-1A-07-00",                                            InArchiveFormat.Rar4},
             {"52-61-72-21-1A-07-01-00",                                         InArchiveFormat.Rar},
-            {"50-4B-03-04",								                        InArchiveFormat.Zip},
-            {"5D-00-00-40-00",							                        InArchiveFormat.Lzma},
-            {"2D-6C-68",								                        InArchiveFormat.Lzh},
+            {"50-4B-03-04",                                                     InArchiveFormat.Zip},
+            {"5D-00-00-40-00",                                                  InArchiveFormat.Lzma},
+            {"2D-6C-68",                                                        InArchiveFormat.Lzh},
             //^ 2 byte offset
-            {"1F-9D-90",								                        InArchiveFormat.Lzw},
-            {"60-EA",								                            InArchiveFormat.Arj},
-            {"42-5A-68",								                        InArchiveFormat.BZip2},
-            {"4D-53-43-46",								                        InArchiveFormat.Cab},
-            {"49-54-53-46",								                        InArchiveFormat.Chm},
-            {"21-3C-61-72-63-68-3E-0A-64-65-62-69-61-6E-2D-62-69-6E-61-72-79",	InArchiveFormat.Deb},
-            {"43-44-30-30-31",							                        InArchiveFormat.Iso},
+            {"1F-9D-90",                                                        InArchiveFormat.Lzw},
+            {"60-EA",                                                           InArchiveFormat.Arj},
+            {"42-5A-68",                                                        InArchiveFormat.BZip2},
+            {"4D-53-43-46",                                                     InArchiveFormat.Cab},
+            {"49-54-53-46",                                                     InArchiveFormat.Chm},
+            {"21-3C-61-72-63-68-3E-0A-64-65-62-69-61-6E-2D-62-69-6E-61-72-79",  InArchiveFormat.Deb},
+            {"43-44-30-30-31",                                                  InArchiveFormat.Iso},
             //^ 0x8001, 0x8801 or 0x9001 byte offset
-            {"ED-AB-EE-DB",								                        InArchiveFormat.Rpm},
-            {"4D-53-57-49-4D-00-00-00",						                    InArchiveFormat.Wim},
-            {"udf",									                            InArchiveFormat.Udf},
-            {"mub",									                            InArchiveFormat.Mub},
-            {"78-61-72-21",								                        InArchiveFormat.Xar},
+            {"ED-AB-EE-DB",                                                     InArchiveFormat.Rpm},
+            {"4D-53-57-49-4D-00-00-00",                                         InArchiveFormat.Wim},
+            {"udf",                                                             InArchiveFormat.Udf},
+            {"mub",                                                             InArchiveFormat.Mub},
+            {"78-61-72-21",                                                     InArchiveFormat.Xar},
             //0x400 byte offset
-            {"48-2B",								                            InArchiveFormat.Hfs},
-            {"FD-37-7A-58-5A",							                        InArchiveFormat.XZ},
-            {"46-4C-56",							                            InArchiveFormat.Flv},
-            {"46-57-53",							                            InArchiveFormat.Swf},
-            {"4D-5A",							                                InArchiveFormat.PE},
-            {"7F-45-4C-46",							                            InArchiveFormat.Elf},
+            {"48-2B",                                                           InArchiveFormat.Hfs},
+            {"FD-37-7A-58-5A",                                                  InArchiveFormat.XZ},
+            {"46-4C-56",                                                        InArchiveFormat.Flv},
+            {"46-57-53",                                                        InArchiveFormat.Swf},
+            {"4D-5A",                                                           InArchiveFormat.PE},
+            {"7F-45-4C-46",                                                     InArchiveFormat.Elf},
             {"78",                                                              InArchiveFormat.Dmg},
             {"63-6F-6E-65-63-74-69-78",                                         InArchiveFormat.Vhd}};
-            #endregion
+        #endregion
 
         internal static Dictionary<InArchiveFormat, string> InSignatureFormatsReversed;
 

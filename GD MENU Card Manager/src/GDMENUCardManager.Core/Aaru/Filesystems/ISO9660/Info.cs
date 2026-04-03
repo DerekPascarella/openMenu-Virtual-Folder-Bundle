@@ -49,11 +49,11 @@ namespace Aaru.Filesystems
         public bool Identify(IMediaImage imagePlugin, Partition partition)
         {
             // ISO9660 is designed for 2048 bytes/sector devices
-            if(imagePlugin.Info.SectorSize < 2048)
+            if (imagePlugin.Info.SectorSize < 2048)
                 return false;
 
             // ISO9660 Primary Volume Descriptor starts at sector 16, so that's minimal size.
-            if(partition.End <= 16 + partition.Start)
+            if (partition.End <= 16 + partition.Start)
                 return false;
 
             // Read to Volume Descriptor
@@ -61,15 +61,15 @@ namespace Aaru.Filesystems
 
             int xaOff = 0;
 
-            if(vdSector.Length == 2336)
+            if (vdSector.Length == 2336)
                 xaOff = 8;
 
-            byte   vdType  = vdSector[0 + xaOff];
+            byte vdType = vdSector[0 + xaOff];
             byte[] vdMagic = new byte[5];
             //byte[] hsMagic = new byte[5];
 
             // This indicates the end of a volume descriptor. HighSierra here would have 16 so no problem
-            if(vdType == 255)
+            if (vdType == 255)
                 return false;
 
             Array.Copy(vdSector, 0x001 + xaOff, vdMagic, 0, 5);
@@ -79,8 +79,8 @@ namespace Aaru.Filesystems
             //AaruConsole.DebugWriteLine("ISO9660 plugin", "HSMagic = {0}", Encoding.ASCII.GetString(hsMagic));
 
             return Encoding.ASCII.GetString(vdMagic) == ISO_MAGIC;
-                   //Encoding.ASCII.GetString(hsMagic) == HIGH_SIERRA_MAGIC ||
-                   //Encoding.ASCII.GetString(vdMagic) == CDI_MAGIC;
+            //Encoding.ASCII.GetString(hsMagic) == HIGH_SIERRA_MAGIC ||
+            //Encoding.ASCII.GetString(vdMagic) == CDI_MAGIC;
         }
 
         //public void GetInformation(IMediaImage imagePlugin, Partition partition, out string information,

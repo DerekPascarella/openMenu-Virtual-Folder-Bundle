@@ -352,10 +352,10 @@ namespace Aaru.CommonTypes.Enums
     [Flags]
     public enum OpticalImageCapabilities : ulong
     {
-        CanStoreAudioTracks = 0x01, CanStoreVideoTracks = 0x02, CanStoreDataTracks     = 0x03,
-        CanStorePregaps     = 0x04, CanStoreIndexes     = 0x08, CanStoreSubchannelRw   = 0x10,
-        CanStoreSessions    = 0x20, CanStoreIsrc        = 0x40, CanStoreCdText         = 0x80,
-        CanStoreMcn         = 0x100, CanStoreRawData    = 0x200, CanStoreNotCdSessions = 0x2000,
+        CanStoreAudioTracks = 0x01, CanStoreVideoTracks = 0x02, CanStoreDataTracks = 0x03,
+        CanStorePregaps = 0x04, CanStoreIndexes = 0x08, CanStoreSubchannelRw = 0x10,
+        CanStoreSessions = 0x20, CanStoreIsrc = 0x40, CanStoreCdText = 0x80,
+        CanStoreMcn = 0x100, CanStoreRawData = 0x200, CanStoreNotCdSessions = 0x2000,
         CanStoreNotCdTracks = 0x4000,
 
         // TODO: Implement

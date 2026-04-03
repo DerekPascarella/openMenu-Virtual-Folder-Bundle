@@ -42,11 +42,11 @@ namespace Aaru.DiscImages
 {
     public sealed partial class Gdi
     {
-        public string    Name   => "Dreamcast GDI image";
-        public Guid      Id     => new Guid("281ECBF2-D2A7-414C-8497-1A33F6DCB2DD");
-        public ImageInfo Info   => _imageInfo;
-        public string    Author => "Natalia Portillo";
-        public string    Format => "Dreamcast GDI image";
+        public string Name => "Dreamcast GDI image";
+        public Guid Id => new Guid("281ECBF2-D2A7-414C-8497-1A33F6DCB2DD");
+        public ImageInfo Info => _imageInfo;
+        public string Author => "Natalia Portillo";
+        public string Format => "Dreamcast GDI image";
 
         public List<Partition> Partitions { get; private set; }
 
@@ -59,23 +59,23 @@ namespace Aaru.DiscImages
                 if (_discImage.Tracks == null)
                     return tracks;
 
-                foreach(GdiTrack gdiTrack in _discImage.Tracks)
+                foreach (GdiTrack gdiTrack in _discImage.Tracks)
                 {
                     var track = new Track
                     {
-                        TrackDescription       = null,
-                        TrackStartSector       = gdiTrack.StartSector,
-                        TrackPregap            = gdiTrack.Pregap,
-                        TrackSession           = (ushort)(gdiTrack.HighDensity ? 2 : 1),
-                        TrackSequence          = gdiTrack.Sequence,
-                        TrackType              = gdiTrack.TrackType,
-                        TrackFilter            = gdiTrack.TrackFilter,
-                        TrackFile              = gdiTrack.TrackFile,
-                        TrackFileOffset        = (ulong)gdiTrack.Offset,
-                        TrackFileType          = "BINARY",
+                        TrackDescription = null,
+                        TrackStartSector = gdiTrack.StartSector,
+                        TrackPregap = gdiTrack.Pregap,
+                        TrackSession = (ushort)(gdiTrack.HighDensity ? 2 : 1),
+                        TrackSequence = gdiTrack.Sequence,
+                        TrackType = gdiTrack.TrackType,
+                        TrackFilter = gdiTrack.TrackFilter,
+                        TrackFile = gdiTrack.TrackFile,
+                        TrackFileOffset = (ulong)gdiTrack.Offset,
+                        TrackFileType = "BINARY",
                         TrackRawBytesPerSector = gdiTrack.Bps,
-                        TrackBytesPerSector    = gdiTrack.TrackType == TrackType.Data ? 2048 : 2352,
-                        TrackSubchannelType    = TrackSubchannelType.None
+                        TrackBytesPerSector = gdiTrack.TrackType == TrackType.Data ? 2048 : 2352,
+                        TrackSubchannelType = TrackSubchannelType.None
                     };
 
                     track.TrackEndSector = (track.TrackStartSector + gdiTrack.Sectors) - 1;
@@ -87,7 +87,7 @@ namespace Aaru.DiscImages
             }
         }
 
-        public List<Session>          Sessions     => _discImage.Sessions;
+        public List<Session> Sessions => _discImage.Sessions;
         //public List<DumpHardwareType> DumpHardware => null;
         //public CICMMetadataType       CicmMetadata => null;
     }

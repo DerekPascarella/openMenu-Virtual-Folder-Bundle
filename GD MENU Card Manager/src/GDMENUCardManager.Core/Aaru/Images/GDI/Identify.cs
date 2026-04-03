@@ -53,14 +53,14 @@ namespace Aaru.DiscImages
                 // Check for unexpected control characters that shouldn't be present in a text file and can crash this plugin
                 bool twoConsecutiveNulls = false;
 
-                for(int i = 0; i < 512; i++)
+                for (int i = 0; i < 512; i++)
                 {
-                    if(i >= imageFilter.GetDataForkStream().Length)
+                    if (i >= imageFilter.GetDataForkStream().Length)
                         break;
 
-                    if(testArray[i] == 0)
+                    if (testArray[i] == 0)
                     {
-                        if(twoConsecutiveNulls)
+                        if (twoConsecutiveNulls)
                             return false;
 
                         twoConsecutiveNulls = true;
@@ -68,7 +68,7 @@ namespace Aaru.DiscImages
                     else
                         twoConsecutiveNulls = false;
 
-                    if(testArray[i] < 0x20  &&
+                    if (testArray[i] < 0x20 &&
                        testArray[i] != 0x0A &&
                        testArray[i] != 0x0D &&
                        testArray[i] != 0x00)
@@ -76,18 +76,18 @@ namespace Aaru.DiscImages
                 }
 
                 _gdiStream = new StreamReader(imageFilter.GetDataForkStream());
-                int lineNumber  = 0;
+                int lineNumber = 0;
                 int tracksFound = 0;
-                int tracks      = 0;
+                int tracks = 0;
 
-                while(_gdiStream.Peek() >= 0)
+                while (_gdiStream.Peek() >= 0)
                 {
                     lineNumber++;
                     string line = _gdiStream.ReadLine();
 
-                    if(lineNumber == 1)
+                    if (lineNumber == 1)
                     {
-                        if(!int.TryParse(line, out tracks))
+                        if (!int.TryParse(line, out tracks))
                             return false;
                     }
                     else
@@ -96,19 +96,19 @@ namespace Aaru.DiscImages
 
                         Match trackMatch = regexTrack.Match(line ?? throw new InvalidOperationException());
 
-                        if(!trackMatch.Success)
+                        if (!trackMatch.Success)
                             return false;
 
                         tracksFound++;
                     }
                 }
 
-                if(tracks == 0)
+                if (tracks == 0)
                     return false;
 
                 return tracks == tracksFound;
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 AaruConsole.ErrorWriteLine("Exception trying to identify image file {0}", imageFilter.GetBasePath());
                 AaruConsole.ErrorWriteLine("Exception: {0}", ex.Message);
