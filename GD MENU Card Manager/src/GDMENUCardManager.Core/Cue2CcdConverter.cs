@@ -10,7 +10,8 @@ namespace GDMENUCardManager.Core
 
     /// <summary>
     /// Converts CUE/BIN disc images to CCD/IMG/SUB (CloneCD) format.
-    /// Supports MODE1/2352, MODE1/2048, AUDIO tracks and BINARY/WAVE source files.
+    /// Supports MODE1/2352, MODE1/2048, MODE2/2352, MODE2/2336, CDI/2352, CDI/2336,
+    /// CDG, and AUDIO tracks with BINARY/WAVE source files.
     /// </summary>
     public static class Cue2CcdConverter
     {
@@ -75,7 +76,7 @@ namespace GDMENUCardManager.Core
                 File = file;
             }
 
-            public bool IsAudio => CueType == "AUDIO";
+            public bool IsAudio => CueType == "AUDIO" || CueType == "CDG";
 
             public int SourceSectorSize => CueType switch
             {
@@ -83,6 +84,9 @@ namespace GDMENUCardManager.Core
                 "MODE1/2352" => 2352,
                 "MODE2/2352" => 2352,
                 "MODE2/2336" => 2336,
+                "CDI/2336" => 2336,
+                "CDI/2352" => 2352,
+                "CDG" => 2448,
                 "AUDIO" => 2352,
                 _ => 2352
             };
@@ -90,7 +94,7 @@ namespace GDMENUCardManager.Core
             public int CcdMode => CueType switch
             {
                 var t when t.StartsWith("MODE1") => 1,
-                var t when t.StartsWith("MODE2") => 2,
+                var t when t.StartsWith("MODE2") || t.StartsWith("CDI") => 2,
                 _ => 0
             };
 
@@ -188,6 +192,7 @@ namespace GDMENUCardManager.Core
             public long AbsoluteStart;
             public long? AbsoluteIndex00;
             public bool HasIndex00;
+            public bool IsCdg;
             public List<(int Number, long Position)> AdditionalIndices = new();
         }
 
@@ -267,6 +272,7 @@ namespace GDMENUCardManager.Core
                         SectorCount = (int)trackSectorCount,
                         PregapLength = ct.Pregap,
                         PostgapLength = ct.Postgap,
+                        IsCdg = ct.CueType == "CDG",
                     };
 
                     if (idx00 != null)
@@ -418,8 +424,9 @@ namespace GDMENUCardManager.Core
                 sb.AppendLine($"PreGapMode={first.CcdMode}");
                 sb.AppendLine("PreGapSubC=1");
 
-                WriteEntry(sb, 0, 0xA0, first.ControlField, first.Number, 0, 0,
-                    first.Number * 4500 - 150);
+                int discType = disc.Tracks.Any(t => t.CcdMode == 2) ? 0x20 : 0x00;
+                WriteEntry(sb, 0, 0xA0, first.ControlField, first.Number, discType, 0,
+                    (first.Number * 60 + discType) * 75 - 150);
                 WriteEntry(sb, 1, 0xA1, last.ControlField, last.Number, 0, 0,
                     last.Number * 4500 - 150);
 
@@ -493,16 +500,16 @@ namespace GDMENUCardManager.Core
                 foreach (var track in disc.Tracks)
                 {
                     if (track.GeneratedPregap > 0)
-                        WriteGapSectors(output, track.GeneratedPregap, track.IsAudio, ref sectorNum);
+                        WriteGapSectors(output, track.GeneratedPregap, track.IsAudio, track.CcdMode, ref sectorNum);
 
                     WriteTrackData(output, track, ref sectorNum);
 
                     if (track.PostgapLength > 0)
-                        WriteGapSectors(output, track.PostgapLength, track.IsAudio, ref sectorNum);
+                        WriteGapSectors(output, track.PostgapLength, track.IsAudio, track.CcdMode, ref sectorNum);
                 }
             }
 
-            private static void WriteGapSectors(FileStream output, int count, bool isAudio, ref long sectorNum)
+            private static void WriteGapSectors(FileStream output, int count, bool isAudio, int ccdMode, ref long sectorNum)
             {
                 if (isAudio)
                 {
@@ -510,6 +517,16 @@ namespace GDMENUCardManager.Core
                     for (int i = 0; i < count; i++)
                     {
                         output.Write(silence);
+                        sectorNum++;
+                    }
+                }
+                else if (ccdMode == 2)
+                {
+                    byte[] zeroData = new byte[2336];
+                    for (int i = 0; i < count; i++)
+                    {
+                        byte[] sector = Mode2SectorBuilder.Build(sectorNum, zeroData);
+                        output.Write(sector);
                         sectorNum++;
                     }
                 }
@@ -545,6 +562,7 @@ namespace GDMENUCardManager.Core
                 {
                     int srcSectorSize = track.SourceSectorSize;
                     bool needsMode1Wrap = (srcSectorSize == 2048);
+                    bool needsMode2Wrap = (srcSectorSize == 2336);
                     byte[] readBuf = new byte[srcSectorSize];
 
                     for (int i = 0; i < track.SectorCount; i++)
@@ -556,6 +574,11 @@ namespace GDMENUCardManager.Core
                         if (needsMode1Wrap)
                         {
                             byte[] sector = Mode1SectorBuilder.Build(sectorNum, readBuf);
+                            output.Write(sector);
+                        }
+                        else if (needsMode2Wrap)
+                        {
+                            byte[] sector = Mode2SectorBuilder.Build(sectorNum, readBuf);
                             output.Write(sector);
                         }
                         else
@@ -674,6 +697,38 @@ namespace GDMENUCardManager.Core
 
         #endregion
 
+        #region Mode 2 Sector Builder (2336 to 2352)
+
+        private static class Mode2SectorBuilder
+        {
+            private static readonly byte[] SyncPattern =
+            {
+                0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+                0xFF, 0xFF, 0xFF, 0x00
+            };
+
+            public static byte[] Build(long lba, byte[] data)
+            {
+                byte[] sector = new byte[2352];
+
+                Array.Copy(SyncPattern, 0, sector, 0, 12);
+
+                long absolute = lba + 150;
+                sector[12] = ToBcd((int)(absolute / 4500));
+                sector[13] = ToBcd((int)(absolute / 75 % 60));
+                sector[14] = ToBcd((int)(absolute % 75));
+                sector[15] = 0x02;
+
+                Array.Copy(data, 0, sector, 16, Math.Min(data.Length, 2336));
+
+                return sector;
+            }
+
+            private static byte ToBcd(int val) => (byte)(((val / 10) << 4) | (val % 10));
+        }
+
+        #endregion
+
         #region SUB Writer
 
         private static class SubFileWriter
@@ -699,64 +754,106 @@ namespace GDMENUCardManager.Core
 
             public static void Generate(DiscLayout disc, string outputPath)
             {
-                using var output = new FileStream(outputPath, FileMode.Create, FileAccess.Write,
-                    FileShare.None, 81920, FileOptions.SequentialScan);
-
-                byte[] subBuf = new byte[96];
-
-                byte[] mcnBytes = null;
-                if (disc.Catalog != null && disc.Catalog.Length == 13)
-                    mcnBytes = EncodeMcn(disc.Catalog);
-
-                for (long sector = 0; sector < disc.TotalSectors; sector++)
+                var cdgStreams = new Dictionary<string, FileStream>();
+                try
                 {
-                    var (track, indexNum, relativePos, isGap) = FindTrackForSector(disc, sector);
-
-                    Array.Clear(subBuf, 0, 96);
-
-                    bool pHigh = isGap || (relativePos == 0 && indexNum >= 1);
-                    if (pHigh)
+                    foreach (var track in disc.Tracks)
                     {
-                        for (int i = 0; i < 12; i++)
-                            subBuf[i] = 0xFF;
+                        if (track.IsCdg && !cdgStreams.ContainsKey(track.SourceFilePath))
+                            cdgStreams[track.SourceFilePath] = new FileStream(track.SourceFilePath,
+                                FileMode.Open, FileAccess.Read);
                     }
 
-                    if (mcnBytes != null && sector % 100 == 24)
+                    using var output = new FileStream(outputPath, FileMode.Create, FileAccess.Write,
+                        FileShare.None, 81920, FileOptions.SequentialScan);
+
+                    byte[] subBuf = new byte[96];
+
+                    byte[] mcnBytes = null;
+                    if (disc.Catalog != null && disc.Catalog.Length == 13)
+                        mcnBytes = EncodeMcn(disc.Catalog);
+
+                    for (long sector = 0; sector < disc.TotalSectors; sector++)
                     {
-                        byte controlAdr = (byte)((track.IsAudio ? 0x00 : 0x40) | 0x02);
-                        subBuf[12] = controlAdr;
-                        Array.Copy(mcnBytes, 0, subBuf, 13, 7);
-                        subBuf[20] = 0x00;
-                        long absFrame = (sector + 150) % 75;
-                        subBuf[21] = ToBcd((int)absFrame);
+                        var (track, indexNum, relativePos, isGap) = FindTrackForSector(disc, sector);
+
+                        if (track.IsCdg && cdgStreams.TryGetValue(track.SourceFilePath, out var cdgFs))
+                        {
+                            long sourceStart = track.HasIndex00 && track.AbsoluteIndex00.HasValue
+                                && track.GeneratedPregap == 0
+                                ? track.AbsoluteIndex00.Value : track.AbsoluteStart;
+                            long sourceEnd = sourceStart + track.SectorCount;
+
+                            if (sector >= sourceStart && sector < sourceEnd)
+                            {
+                                long sectorInSource = sector - sourceStart;
+                                long fileOffset = track.SourceOffsetInFile + sectorInSource * 2448 + 2352;
+                                cdgFs.Seek(fileOffset, SeekOrigin.Begin);
+                                int total = 0;
+                                while (total < 96)
+                                {
+                                    int n = cdgFs.Read(subBuf, total, 96 - total);
+                                    if (n == 0) break;
+                                    total += n;
+                                }
+                                if (total < 96)
+                                    Array.Clear(subBuf, total, 96 - total);
+                                output.Write(subBuf, 0, 96);
+                                continue;
+                            }
+                        }
+
+                        Array.Clear(subBuf, 0, 96);
+
+                        bool pHigh = isGap || (relativePos == 0 && indexNum >= 1);
+                        if (pHigh)
+                        {
+                            for (int i = 0; i < 12; i++)
+                                subBuf[i] = 0xFF;
+                        }
+
+                        if (mcnBytes != null && sector % 100 == 24)
+                        {
+                            byte controlAdr = (byte)((track.IsAudio ? 0x00 : 0x40) | 0x02);
+                            subBuf[12] = controlAdr;
+                            Array.Copy(mcnBytes, 0, subBuf, 13, 7);
+                            subBuf[20] = 0x00;
+                            long absFrame = (sector + 150) % 75;
+                            subBuf[21] = ToBcd((int)absFrame);
+                        }
+                        else
+                        {
+                            byte controlAdr = (byte)((track.IsAudio ? 0x00 : 0x40) | 0x01);
+                            subBuf[12] = controlAdr;
+                            subBuf[13] = ToBcd(track.Number);
+                            subBuf[14] = ToBcd(indexNum);
+
+                            long relCount = relativePos < 0 ? -relativePos : relativePos;
+                            var (rM, rS, rF) = SectorsToMsf(relCount);
+                            subBuf[15] = ToBcd(rM);
+                            subBuf[16] = ToBcd(rS);
+                            subBuf[17] = ToBcd(rF);
+
+                            subBuf[18] = 0x00;
+
+                            long absSector = sector + 150;
+                            var (aM, aS, aF) = SectorsToMsf(absSector);
+                            subBuf[19] = ToBcd(aM);
+                            subBuf[20] = ToBcd(aS);
+                            subBuf[21] = ToBcd(aF);
+                        }
+
+                        ushort crc = ComputeCrc(subBuf, 12, 10);
+                        subBuf[22] = (byte)(crc >> 8);
+                        subBuf[23] = (byte)(crc & 0xFF);
+
+                        output.Write(subBuf, 0, 96);
                     }
-                    else
-                    {
-                        byte controlAdr = (byte)((track.IsAudio ? 0x00 : 0x40) | 0x01);
-                        subBuf[12] = controlAdr;
-                        subBuf[13] = ToBcd(track.Number);
-                        subBuf[14] = ToBcd(indexNum);
-
-                        long relCount = relativePos < 0 ? -relativePos : relativePos;
-                        var (rM, rS, rF) = SectorsToMsf(relCount);
-                        subBuf[15] = ToBcd(rM);
-                        subBuf[16] = ToBcd(rS);
-                        subBuf[17] = ToBcd(rF);
-
-                        subBuf[18] = 0x00;
-
-                        long absSector = sector + 150;
-                        var (aM, aS, aF) = SectorsToMsf(absSector);
-                        subBuf[19] = ToBcd(aM);
-                        subBuf[20] = ToBcd(aS);
-                        subBuf[21] = ToBcd(aF);
-                    }
-
-                    ushort crc = ComputeCrc(subBuf, 12, 10);
-                    subBuf[22] = (byte)(crc >> 8);
-                    subBuf[23] = (byte)(crc & 0xFF);
-
-                    output.Write(subBuf, 0, 96);
+                }
+                finally
+                {
+                    foreach (var fs in cdgStreams.Values)
+                        fs.Dispose();
                 }
             }
 

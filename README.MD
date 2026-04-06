@@ -90,7 +90,7 @@ To accommodate the new openMenu, a modified version of [GD MENU Card Manager](ht
 
 ## Current Version
 
-The latest version of **openMenu Virtual Folder Bundle** is [1.5.2-ateam](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/releases/tag/1.5.2-ateam).
+The latest version of **openMenu Virtual Folder Bundle** is [1.5.3-ateam](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/releases/tag/1.5.3-ateam).
 
 ## Roadmap Ideas
 
@@ -102,7 +102,9 @@ The latest version of **openMenu Virtual Folder Bundle** is [1.5.2-ateam](https:
 - Implement a housekeeping function in GD MENU Card Manager to help users easily identify gaps or issues with their disc image collection (e.g., duplicate serials, missing artwork, missing discs in multi-disc sets).
 
 ## Changelog
-
+- **Version 1.5.3-ateam (2026-04-05)**
+  - **GD MENU Card Manager**
+    - CUE to CCD conversion for Mode 2 discs was broken, now fixed (see [Issue 150](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/150)).
 - **Version 1.5.2-ateam (2026-04-03)**
   - **GD MENU Card Manager**
     - Support extended to arm64 architecture for macOS build (see [Issue 141](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/141)).
