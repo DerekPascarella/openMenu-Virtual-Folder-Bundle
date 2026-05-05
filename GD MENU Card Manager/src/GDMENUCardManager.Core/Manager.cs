@@ -1329,6 +1329,7 @@ namespace GDMENUCardManager.Core
                 AlternativeFolders = itemAltFolders,
                 DiscType = itemType,
                 Length = ByteSizeLib.ByteSize.FromBytes(new DirectoryInfo(folderPath).GetFiles().Sum(x => x.Length)),
+                CanApplyGDIShrink = Path.GetExtension(itemImageFile).Equals(".gdi", StringComparison.InvariantCultureIgnoreCase),
             };
 
             // Need all cache files present; if any are missing, Ip stays null
@@ -1876,7 +1877,7 @@ namespace GDMENUCardManager.Core
                 await CopyNewItems(tempDirectory);
 
                 // Shrink existing items if option is enabled (Windows only)
-                if (EnableGDIShrink && EnableGDIShrinkExisting)
+                if (EnableGDIShrinkExisting)
                 {
                     await ShrinkExistingItemsAsync(tempDirectory);
                 }
@@ -2445,13 +2446,14 @@ namespace GDMENUCardManager.Core
                 item.ImageFiles.Clear();
                 item.ImageFiles.AddRange(gdi.ImageFiles);
                 UpdateItemLength(item);
+                item.CanApplyGDIShrink = false;
             }
 
             // Apply region/VGA patches to newly copied items
             if (item.Work == WorkMode.New && (EnableRegionPatch || EnableVgaPatch))
             {
                 // Skip menu items
-                if (item.Ip?.Name != "GDMENU" && item.Ip?.Name != "openMenu")
+                if (item.Ip?.Name != "GDMENU" && item.Ip?.Name != "openMenu" && item.DiscType == "Game")
                 {
                     await PatchItemAsync(item, EnableRegionPatch, EnableVgaPatch);
                 }
@@ -2477,6 +2479,80 @@ namespace GDMENUCardManager.Core
                 return;
             }
 
+            var preExtractedPaths = new Dictionary<GdItem, string>();
+            if (EnableGDIShrink && EnableGDIShrinkCompressed)
+            {
+                var ambiguousList = new List<(GdItem item, int folderNumber)>();
+                for (int i = 0; i < ItemList.Count; i++)
+                {
+                    var it = ItemList[i];
+                    if (it.Work == WorkMode.New
+                        && it.FileFormat == FileFormat.SevenZip
+                        && !it.CanApplyGDIShrink)
+                    {
+                        ambiguousList.Add((it, i + 1));
+                    }
+                }
+
+                if (ambiguousList.Count > 0)
+                {
+                    var preExtractProgress = Helper.DependencyManager.CreateAndShowProgressWindow();
+                    preExtractProgress.TotalItems = ambiguousList.Count;
+                    preExtractProgress.TextContent = "Preparing archive contents...";
+                    do { await Task.Delay(50); } while (!preExtractProgress.IsInitialized);
+
+                    try
+                    {
+                        foreach (var (it, folderNumber) in ambiguousList)
+                        {
+                            if (!preExtractProgress.IsVisible)
+                                throw new ProgressWindowClosedException();
+
+                            preExtractProgress.TextContent = $"Preparing {it.Name}...";
+
+                            var preExtractDir = Path.Combine(tempdir, $"ext_{folderNumber}");
+
+                            try
+                            {
+                                if (!await Helper.DirectoryExistsAsync(preExtractDir))
+                                    await Helper.CreateDirectoryAsync(preExtractDir);
+
+                                await Task.Run(() => Helper.DependencyManager.ExtractArchive(
+                                    Path.Combine(it.FullFolderPath, it.ImageFile), preExtractDir));
+
+                                var extracted = await ImageHelper.CreateGdItemAsync(preExtractDir);
+
+                                it.Ip = extracted.Ip;
+                                if (string.IsNullOrWhiteSpace(it.ProductNumber))
+                                    it.ProductNumber = extracted.ProductNumber;
+                                if (extracted.DiscType != "Game")
+                                    it.DiscType = extracted.DiscType;
+                                if (extracted.CanApplyGDIShrink)
+                                    it.CanApplyGDIShrink = true;
+
+                                preExtractedPaths[it] = preExtractDir;
+                            }
+                            catch (ProgressWindowClosedException)
+                            {
+                                throw;
+                            }
+                            catch
+                            {
+                                if (await Helper.DirectoryExistsAsync(preExtractDir))
+                                    await Helper.DeleteDirectoryAsync(preExtractDir);
+                            }
+
+                            preExtractProgress.ProcessedItems++;
+                        }
+                    }
+                    finally
+                    {
+                        preExtractProgress.AllowClose();
+                        preExtractProgress.Close();
+                    }
+                }
+            }
+
             //gdishrink
             var itemsToShrink = new List<GdItem>();
             var ignoreShrinkList = new List<string>();
@@ -2498,12 +2574,13 @@ namespace GDMENUCardManager.Core
 
                 var shrinkableItems = ItemList.Where(x =>
                     x.Work == WorkMode.New && x.Ip?.Name != "GDMENU" && x.Ip?.Name != "openMenu" && x.CanApplyGDIShrink
-                        && (x.FileFormat == FileFormat.Uncompressed || x.FileFormat == FileFormat.Chd || (EnableGDIShrinkCompressed)
+                        && x.DiscType == "Game"
+                        && (x.FileFormat == FileFormat.Uncompressed || x.FileFormat == FileFormat.Chd || x.FileFormat == FileFormat.RedumpCueBin || EnableGDIShrinkCompressed)
                         && !ignoreShrinkList.Contains(x.Ip?.ProductNumber ?? string.Empty, StringComparer.OrdinalIgnoreCase)
-                    )).OrderBy(x => x.Name).ThenBy(x => x.Ip?.Disc ?? "1/1").ToArray();
+                    ).OrderBy(x => x.Name).ThenBy(x => x.Ip?.Disc ?? "1/1").ToArray();
                 if (shrinkableItems.Any())
                 {
-                    var result = Helper.DependencyManager.GdiShrinkWindowShowDialog(shrinkableItems);
+                    var result = Helper.DependencyManager.GdiShrinkWindowShowDialog(shrinkableItems, "GDI Shrink Selector for New Games");
                     if (result != null)
                         itemsToShrink.AddRange(result);
                 }
@@ -2561,23 +2638,56 @@ namespace GDMENUCardManager.Core
                             // Check if this is GD-ROM or CD-ROM CUE/BIN
                             if (GdiConverter.IsGdRomCue(cuePath))
                             {
-                                // GD-ROM: Convert to GDI format
-                                progress.TextContent = $"Converting {item.Name} to GDI...";
+                                if (EnableGDIShrink && itemsToShrink.Contains(item))
+                                {
+                                    // Convert to GDI in temp dir, then shrink to SD card
+                                    progress.TextContent = $"Converting/Shrinking {item.Name}...";
 
-                                var (success, message) = await GdiConverter.ConvertToGdi(cuePath, newPath);
-                                if (!success)
-                                    throw new Exception($"Failed to convert {cueFile} to GDI: {message}");
+                                    var tempCueDir = Path.Combine(tempdir, $"cue_{folderNumber}");
+                                    if (!await Helper.DirectoryExistsAsync(tempCueDir))
+                                        await Helper.CreateDirectoryAsync(tempCueDir);
 
-                                // Get the converted GDI item info
-                                var gdiItem = await ImageHelper.CreateGdItemAsync(newPath);
+                                    var (success, message) = await GdiConverter.ConvertToGdi(cuePath, tempCueDir);
+                                    if (!success)
+                                        throw new Exception($"Failed to convert {cueFile} to GDI: {message}");
 
-                                item.FullFolderPath = newPath;
-                                item.Work = WorkMode.None;
-                                item.SdNumber = folderNumber;
-                                item.FileFormat = FileFormat.Uncompressed;
-                                item.ImageFiles.Clear();
-                                item.ImageFiles.AddRange(gdiItem.ImageFiles);
-                                item.CanApplyGDIShrink = false;
+                                    var tempGdiItem = await ImageHelper.CreateGdItemAsync(tempCueDir);
+
+                                    using (var p = CreateProcess(gdishrinkPath))
+                                        if (!await RunShrinkProcess(p, Path.Combine(tempCueDir, tempGdiItem.ImageFile), newPath))
+                                            throw new Exception("Error during GDIShrink");
+
+                                    await Helper.DeleteDirectoryAsync(tempCueDir);
+
+                                    var gdiItem = await ImageHelper.CreateGdItemAsync(newPath);
+                                    item.FullFolderPath = newPath;
+                                    item.Work = WorkMode.None;
+                                    item.SdNumber = folderNumber;
+                                    item.FileFormat = FileFormat.Uncompressed;
+                                    item.ImageFiles.Clear();
+                                    item.ImageFiles.AddRange(gdiItem.ImageFiles);
+                                    item.CanApplyGDIShrink = false;
+                                }
+                                else
+                                {
+                                    // GD-ROM: Convert to GDI format
+                                    progress.TextContent = $"Converting {item.Name} to GDI...";
+
+                                    var (success, message) = await GdiConverter.ConvertToGdi(cuePath, newPath);
+                                    if (!success)
+                                        throw new Exception($"Failed to convert {cueFile} to GDI: {message}");
+
+                                    // Get the converted GDI item info
+                                    var gdiItem = await ImageHelper.CreateGdItemAsync(newPath);
+
+                                    item.FullFolderPath = newPath;
+                                    item.Work = WorkMode.None;
+                                    item.SdNumber = folderNumber;
+                                    item.FileFormat = FileFormat.Uncompressed;
+                                    item.ImageFiles.Clear();
+                                    item.ImageFiles.AddRange(gdiItem.ImageFiles);
+                                    item.CanApplyGDIShrink = false;
+                                }
                             }
                             else
                             {
@@ -2610,7 +2720,7 @@ namespace GDMENUCardManager.Core
                             // Apply region/VGA patches to converted items
                             if (EnableRegionPatch || EnableVgaPatch)
                             {
-                                if (item.Ip?.Name != "GDMENU" && item.Ip?.Name != "openMenu")
+                                if (item.Ip?.Name != "GDMENU" && item.Ip?.Name != "openMenu" && item.DiscType == "Game")
                                 {
                                     await PatchItemAsync(item, EnableRegionPatch, EnableVgaPatch);
                                 }
@@ -2772,7 +2882,7 @@ namespace GDMENUCardManager.Core
                             // Apply region/VGA patches to converted items
                             if (EnableRegionPatch || EnableVgaPatch)
                             {
-                                if (item.Ip?.Name != "GDMENU" && item.Ip?.Name != "openMenu")
+                                if (item.Ip?.Name != "GDMENU" && item.Ip?.Name != "openMenu" && item.DiscType == "Game")
                                 {
                                     await PatchItemAsync(item, EnableRegionPatch, EnableVgaPatch);
                                 }
@@ -2794,7 +2904,8 @@ namespace GDMENUCardManager.Core
                                 if (!await Helper.DirectoryExistsAsync(tempExtractDir))
                                     await Helper.CreateDirectoryAsync(tempExtractDir);
 
-                                await Task.Run(() => Helper.DependencyManager.ExtractArchive(Path.Combine(item.FullFolderPath, item.ImageFile), tempExtractDir));
+                                if (!preExtractedPaths.ContainsKey(item))
+                                    await Task.Run(() => Helper.DependencyManager.ExtractArchive(Path.Combine(item.FullFolderPath, item.ImageFile), tempExtractDir));
 
                                 var gdi = await ImageHelper.CreateGdItemAsync(tempExtractDir);
 
@@ -2815,16 +2926,43 @@ namespace GDMENUCardManager.Core
                                     // Check if this is GD-ROM or CD-ROM CUE/BIN
                                     if (GdiConverter.IsGdRomCue(cuePath))
                                     {
-                                        // GD-ROM: Convert to GDI format
-                                        progress.TextContent = $"Converting {item.Name} to GDI...";
+                                        if (EnableGDIShrinkBlackList)
+                                        {
+                                            if (ignoreShrinkList.Contains(gdi.Ip?.ProductNumber ?? string.Empty, StringComparer.OrdinalIgnoreCase))
+                                                shrink = false;
+                                        }
 
-                                        var (success, message) = await GdiConverter.ConvertToGdi(cuePath, newPath);
-                                        if (!success)
-                                            throw new Exception($"Failed to convert {cueFile} to GDI: {message}");
+                                        if (shrink)
+                                        {
+                                            progress.TextContent = $"Converting/Shrinking {item.Name}...";
+
+                                            var tempCueDir = Path.Combine(tempdir, $"cue_{folderNumber}");
+                                            if (!await Helper.DirectoryExistsAsync(tempCueDir))
+                                                await Helper.CreateDirectoryAsync(tempCueDir);
+
+                                            var (success, message) = await GdiConverter.ConvertToGdi(cuePath, tempCueDir);
+                                            if (!success)
+                                                throw new Exception($"Failed to convert {cueFile} to GDI: {message}");
+
+                                            var tempGdiItem = await ImageHelper.CreateGdItemAsync(tempCueDir);
+
+                                            using (var p = CreateProcess(gdishrinkPath))
+                                                if (!await RunShrinkProcess(p, Path.Combine(tempCueDir, tempGdiItem.ImageFile), newPath))
+                                                    throw new Exception("Error during GDIShrink");
+
+                                            await Helper.DeleteDirectoryAsync(tempCueDir);
+                                        }
+                                        else
+                                        {
+                                            progress.TextContent = $"Converting {item.Name} to GDI...";
+
+                                            var (success, message) = await GdiConverter.ConvertToGdi(cuePath, newPath);
+                                            if (!success)
+                                                throw new Exception($"Failed to convert {cueFile} to GDI: {message}");
+                                        }
 
                                         await Helper.DeleteDirectoryAsync(tempExtractDir);
 
-                                        // Get the converted GDI item info
                                         var gdiItem = await ImageHelper.CreateGdItemAsync(newPath);
 
                                         item.FullFolderPath = newPath;
@@ -2834,6 +2972,7 @@ namespace GDMENUCardManager.Core
                                         item.ImageFiles.Clear();
                                         item.ImageFiles.AddRange(gdiItem.ImageFiles);
                                         item.Ip = gdi.Ip;
+                                        item.CanApplyGDIShrink = false;
                                     }
                                     else
                                     {
@@ -2949,6 +3088,8 @@ namespace GDMENUCardManager.Core
                                         item.ImageFiles.Clear();
                                         item.ImageFiles.AddRange(gdiItem.ImageFiles);
                                         item.Ip = gdi.Ip;
+                                        if (shrink)
+                                            item.CanApplyGDIShrink = false;
                                     }
                                     else
                                     {
@@ -3017,6 +3158,8 @@ namespace GDMENUCardManager.Core
                                     item.ImageFiles.Clear();
                                     item.ImageFiles.AddRange(gdi.ImageFiles);
                                     item.Ip = gdi.Ip;
+                                    if (shrink)
+                                        item.CanApplyGDIShrink = false;
                                 }
 
                                 UpdateItemLength(item);
@@ -3024,7 +3167,7 @@ namespace GDMENUCardManager.Core
                                 // Apply region/VGA patches to newly extracted items
                                 if (EnableRegionPatch || EnableVgaPatch)
                                 {
-                                    if (item.Ip?.Name != "GDMENU" && item.Ip?.Name != "openMenu")
+                                    if (item.Ip?.Name != "GDMENU" && item.Ip?.Name != "openMenu" && item.DiscType == "Game")
                                     {
                                         await PatchItemAsync(item, EnableRegionPatch, EnableVgaPatch);
                                     }
@@ -3033,7 +3176,7 @@ namespace GDMENUCardManager.Core
                             else// if not shrinking, can extract directly to card
                             {
                                 progress.TextContent = $"Decompressing {item.Name}...";
-                                await Uncompress(item, i + 1, tempdir, progress);//+ ammountToIncrement
+                                await Uncompress(item, i + 1, tempdir, progress, preExtractedPaths);//+ ammountToIncrement
                             }
 
                         }
@@ -3269,7 +3412,7 @@ namespace GDMENUCardManager.Core
             return (updatedCount, conflictsRemoved);
         }
 
-        private async Task Uncompress(GdItem item, int folderNumber, string tempdir, IProgressWindow progress = null)
+        private async Task Uncompress(GdItem item, int folderNumber, string tempdir, IProgressWindow progress = null, Dictionary<GdItem, string> preExtractedPaths = null)
         {
             var newPath = Path.Combine(sdPath, FormatFolderNumber(folderNumber));
 
@@ -3278,7 +3421,8 @@ namespace GDMENUCardManager.Core
             if (!await Helper.DirectoryExistsAsync(tempExtractDir))
                 await Helper.CreateDirectoryAsync(tempExtractDir);
 
-            await Task.Run(() => Helper.DependencyManager.ExtractArchive(Path.Combine(item.FullFolderPath, item.ImageFile), tempExtractDir));
+            if (preExtractedPaths == null || !preExtractedPaths.ContainsKey(item))
+                await Task.Run(() => Helper.DependencyManager.ExtractArchive(Path.Combine(item.FullFolderPath, item.ImageFile), tempExtractDir));
 
             var extracted = await ImageHelper.CreateGdItemAsync(tempExtractDir);
 
@@ -3443,7 +3587,7 @@ namespace GDMENUCardManager.Core
             // Apply region/VGA patches to newly extracted items
             if (EnableRegionPatch || EnableVgaPatch)
             {
-                if (item.Ip?.Name != "GDMENU" && item.Ip?.Name != "openMenu")
+                if (item.Ip?.Name != "GDMENU" && item.Ip?.Name != "openMenu" && item.DiscType == "Game")
                 {
                     await PatchItemAsync(item, EnableRegionPatch, EnableVgaPatch);
                 }
@@ -3607,7 +3751,7 @@ namespace GDMENUCardManager.Core
             // Show dialog to let user select which items to shrink
             if (Helper.DependencyManager.GdiShrinkWindowShowDialog != null)
             {
-                var result = Helper.DependencyManager.GdiShrinkWindowShowDialog(itemsToShrink);
+                var result = Helper.DependencyManager.GdiShrinkWindowShowDialog(itemsToShrink, "GDI Shrink Selector for Existing Games");
                 if (result == null || result.Length == 0)
                     return;
                 itemsToShrink = result.ToList();
@@ -3680,6 +3824,8 @@ namespace GDMENUCardManager.Core
 
                         // Update item length
                         UpdateItemLength(item);
+
+                        item.CanApplyGDIShrink = false;
                     }
                     catch
                     {
@@ -3721,7 +3867,8 @@ namespace GDMENUCardManager.Core
                 x.Work != WorkMode.New &&
                 x.Ip?.Name != "GDMENU" &&
                 x.Ip?.Name != "openMenu" &&
-                x.FileFormat == FileFormat.Uncompressed).ToList();
+                x.FileFormat == FileFormat.Uncompressed &&
+                x.DiscType == "Game").ToList();
 
             if (itemsToPatch.Count == 0)
                 return;

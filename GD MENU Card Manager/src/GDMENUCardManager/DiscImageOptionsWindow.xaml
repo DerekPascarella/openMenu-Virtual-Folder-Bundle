@@ -9,6 +9,8 @@
         WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
     <Window.Resources>
         <conv:BoolToVisibleOrCollapsedConverter x:Key="BoolToVisibleOrCollapsed"/>
+        <conv:SubOptionVisualConverter x:Key="SubOptionVisual"/>
+        <conv:BoolOrMultiValueConverter x:Key="BoolOr"/>
     </Window.Resources>
     <Grid Margin="15">
         <Grid.RowDefinitions>
@@ -30,18 +32,34 @@
                     <CheckBox x:Name="ChkEnableGDIShrink" IsChecked="{Binding EnableGDIShrink, Mode=TwoWay}">
                         <TextBlock Text="Apply to newly added games"/>
                     </CheckBox>
-                    <CheckBox IsChecked="{Binding EnableGDIShrinkExisting, Mode=TwoWay}"
-                              IsEnabled="{Binding IsChecked, ElementName=ChkEnableGDIShrink}" Margin="0 5 0 0">
+                    <CheckBox IsChecked="{Binding EnableGDIShrinkExisting, Mode=TwoWay}" Margin="0 5 0 0">
                         <TextBlock Text="Apply to existing games"/>
                     </CheckBox>
                     <Separator Margin="0 8"/>
-                    <CheckBox IsChecked="{Binding EnableGDIShrinkCompressed, Mode=TwoWay}"
-                              IsEnabled="{Binding IsChecked, ElementName=ChkEnableGDIShrink}">
+                    <CheckBox IsEnabled="{Binding IsChecked, ElementName=ChkEnableGDIShrink}">
+                        <CheckBox.IsChecked>
+                            <MultiBinding Converter="{StaticResource SubOptionVisual}">
+                                <Binding Path="EnableGDIShrinkCompressed" Mode="TwoWay"/>
+                                <Binding Path="EnableGDIShrink" Mode="OneWay"/>
+                            </MultiBinding>
+                        </CheckBox.IsChecked>
                         <TextBlock Text="Also shrink compressed" FontSize="11"/>
                     </CheckBox>
-                    <CheckBox IsChecked="{Binding EnableGDIShrinkBlackList, Mode=TwoWay}"
-                              IsEnabled="{Binding IsChecked, ElementName=ChkEnableGDIShrink}" Margin="0 3 0 0"
+                    <CheckBox Margin="0 3 0 0"
                               Visibility="{Binding HaveGDIShrinkBlacklist, Mode=OneWay, Converter={StaticResource BoolToVisibleOrCollapsed}}">
+                        <CheckBox.IsEnabled>
+                            <MultiBinding Converter="{StaticResource BoolOr}">
+                                <Binding Path="EnableGDIShrink" Mode="OneWay"/>
+                                <Binding Path="EnableGDIShrinkExisting" Mode="OneWay"/>
+                            </MultiBinding>
+                        </CheckBox.IsEnabled>
+                        <CheckBox.IsChecked>
+                            <MultiBinding Converter="{StaticResource SubOptionVisual}">
+                                <Binding Path="EnableGDIShrinkBlackList" Mode="TwoWay"/>
+                                <Binding Path="EnableGDIShrink" Mode="OneWay"/>
+                                <Binding Path="EnableGDIShrinkExisting" Mode="OneWay"/>
+                            </MultiBinding>
+                        </CheckBox.IsChecked>
                         <TextBlock Text="Use blacklist (recommended)" FontSize="11"/>
                     </CheckBox>
                 </StackPanel>
@@ -58,8 +76,7 @@
                     <CheckBox x:Name="ChkEnableVgaPatch" IsChecked="{Binding EnableVgaPatch, Mode=TwoWay}">
                         <TextBlock Text="Apply to newly added games"/>
                     </CheckBox>
-                    <CheckBox IsChecked="{Binding EnableVgaPatchExisting, Mode=TwoWay}"
-                              IsEnabled="{Binding IsChecked, ElementName=ChkEnableVgaPatch}" Margin="0 5 0 0">
+                    <CheckBox IsChecked="{Binding EnableVgaPatchExisting, Mode=TwoWay}" Margin="0 5 0 0">
                         <TextBlock Text="Apply to existing games"/>
                     </CheckBox>
                 </StackPanel>
@@ -76,8 +93,7 @@
                     <CheckBox x:Name="ChkEnableRegionPatch" IsChecked="{Binding EnableRegionPatch, Mode=TwoWay}">
                         <TextBlock Text="Apply to newly added games"/>
                     </CheckBox>
-                    <CheckBox IsChecked="{Binding EnableRegionPatchExisting, Mode=TwoWay}"
-                              IsEnabled="{Binding IsChecked, ElementName=ChkEnableRegionPatch}" Margin="0 5 0 0">
+                    <CheckBox IsChecked="{Binding EnableRegionPatchExisting, Mode=TwoWay}" Margin="0 5 0 0">
                         <TextBlock Text="Apply to existing games"/>
                     </CheckBox>
                 </StackPanel>

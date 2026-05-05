@@ -102,6 +102,13 @@ The latest version of **openMenu Virtual Folder Bundle** is [1.5.3-ateam](https:
 - Implement a housekeeping function in GD MENU Card Manager to help users easily identify gaps or issues with their disc image collection (e.g., duplicate serials, missing artwork, missing discs in multi-disc sets).
 
 ## Changelog
+- **Version 1.5.4-ateam (2026-05-05)**
+  - **openMenu**
+    - The X button now zooms artwork in LineDesc mode (see [Issue 151](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/151)).
+  - **GD MENU Card Manager**
+    - Fixed System Bar title on macOS from reading "Avalonia Application" to "GD MENU Card Manager" (see [Issue 154](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/154)).
+    - Fixed GDI shrinking limitations and enhanced metadata extraction support (see [Issue 155](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/155)).
+    - GitHub URL in the macOS/Linux Help/About window now appears as standard hyperlink (see [Issue 156](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/156)).
 - **Version 1.5.3-ateam (2026-04-05)**
   - **GD MENU Card Manager**
     - CUE to CCD conversion for Mode 2 discs was broken, now fixed (see [Issue 150](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/150)).

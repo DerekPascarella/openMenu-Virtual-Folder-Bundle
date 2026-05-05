@@ -201,7 +201,7 @@ namespace GDMENUCardManager.Core
                 totalSize += cueParser.GetTotalBinSize();
                 item.Length = ByteSizeLib.ByteSize.FromBytes(totalSize);
 
-                item.CanApplyGDIShrink = false;
+                item.CanApplyGDIShrink = item.FileFormat == FileFormat.RedumpCueBin;
             }
             else if (item.FileFormat == FileFormat.Uncompressed &&
                      Path.GetExtension(itemImageFile).Equals(".chd", StringComparison.OrdinalIgnoreCase))

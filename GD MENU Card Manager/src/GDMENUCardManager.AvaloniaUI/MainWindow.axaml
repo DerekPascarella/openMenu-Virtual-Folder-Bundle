@@ -24,6 +24,7 @@
       <conv:DriveInfoToLabelConverter x:Key="DriveInfoToLabel"/>
       <conv:BoolAndMultiValueConverter x:Key="BoolAndConverter"/>
       <conv:BoolToOpacityConverter x:Key="BoolToOpacity"/>
+      <conv:CanReadIpBinConverter x:Key="CanReadIpBin"/>
 
       <!--icons from materialdesignicons.com-->
       <Viewbox x:Key="ViewOpenFolder" Width="18" Height="18">
@@ -213,7 +214,7 @@
                 <MenuItem Header="Uppercase" Click="MenuItemRenameUppercase_Click" CommandParameter="{Binding}"/>
                 <MenuItem Header="Lowercase" Click="MenuItemRenameLowercase_Click" CommandParameter="{Binding}"/>
                 <MenuItem x:Name="MenuItemAutoRename" Header="Automatically Rename Title">
-                  <MenuItem Header="Using IP.BIN _info" Click="MenuItemRenameIP_Click" CommandParameter="{Binding}"/>
+                  <MenuItem Header="Using IP.BIN _info" Click="MenuItemRenameIP_Click" CommandParameter="{Binding}" IsEnabled="{Binding FileFormat, Converter={StaticResource CanReadIpBin}}"/>
                   <MenuItem x:Name="MenuItemRenameFolder" Header="Using its folder name on computer" Click="MenuItemRenameFolder_Click" CommandParameter="{Binding}"/>
                   <MenuItem x:Name="MenuItemRenameFile" Header="Using disc image's base file name" Click="MenuItemRenameFile_Click" CommandParameter="{Binding}"/>
                 </MenuItem>

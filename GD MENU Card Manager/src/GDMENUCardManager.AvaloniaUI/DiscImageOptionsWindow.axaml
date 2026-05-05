@@ -26,8 +26,7 @@
                     <CheckBox x:Name="ChkEnableVgaPatch" IsChecked="{Binding EnableVgaPatch}">
                         <TextBlock Text="Apply to newly added games"/>
                     </CheckBox>
-                    <CheckBox IsChecked="{Binding EnableVgaPatchExisting}"
-                              IsEnabled="{Binding IsChecked, ElementName=ChkEnableVgaPatch}" Margin="0 5 0 0">
+                    <CheckBox IsChecked="{Binding EnableVgaPatchExisting}" Margin="0 5 0 0">
                         <TextBlock Text="Apply to existing games"/>
                     </CheckBox>
                 </StackPanel>
@@ -44,8 +43,7 @@
                     <CheckBox x:Name="ChkEnableRegionPatch" IsChecked="{Binding EnableRegionPatch}">
                         <TextBlock Text="Apply to newly added games"/>
                     </CheckBox>
-                    <CheckBox IsChecked="{Binding EnableRegionPatchExisting}"
-                              IsEnabled="{Binding IsChecked, ElementName=ChkEnableRegionPatch}" Margin="0 5 0 0">
+                    <CheckBox IsChecked="{Binding EnableRegionPatchExisting}" Margin="0 5 0 0">
                         <TextBlock Text="Apply to existing games"/>
                     </CheckBox>
                 </StackPanel>

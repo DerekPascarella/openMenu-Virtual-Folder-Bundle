@@ -28,7 +28,7 @@ namespace GDMENUCardManager
             return p;
         }
 
-        public GdItem[] GdiShrinkWindowShowDialog(System.Collections.Generic.IEnumerable<GdItem> items) => null;
+        public GdItem[] GdiShrinkWindowShowDialog(System.Collections.Generic.IEnumerable<GdItem> items, string title = null) => null;
 
         public async ValueTask<bool> ShowYesNoDialog(string caption, string text)
         {

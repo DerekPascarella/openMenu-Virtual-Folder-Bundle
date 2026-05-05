@@ -444,7 +444,7 @@ translate_input(void) {
 
     /* Buttons - use edge detection (BTN_PRESS) for A, B, Y, START to prevent
      * double-press bugs when transitioning between UI states. X keeps hold
-     * detection for grid mode artwork zoom feature. */
+     * detection for the artwork zoom feature. */
     if (INPT_ButtonEx(BTN_A, BTN_PRESS)) {
         return A;
     }

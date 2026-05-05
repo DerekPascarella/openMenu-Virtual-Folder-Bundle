@@ -20,6 +20,7 @@
 
 #include "dc/input.h"
 #include "texture/txr_manager.h"
+#include "ui/animation.h"
 #include "ui/draw_prototypes.h"
 #include "ui/font_prototypes.h"
 #include "ui/ui_common.h"
@@ -63,6 +64,11 @@ static short ICON_SIZE_Y;
 static int current_selected_item;
 static int navigate_timeout;
 static int frames_focused;
+
+static bool boxart_button_held = false;
+
+static anim2d anim_large_art_pos;
+static anim2d anim_large_art_scale;
 
 db_item* current_meta;
 
@@ -138,6 +144,83 @@ draw_big_box(void) {
     // 4:3  (640x480) right edge at 300, 20 pixels left of center or 3.125%
     // 16:9 (854x480) right edge at 400, 26 pixels left of center or 3.125%
     draw_draw_image(right_edge - width, y_pos, width, height, COLOR_WHITE, &txr_focus);
+}
+
+static void
+draw_large_art(void) {
+    if (anim_active(&anim_large_art_scale.time)) {
+        txr_get_large(list_current[current_selected_item]->product, &txr_focus);
+        if (txr_focus.texture == img_empty_boxart.texture
+            || !strncmp(list_current[current_selected_item]->disc, "DIR", 3)) {
+            /* Only draw if large is present */
+            return;
+        }
+        /* Always draw on top */
+        float z = z_get();
+        z_set(512.0f);
+        draw_draw_image_centered(anim_large_art_pos.cur.x, anim_large_art_pos.cur.y, anim_large_art_scale.cur.x,
+                                 anim_large_art_scale.cur.y, COLOR_WHITE, &txr_focus);
+        z_set(z);
+    }
+}
+
+static void
+update_time(void) {
+    if (boxart_button_held && anim_alive(&anim_large_art_scale.time)) {
+        /* Update scale and position */
+        anim_tick(&anim_large_art_pos.time);
+        anim_update_2d(&anim_large_art_pos);
+
+        anim_tick(&anim_large_art_scale.time);
+        anim_update_2d(&anim_large_art_scale);
+    }
+    if (!boxart_button_held && anim_alive(&anim_large_art_scale.time)) {
+        /* Rewind Animation update scale and position */
+        anim_tick_backward(&anim_large_art_pos.time);
+        anim_update_2d(&anim_large_art_pos);
+
+        anim_tick_backward(&anim_large_art_scale.time);
+        anim_update_2d(&anim_large_art_scale);
+    }
+}
+
+static void
+kill_large_art_animation(void) {
+    anim_large_art_pos.time.active = false;
+    anim_large_art_scale.time.active = false;
+}
+
+static void
+menu_show_large_art(void) {
+    if (list_len <= 0) {
+        return;
+    }
+    if (!boxart_button_held && !anim_active(&anim_large_art_scale.time)) {
+        const int big_box_y = 72;
+        const int big_box_width = (232) * X_SCALE;
+        const int big_box_height = 232;
+        const int big_box_right_edge = ((SCR_WIDTH / 2) - (SCR_WIDTH * 0.03125)) * X_SCALE;
+        /* Setup positioning */
+        {
+            anim_large_art_pos.start.x = big_box_right_edge - (big_box_width / 2);
+            anim_large_art_pos.start.y = big_box_y + (big_box_height / 2);
+            anim_large_art_pos.end.x = (SCR_WIDTH / 2) * X_SCALE;
+            anim_large_art_pos.end.y = 200;
+            anim_large_art_pos.time.frame_now = 0;
+            anim_large_art_pos.time.frame_len = 30;
+            anim_large_art_pos.time.active = true;
+        }
+        /* Setup Scaling */
+        {
+            anim_large_art_scale.start.x = big_box_width;
+            anim_large_art_scale.start.y = big_box_height;
+            anim_large_art_scale.end.x = (300) * X_SCALE;
+            anim_large_art_scale.end.y = 300;
+            anim_large_art_scale.time.frame_now = 0;
+            anim_large_art_scale.time.frame_len = 30;
+            anim_large_art_scale.time.active = true;
+        }
+    }
 }
 
 static void
@@ -401,6 +484,9 @@ menu_decrement(int amount) {
     if (current_selected_item < 0) {
         current_selected_item = list_len - 1;
     }
+
+    kill_large_art_animation();
+
     navigate_timeout = INPUT_TIMEOUT;
     menu_changed_item();
 }
@@ -414,6 +500,9 @@ menu_increment(int amount) {
     if (current_selected_item >= list_len) {
         current_selected_item = 0;
     }
+
+    kill_large_art_animation();
+
     navigate_timeout = INPUT_TIMEOUT;
     menu_changed_item();
 }
@@ -633,6 +722,11 @@ handle_keyboard_quickjump(void) {
         if (first_char == target_lower || first_char == target_upper) {
             /* Found a match - move cursor there */
             current_selected_item = i;
+
+            /* Clear animations */
+            anim_clear(&anim_large_art_pos);
+            anim_clear(&anim_large_art_scale);
+
             navigate_timeout = INPUT_TIMEOUT;
             menu_changed_item();
             return;
@@ -718,6 +812,7 @@ FUNCTION(UI_NAME, init) {
 
 static void
 handle_input_ui(enum control input) {
+    boxart_button_held = false;
     switch (input) {
         case LEFT: menu_decrement(1); break;
         case RIGHT: menu_increment(1); break;
@@ -729,7 +824,10 @@ handle_input_ui(enum control input) {
         case START: menu_settings(); break;
         case Y: menu_exit(); break;
         case B: menu_cb(); break;
-        case X: break;
+        case X:
+            menu_show_large_art();
+            boxart_button_held = true;
+            break;
         /* Always nothing */
         case NONE:
         default: break;
@@ -749,6 +847,9 @@ FUNCTION(UI_NAME, setup) {
 
     navigate_timeout = 3;
     menu_changed_item();
+
+    anim_clear(&anim_large_art_pos);
+    anim_clear(&anim_large_art_scale);
 }
 
 FUNCTION_INPUT(UI_NAME, handle_input) {
@@ -840,11 +941,16 @@ FUNCTION(UI_NAME, drawOP) {
 }
 
 FUNCTION(UI_NAME, drawTR) {
+    update_time();
+
     draw_game_meta();
     if (list_len > 0) {
         draw_small_box_highlight();
         draw_small_boxes();
         draw_big_box();
+
+        /* If focused, draw large cover art */
+        draw_large_art();
     }
 
     /* Check for pending Serial VMU backup on first frame */

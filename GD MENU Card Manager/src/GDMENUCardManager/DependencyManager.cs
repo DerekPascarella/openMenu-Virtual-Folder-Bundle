@@ -22,9 +22,9 @@ namespace GDMENUCardManager
             return p;
         }
 
-        public GdItem[] GdiShrinkWindowShowDialog(IEnumerable<GdItem> items)
+        public GdItem[] GdiShrinkWindowShowDialog(IEnumerable<GdItem> items, string title = null)
         {
-            var w = new GdiShrinkWindow(items) { Owner = getMainWindow() };
+            var w = new GdiShrinkWindow(items, title) { Owner = getMainWindow() };
             return w.ShowDialog().GetValueOrDefault() ? w.List.Where(x => x.Value).Select(x => x.Key).ToArray() : null;
         }
 

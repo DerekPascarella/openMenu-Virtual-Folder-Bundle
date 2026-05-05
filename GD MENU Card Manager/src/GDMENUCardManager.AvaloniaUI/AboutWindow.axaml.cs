@@ -104,13 +104,13 @@ namespace GDMENUCardManager
             }
         }
 
-        private void ButtonLink_Click(object sender, RoutedEventArgs e)
+        private void LinkText_PointerPressed(object sender, PointerPressedEventArgs e)
         {
             var url = @"https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle";
             try
             {
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-                    Process.Start(new ProcessStartInfo("cmd", $"/c start {url}") { CreateNoWindow = true });
+                    Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
                 else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
                     Process.Start("xdg-open", url);
                 else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))

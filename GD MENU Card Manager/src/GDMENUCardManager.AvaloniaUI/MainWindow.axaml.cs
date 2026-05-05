@@ -523,6 +523,16 @@ namespace GDMENUCardManager
                     return;
                 }
 
+                if (item.FileFormat == FileFormat.SevenZip)
+                {
+                    var lockedHeader = e.Column.Header?.ToString();
+                    if (lockedHeader == "Serial" || lockedHeader == "Type" || lockedHeader == "Disc")
+                    {
+                        e.Cancel = true;
+                        return;
+                    }
+                }
+
                 // Capture old value for undo
                 _editingItem = item;
                 var column = e.Column;
