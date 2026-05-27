@@ -105,7 +105,7 @@ The latest version of **openMenu Virtual Folder Bundle** is [1.5.5-ateam](https:
 - **Version 1.5.5-ateam (2026-05-27)**
   - **GD MENU Card Manager**
     - Extended GDI shrink blacklist to include additional games (see [Issue 159](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/159)).
-    - In macOS, fixed System Bar's "About <Application Name>" string (see [Issue 160](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/160)).
+    - In macOS, fixed System Bar's "About \<Application Name\>" string (see [Issue 160](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/160)).
     - Redump GD-ROM CUE/BIN to GDI conversion now produces 1:1 identical TOSEC dumps (see [Issue 161](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/161)).
     - Added missing tooltip text to several UI elements (see [Issue 162](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/162)).
     - Small UI clean-up and consistency changes (see [Issue 163](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/163)).
