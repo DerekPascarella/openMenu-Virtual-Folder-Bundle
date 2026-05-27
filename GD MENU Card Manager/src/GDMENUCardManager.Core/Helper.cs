@@ -181,7 +181,7 @@ namespace GDMENUCardManager.Core
             }
             catch
             {
-                // Ignore chmod failures - we'll report the original error
+                // Ignore chmod failures. We'll report the original error.
             }
         }
 

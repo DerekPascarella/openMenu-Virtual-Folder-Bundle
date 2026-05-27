@@ -17,8 +17,10 @@
 
         <!-- Buttons -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 20 0 0">
-            <Button Content="Return" Click="ReturnButton_Click" Width="90" Height="28" Margin="0 0 10 0"/>
-            <Button Content="Proceed" Click="ProceedButton_Click" Width="90" Height="28"/>
+            <Button Content="Return" Click="ReturnButton_Click" Width="90" Height="28" Margin="0 0 10 0"
+                    ToolTip="Go back without proceeding"/>
+            <Button Content="Proceed" Click="ProceedButton_Click" Width="90" Height="28"
+                    ToolTip="Continue despite the warning"/>
         </StackPanel>
     </Grid>
 </Window>

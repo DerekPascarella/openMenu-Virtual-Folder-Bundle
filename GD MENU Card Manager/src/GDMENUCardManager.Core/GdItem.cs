@@ -71,7 +71,7 @@ namespace GDMENUCardManager.Core
                     // Store the cleaned serial before translation
                     string beforeTranslation = _ProductNumber;
 
-                    // Apply OpenMenu serial translation (Table 1 only - for UI and OPENMENU.INI)
+                    // Apply OpenMenu serial translation (Table 1 only, for UI and OPENMENU.INI).
                     // Table 2 (artwork remap) is applied separately in BoxDatManager/IconDatManager
                     // Use Ip context if available, with fallback to item.Name for the name check
                     string dateContext = Ip?.ReleaseDate ?? "";

@@ -83,12 +83,17 @@ namespace GDMENUCardManager.Core
                     if (m.Success)
                         itemName = itemName.Substring(0, m.Index);
 
-                    ip = new IpBin
+                    ip = await ArchiveIpBinReader.TryReadAsync(compressedFile, filesInsideArchive);
+
+                    if (ip == null)
                     {
-                        Name = itemName,
-                        Disc = "?/?",
-                        ProductNumber = String.Empty
-                    };
+                        ip = new IpBin
+                        {
+                            Name = itemName,
+                            Disc = "?/?",
+                            ProductNumber = String.Empty
+                        };
+                    }
 
                     item.Length = ByteSizeLib.ByteSize.FromBytes(filesInsideArchive.Sum(x => x.Value));
                     item.FileFormat = FileFormat.SevenZip;
@@ -543,7 +548,7 @@ namespace GDMENUCardManager.Core
                         return null;
 
                     var ipData = chd.GetIpBin();
-                    // CHD returns raw 2352-byte sectors; try as-is, then at offset 16
+                    // CHD returns raw 2352-byte sectors. Try as-is, then at offset 16.
                     var ip = GetIpData(ipData);
                     if (ip == null && ipData.Length >= 16 + 256)
                     {

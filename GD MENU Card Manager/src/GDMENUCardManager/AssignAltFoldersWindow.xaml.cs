@@ -83,7 +83,7 @@ namespace GDMENUCardManager
                 if (!string.IsNullOrEmpty(_primaryFolder) && path == _primaryFolder)
                 {
                     MessageBox.Show("This folder path is already assigned to this disc image.",
-                        "Duplicate Folder Path", MessageBoxButton.OK, MessageBoxImage.Information);
+                        "Information", MessageBoxButton.OK, MessageBoxImage.Information);
                     entry.FolderPath = string.Empty;
                     return;
                 }
@@ -94,7 +94,7 @@ namespace GDMENUCardManager
                     if (other != entry && (other.FolderPath?.Trim() ?? string.Empty) == path)
                     {
                         MessageBox.Show("This folder path is already assigned to this disc image.",
-                            "Duplicate Folder Path", MessageBoxButton.OK, MessageBoxImage.Information);
+                            "Information", MessageBoxButton.OK, MessageBoxImage.Information);
                         entry.FolderPath = string.Empty;
                         return;
                     }

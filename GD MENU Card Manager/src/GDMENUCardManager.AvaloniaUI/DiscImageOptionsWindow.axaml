@@ -52,8 +52,10 @@
 
         <!-- Save/Cancel Buttons -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 5 0 0">
-            <Button Content="Save" Width="80" Padding="15,8" Margin="0 0 10 0" Click="SaveButton_Click"/>
-            <Button Content="Cancel" Width="80" Padding="15,8" Click="CancelButton_Click"/>
+            <Button Content="Save" Width="80" Padding="15,8" Margin="0 0 10 0" Click="SaveButton_Click"
+                    ToolTip.Tip="Save VGA and Region-Free patch preferences"/>
+            <Button Content="Cancel" Width="80" Padding="15,8" Click="CancelButton_Click"
+                    ToolTip.Tip="Discard changes and close"/>
         </StackPanel>
     </Grid>
 </Window>

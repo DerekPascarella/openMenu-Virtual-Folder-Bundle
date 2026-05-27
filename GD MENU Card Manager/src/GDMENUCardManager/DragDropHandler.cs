@@ -79,7 +79,7 @@ namespace GDMENUCardManager
 
             if (dropInfo.DragInfo == null)
             {
-                // External file drop - adding new items
+                // External file drop, so adding new items.
                 if (!(dropInfo.Data is DataObject data) || !data.ContainsFileDropList())
                     return null;
 

@@ -48,7 +48,7 @@ namespace GDMENUCardManager.Core
                 _undoStack.RemoveFirst();
             }
 
-            // Clear redo stack - new changes invalidate redo history
+            // Clear the redo stack since new changes invalidate redo history.
             _redoStack.Clear();
 
             RaiseAllPropertyChanges();

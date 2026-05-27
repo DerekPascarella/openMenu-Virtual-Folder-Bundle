@@ -90,7 +90,7 @@ To accommodate the new openMenu, a modified version of [GD MENU Card Manager](ht
 
 ## Current Version
 
-The latest version of **openMenu Virtual Folder Bundle** is [1.5.4-ateam](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/releases/tag/1.5.4-ateam).
+The latest version of **openMenu Virtual Folder Bundle** is [1.5.5-ateam](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/releases/tag/1.5.5-ateam).
 
 ## Roadmap Ideas
 
@@ -102,6 +102,17 @@ The latest version of **openMenu Virtual Folder Bundle** is [1.5.4-ateam](https:
 - Implement a housekeeping function in GD MENU Card Manager to help users easily identify gaps or issues with their disc image collection (e.g., duplicate serials, missing artwork, missing discs in multi-disc sets).
 
 ## Changelog
+- **Version 1.5.5-ateam (2026-05-27)**
+  - **GD MENU Card Manager**
+    - Extended GDI shrink blacklist to include additional games (see [Issue 159](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/159)).
+    - In macOS, fixed System Bar's "About <Application Name>" string (see [Issue 160](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/160)).
+    - Redump GD-ROM CUE/BIN to GDI conversion now produces 1:1 identical TOSEC dumps (see [Issue 161](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/161)).
+    - Added missing tooltip text to several UI elements (see [Issue 162](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/162)).
+    - Small UI clean-up and consistency changes (see [Issue 163](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/163)).
+    - Single GDI or CUE/BIN inside a ZIP, 7z, or RAR archive now "peeked" for quick IP.BIN metadata parsing (see [Issue 164](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/164)).
+    - SharpCompress upgraded from version 0.33.0 to 0.36.0 for enhanced archive support (see [Issue 165](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/165)).
+    - Fixed UI lockup when automatically converting GD-ROM CUE/BIN to GDI (see [Issue 166](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/166)).
+    - CodeBreaker cheat database upgraded to version 2.8 (see [Issue 167](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/167)).
 - **Version 1.5.4-ateam (2026-05-05)**
   - **openMenu**
     - The X button now zooms artwork in LineDesc mode (see [Issue 151](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/151)).
@@ -294,7 +305,6 @@ The latest version of **openMenu Virtual Folder Bundle** is [1.5.4-ateam](https:
   - Sonik for his work on GD MENU Card Manager
   - RazorX, Chris Daioglou, and the testers for good ideas for new features
   - darc for [Redump2CDI](https://dreamcast.wiki/Redump2CDI), used for Redump CD-ROM CUE/BIN to CDI conversion
-  - feyris-tan for [gdidrop](https://github.com/feyris-tan/gdidrop), code from which is used for Redump GD-ROM CUE/BIN to GDI conversion
   - All of the wonderful people in the Dreamcast scene
 
 ## Changes to openMenu and GD MENU Card Manager
@@ -375,7 +385,7 @@ To assign artwork to a game:
 
 **Important Notes:**
 - Artwork changes are held in memory until the user clicks **Save Changes** in the main window to write them to the DAT files.
-- The application automatically performs Serial ID translation to ensure artwork is filed under the correct serial that openMenu uses internally. This handles regional variants and problematic disc IDs automatically. Because of this, users may notice they're unable to store specific serials without GD MENU Card Manager automatically correcting them per openMenu's expected serials (e.g., NTSC-U "Nightmare Creatures 2" has ID `T9504M` but will be automatically changed to `T9504N`).
+- The application automatically performs Serial ID translation to ensure artwork is filed under the correct serial that openMenu uses internally. This handles regional variants and problematic disc IDs automatically. Because of this, users may notice Serial IDs are automatically changed for certain games (e.g., NTSC-U "Nightmare Creatures 2" has ID `T9504M` but will be automatically changed to `T9504N`). If the user attempts to revert back to the original Serial ID, a window will appear with a message explaining why the automatic translation is recommended, as well as the ability to override that recommendation.
 - If `BOX.DAT` and `ICON.DAT` don't exist in the `tools\openMenu\menu_data` folder (`~/Library/Application-Support/GDMENUCardManager/menu_data` on macOS), the application will auto-generate minimal starter files.
 - If a mismatch is detected between `BOX.DAT` and `ICON.DAT` (mismatched entry counts), the user will be prompted to auto-fix the issue.
 - All DAT modifications are backed up automatically to the `dat_backups` folder before changes are made.
@@ -485,7 +495,7 @@ Supported disc image formats: GDI, CDI, CCD, MDS, and CUE/BIN (Redump format).
 
 GD MENU Card Manager automatically detects and converts Redump-style CUE/BIN disc images:
 
-- **GD-ROM CUE/BIN**: Automatically converted to GDI format using code borrowed from gdidrop. The converter detects GD-ROM images by the presence of a "HIGH-DENSITY AREA" comment in the CUE file and properly handles track indexing and LBA calculations.
+- **GD-ROM CUE/BIN**: Automatically converted to GDI format, and the built-in TOSEC DAT is leveraged to ensure the resulting GDI matches byte-for-byte perfectly to the original TOSEC dump. The converter detects GD-ROM images by the presence of a "HIGH-DENSITY AREA" comment in the CUE file and properly handles track indexing and LBA calculations.
 - **CD-ROM CUE/BIN**: Automatically converted to CDI format using Redump2CDI.
 
 This feature allows users to add Redump-format disc images directly without manual conversion.
@@ -1214,18 +1224,20 @@ This modified version is also licensed under GPL-3.0. For the full license text,
 
 ### Third-Party Components
 Both projects include additional third-party components with their own licenses:
-- Aaru Data Preservation Suite (LGPL v2.1) - Copyright © 2011–2021 Natalia Portillo; provides disc image parsing and CD sector decoding (see `/GD MENU Card Manager/src/GDMENUCardManager.Core/Aaru/`)
-- DiscUtils (MIT) - Copyright © 2008–2011 Kenneth Bell (see `/GD MENU Card Manager/src/GDMENUCardManager.Core/DiscUtils/DiscUtils-LICENSE.txt`)
-- SevenZipSharp (LGPL v3) - Copyright © 2009–2010 Markovtsev Vadim; managed .NET wrapper for 7-Zip, used by the Windows version (see `/GD MENU Card Manager/src/GDMENUCardManager/SevenZip/`)
-- 7-Zip native library (LGPL v2.1+) - Copyright © Igor Pavlov; archive extraction, used by the Windows version
-- libchdr (BSD 3-Clause) - native CHD disc image library from the MAME project (see `/GD MENU Card Manager/src/GDMENUCardManager.Core/runtimes/`)
-- Avalonia (MIT) - cross-platform .NET UI framework
-- MessageBox.Avalonia (MIT)
-- SharpCompress (MIT) - archive extraction used by the cross-platform version
-- SixLabors.ImageSharp (Six Labors Split License v1.0) - free for use in OSI-approved open-source projects
-- ClosedXML (MIT)
-- ByteSize (MIT)
-- gong-wpf-dragdrop (BSD 2-Clause) - Windows version only
+- **Aaru Data Preservation Suite (LGPL v2.1)** - Copyright © 2011–2021 Natalia Portillo, provides disc image parsing and CD sector decoding (see `/GD MENU Card Manager/src/GDMENUCardManager.Core/Aaru/`)
+- **DiscUtils (MIT)** - Copyright © 2008–2011 Kenneth Bell (see `/GD MENU Card Manager/src/GDMENUCardManager.Core/DiscUtils/DiscUtils-LICENSE.txt`)
+- **SevenZipSharp (LGPL v3)** - Copyright © 2009–2010 Markovtsev Vadim, managed .NET wrapper for 7-Zip, used by the Windows version (see `/GD MENU Card Manager/src/GDMENUCardManager/SevenZip/`)
+- **7-Zip native library (LGPL v2.1+)** - Copyright © Igor Pavlov, archive extraction, used by the Windows version
+- **SharpCompress (MIT)** - Copyright © Adam Hathcock, archive extraction, used by the Linux/macOS version
+- **libchdr (BSD 3-Clause)** - native CHD disc image library from the MAME project (see `/GD MENU Card Manager/src/GDMENUCardManager.Core/runtimes/`)
+- **gdidrop (BSD 2-Clause)** - Copyright © 2019 Feyris-Tan, code used for Redump GD-ROM CUE/BIN to GDI conversion (see `/GD MENU Card Manager/src/GDMENUCardManager.Core/gdidrop-LICENSE.txt`)
+- **Avalonia (MIT)** - cross-platform .NET UI framework
+- **MessageBox.Avalonia (MIT)**
+- **SharpCompress (MIT)** - archive extraction used by the cross-platform version
+- **SixLabors.ImageSharp (Six Labors Split License v1.0)** - free for use in OSI-approved open-source projects
+- **ClosedXML (MIT)**
+- **ByteSize (MIT)**
+- **gong-wpf-dragdrop (BSD 2-Clause)** - Windows version only
 - Various libraries in `/openMenu/external/` with their respective licenses
 
 All original copyright notices and licenses for these components have been preserved.

@@ -153,14 +153,14 @@ namespace GDMENUCardManager
                 }
                 else
                 {
-                    var msgBox = MessageBoxManager.GetMessageBoxStandardWindow("No Update Available",
+                    var msgBox = MessageBoxManager.GetMessageBoxStandardWindow("Information",
                         "You are running the latest version.", MessageBox.Avalonia.Enums.ButtonEnum.Ok, MessageBox.Avalonia.Enums.Icon.Info);
                     await msgBox.ShowDialog(this);
                 }
             }
             catch
             {
-                var msgBox = MessageBoxManager.GetMessageBoxStandardWindow("Update Check Failed",
+                var msgBox = MessageBoxManager.GetMessageBoxStandardWindow("Information",
                     "Could not check for updates. Please check your internet connection.", MessageBox.Avalonia.Enums.ButtonEnum.Ok, MessageBox.Avalonia.Enums.Icon.Warning);
                 await msgBox.ShowDialog(this);
             }

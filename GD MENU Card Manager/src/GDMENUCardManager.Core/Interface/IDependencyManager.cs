@@ -49,6 +49,14 @@ namespace GDMENUCardManager.Core.Interface
 
         public void ExtractArchive(string archivePath, string extractTo);
         public Dictionary<string, long> GetArchiveFiles(string archivePath);
+
+        /// <summary>
+        /// Reads up to maxBytes from a single named entry in an archive without fully
+        /// extracting it. Matches the entry by leaf filename (case-insensitive). Returns
+        /// null when the entry is missing or unreadable. May return fewer bytes than
+        /// requested when the entry is smaller than maxBytes.
+        /// </summary>
+        public byte[] ReadArchiveEntryBytes(string archivePath, string entryName, long maxBytes);
     }
 
     public interface IProgressWindow

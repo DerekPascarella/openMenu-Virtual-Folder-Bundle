@@ -167,7 +167,7 @@ namespace GDMENUCardManager
 
             var result = await MessageBoxManager.GetMessageBoxCustomWindow(new MessageBox.Avalonia.DTO.MessageBoxCustomParams
             {
-                ContentTitle = "Unsaved Changes",
+                ContentTitle = "Confirmation",
                 ContentMessage = "You have unsaved changes. Save before navigating?",
                 Icon = MessageBox.Avalonia.Enums.Icon.Warning,
                 ShowInCenter = true,
@@ -249,7 +249,7 @@ namespace GDMENUCardManager
             }
             catch
             {
-                // Silently fail - no preview will be shown
+                // Silently fail, so no preview will be shown.
             }
         }
 
@@ -297,7 +297,7 @@ namespace GDMENUCardManager
             }
             catch
             {
-                // Silently fail - user can try again
+                // Silently fail, so the user can try again.
             }
         }
 
@@ -305,7 +305,7 @@ namespace GDMENUCardManager
         {
             var result = await MessageBoxManager.GetMessageBoxCustomWindow(new MessageBox.Avalonia.DTO.MessageBoxCustomParams
             {
-                ContentTitle = "Confirm Delete",
+                ContentTitle = "Confirmation",
                 ContentMessage = $"Delete artwork entry for serial '{Serial}'?",
                 Icon = MessageBox.Avalonia.Enums.Icon.Warning,
                 ShowInCenter = true,
@@ -328,7 +328,7 @@ namespace GDMENUCardManager
                     var oldBoxData = _manager.BoxDat.GetPvrDataForSerial(Serial);
                     var oldIconData = _manager.IconDat?.GetPvrDataForSerial(Serial);
 
-                    // Delete from both BOX.DAT and ICON.DAT (in memory only - written during Save Changes)
+                    // Delete from both BOX.DAT and ICON.DAT (in memory only, written during Save Changes)
                     _manager.BoxDat.DeleteEntryForSerial(Serial);
                     _manager.IconDat?.DeleteEntryForSerial(Serial);
 
@@ -366,14 +366,14 @@ namespace GDMENUCardManager
 
             if (_deleteRequested)
             {
-                // Delete from both DATs (in memory only - written during Save Changes)
+                // Delete from both DATs (in memory only, written during Save Changes)
                 _manager.BoxDat.DeleteEntryForSerial(Serial);
                 _manager.IconDat?.DeleteEntryForSerial(Serial);
                 // newBoxData and newIconData stay null for delete
             }
             else if (_pendingPvrData != null)
             {
-                // Set artwork in both DATs (in memory only - written during Save Changes)
+                // Set artwork in both DATs (in memory only, written during Save Changes)
                 _manager.BoxDat.SetArtworkForSerial(Serial, _pendingPvrData);
                 newBoxData = _pendingPvrData;
                 if (_pendingIconPvrData != null && _manager.IconDat != null)
@@ -426,7 +426,7 @@ namespace GDMENUCardManager
 
                 var result = await MessageBoxManager.GetMessageBoxCustomWindow(new MessageBox.Avalonia.DTO.MessageBoxCustomParams
                 {
-                    ContentTitle = "Unsaved Changes",
+                    ContentTitle = "Confirmation",
                     ContentMessage = "You have unsaved changes. Discard them?",
                     Icon = MessageBox.Avalonia.Enums.Icon.Warning,
                     ShowInCenter = true,

@@ -143,7 +143,7 @@ namespace GDMENUCardManager
 
                 if (!File.Exists(boxPath) && !File.Exists(metaPath))
                 {
-                    await ShowError("Invalid Folder", "Selected folder does not contain BOX.DAT or META.DAT.");
+                    await ShowError("Selected folder does not contain BOX.DAT or META.DAT.");
                     return;
                 }
 
@@ -162,7 +162,7 @@ namespace GDMENUCardManager
             // Confirmation dialog
             var confirmResult = await MessageBoxManager.GetMessageBoxCustomWindow(new MessageBox.Avalonia.DTO.MessageBoxCustomParams
             {
-                ContentTitle = "Confirm Import",
+                ContentTitle = "Confirmation",
                 ContentMessage = "This will backup current DAT files and merge entries from the selected folder.\n\nContinue?",
                 Icon = MessageBox.Avalonia.Enums.Icon.Warning,
                 ShowInCenter = true,
@@ -210,7 +210,7 @@ namespace GDMENUCardManager
 
                 if (!result.success)
                 {
-                    await ShowError("Import Failed", result.errorMessage);
+                    await ShowError(result.errorMessage);
                     return;
                 }
 
@@ -220,7 +220,7 @@ namespace GDMENUCardManager
                 {
                     message += "\n\nICON.DAT was automatically regenerated using the updated contents of BOX.DAT.";
                 }
-                await ShowInfo("Import Complete", message);
+                await ShowInfo(message);
 
                 // Close this window and reload
                 this.Close();
@@ -234,7 +234,7 @@ namespace GDMENUCardManager
             {
                 progressWindow.AllowClose();
                 progressWindow.Close();
-                await ShowError("Import Failed", $"An error occurred: {ex.Message}");
+                await ShowError($"An error occurred: {ex.Message}");
             }
         }
 
@@ -291,18 +291,18 @@ namespace GDMENUCardManager
 
                 if (!result.success)
                 {
-                    await ShowError("Export Failed", result.errorMessage);
+                    await ShowError(result.errorMessage);
                     return;
                 }
 
                 // Keep window open, just show success
-                await ShowInfo("Export Complete", $"Exported {result.exportedCount} artwork file(s) to PNG.");
+                await ShowInfo($"Exported {result.exportedCount} artwork file(s) to PNG.");
             }
             catch (Exception ex)
             {
                 progressWindow.AllowClose();
                 progressWindow.Close();
-                await ShowError("Export Failed", $"An error occurred: {ex.Message}");
+                await ShowError($"An error occurred: {ex.Message}");
             }
         }
 
@@ -315,7 +315,7 @@ namespace GDMENUCardManager
             // Confirmation dialog
             var confirmResult = await MessageBoxManager.GetMessageBoxCustomWindow(new MessageBox.Avalonia.DTO.MessageBoxCustomParams
             {
-                ContentTitle = "Confirm Clear",
+                ContentTitle = "Confirmation",
                 ContentMessage = "This will backup current DAT files and then clear ALL artwork and metadata entries.\n\nThis action cannot be undone. Continue?",
                 Icon = MessageBox.Avalonia.Enums.Icon.Warning,
                 ShowInCenter = true,
@@ -352,12 +352,12 @@ namespace GDMENUCardManager
 
                 if (!result.success)
                 {
-                    await ShowError("Clear Failed", result.errorMessage);
+                    await ShowError(result.errorMessage);
                     return;
                 }
 
                 // Show success message first
-                await ShowInfo("Clear Complete", "All DAT entries have been cleared.");
+                await ShowInfo("All DAT entries have been cleared.");
 
                 // Close this window and reload
                 this.Close();
@@ -371,7 +371,7 @@ namespace GDMENUCardManager
             {
                 progressWindow.AllowClose();
                 progressWindow.Close();
-                await ShowError("Clear Failed", $"An error occurred: {ex.Message}");
+                await ShowError($"An error occurred: {ex.Message}");
             }
         }
 
@@ -384,7 +384,7 @@ namespace GDMENUCardManager
             // Confirmation dialog
             var confirmResult = await MessageBoxManager.GetMessageBoxCustomWindow(new MessageBox.Avalonia.DTO.MessageBoxCustomParams
             {
-                ContentTitle = "Confirm Overwrite",
+                ContentTitle = "Confirmation",
                 ContentMessage = "This will backup current DAT files and overwrite them with those from the SD card's openMenu disc image.\n\nContinue?",
                 Icon = MessageBox.Avalonia.Enums.Icon.Warning,
                 ShowInCenter = true,
@@ -421,11 +421,11 @@ namespace GDMENUCardManager
 
                 if (!result.success)
                 {
-                    await ShowError("Overwrite Failed", result.errorMessage);
+                    await ShowError(result.errorMessage);
                     return;
                 }
 
-                await ShowInfo("Overwrite Complete", "DAT files have been successfully overwritten with those from the SD card.");
+                await ShowInfo("DAT files have been successfully overwritten with those from the SD card.");
 
                 // Close this window and reload
                 this.Close();
@@ -439,7 +439,7 @@ namespace GDMENUCardManager
             {
                 progressWindow.AllowClose();
                 progressWindow.Close();
-                await ShowError("Overwrite Failed", $"An error occurred: {ex.Message}");
+                await ShowError($"An error occurred: {ex.Message}");
             }
         }
 
@@ -447,16 +447,16 @@ namespace GDMENUCardManager
 
         #region Helpers
 
-        private async Task ShowError(string title, string message)
+        private async Task ShowError(string message)
         {
-            await MessageBoxManager.GetMessageBoxStandardWindow(title, message,
+            await MessageBoxManager.GetMessageBoxStandardWindow("Error", message,
                 MessageBox.Avalonia.Enums.ButtonEnum.Ok, MessageBox.Avalonia.Enums.Icon.Error)
                 .ShowDialog(this);
         }
 
-        private async Task ShowInfo(string title, string message)
+        private async Task ShowInfo(string message)
         {
-            await MessageBoxManager.GetMessageBoxStandardWindow(title, message,
+            await MessageBoxManager.GetMessageBoxStandardWindow("Information", message,
                 MessageBox.Avalonia.Enums.ButtonEnum.Ok, MessageBox.Avalonia.Enums.Icon.Info)
                 .ShowDialog(this);
         }

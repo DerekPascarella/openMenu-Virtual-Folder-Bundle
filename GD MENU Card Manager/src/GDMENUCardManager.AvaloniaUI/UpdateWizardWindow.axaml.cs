@@ -165,12 +165,12 @@ namespace GDMENUCardManager
             }
             catch (OperationCanceledException)
             {
-                // User cancelled - window is closing
+                // User cancelled, so the window is closing.
             }
             catch (Exception ex)
             {
                 UpdateManager.CleanupStagingDirectory();
-                var msgBox = MessageBoxManager.GetMessageBoxStandardWindow("Update Error",
+                var msgBox = MessageBoxManager.GetMessageBoxStandardWindow("Error",
                     $"Update failed: {ex.Message}", ButtonEnum.Ok, MessageBox.Avalonia.Enums.Icon.Error);
                 await msgBox.ShowDialog(this);
                 Close();

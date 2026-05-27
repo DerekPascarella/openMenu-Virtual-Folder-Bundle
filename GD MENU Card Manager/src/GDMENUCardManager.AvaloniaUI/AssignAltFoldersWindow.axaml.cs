@@ -139,7 +139,7 @@ namespace GDMENUCardManager
 
                 if (isDuplicate)
                 {
-                    await MessageBoxManager.GetMessageBoxStandardWindow("Duplicate Folder Path",
+                    await MessageBoxManager.GetMessageBoxStandardWindow("Information",
                         "This folder path is already assigned to this disc image.",
                         icon: MessageBox.Avalonia.Enums.Icon.Info).ShowDialog(this);
                     entry.FolderPath = string.Empty;

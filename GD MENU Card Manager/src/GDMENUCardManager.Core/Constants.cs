@@ -1,5 +1,5 @@
-﻿// AUTO-GENERATED FILE - Version is read from ../version.txt during build
-// Do not manually edit the Version constant - update ../version.txt instead
+﻿// AUTO-GENERATED FILE. Version is read from ../version.txt during build.
+// Do not manually edit the Version constant. Update ../version.txt instead.
 
 namespace GDMENUCardManager.Core
 {
@@ -27,7 +27,8 @@ namespace GDMENUCardManager.Core
         public const string MenuConfigTextFile = "GDEMU.INI";
         public const string GdiShrinkBlacklistFile = "gdishrink_blacklist.txt";
         public const string PS1GameDBFile = "gamedb.json";
+        public const string TosecDatFile = "tosec_dc.bin";
         public const string DefaultImageFileName = "disc";
-        public const string Version = "v1.5.4-ateam";
+        public const string Version = "v1.5.5-ateam";
     }
 }

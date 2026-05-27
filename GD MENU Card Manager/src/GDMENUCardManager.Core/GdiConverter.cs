@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Hashing;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -10,7 +11,7 @@ namespace GDMENUCardManager.Core
 {
     /// <summary>
     /// Converts Redump GD-ROM CUE/BIN format to GDI format.
-    /// Based on convertredumptogdi logic - matches original behavior exactly.
+    /// Based on convertredumptogdi logic. Matches the original behavior exactly.
     /// </summary>
     public static class GdiConverter
     {
@@ -25,11 +26,25 @@ namespace GDMENUCardManager.Core
         /// <param name="progress">Optional progress callback (0-100)</param>
         /// <param name="cancellationToken">Optional cancellation token</param>
         /// <returns>Success status and error message if failed</returns>
-        public static async Task<(bool Success, string Message)> ConvertToGdi(
+        public static Task<(bool Success, string Message)> ConvertToGdi(
             string cuePath,
             string outputDirectory,
             IProgress<int> progress = null,
             CancellationToken cancellationToken = default)
+        {
+            // Heavy synchronous file I/O inside the impl runs before its first await,
+            // so calling directly from the UI thread blocks the window. Task.Run
+            // pushes the whole call onto the thread pool.
+            return Task.Run(
+                () => ConvertToGdiImpl(cuePath, outputDirectory, progress, cancellationToken),
+                cancellationToken);
+        }
+
+        private static async Task<(bool Success, string Message)> ConvertToGdiImpl(
+            string cuePath,
+            string outputDirectory,
+            IProgress<int> progress,
+            CancellationToken cancellationToken)
         {
             try
             {
@@ -59,6 +74,23 @@ namespace GDMENUCardManager.Core
                 int currentLba = 0;  // num1 in original
                 int processedTracks = 0;
 
+                // Hash Track 1's .bin and look up the disc in the TOSEC DAT.
+                // A match enables byte-exact reconstruction below. A miss
+                // (or a missing/corrupt blob) silently falls through to the
+                // strip-path.
+                TosecDiscEntry tosecEntry = null;
+                var t1Track = cueData.Tracks.FirstOrDefault(t => t.TrackNumber == 1);
+                if (t1Track != null)
+                {
+                    string t1BinPath = Path.Combine(cueData.Directory, t1Track.DataFilename);
+                    if (File.Exists(t1BinPath))
+                    {
+                        uint t1Crc = Crc32.HashToUInt32(File.ReadAllBytes(t1BinPath));
+                        tosecEntry = TosecDatLookup.LookupByT1Crc32(t1Crc);
+                    }
+                }
+                bool tosecUsable = tosecEntry != null;
+
                 foreach (var track in cueData.Tracks)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
@@ -71,12 +103,60 @@ namespace GDMENUCardManager.Core
                     }
 
                     // Determine output filename: track0X.bin for data, track0X.raw for audio
-                    // Original format: "track0{0}.{1}" - literally puts "0" before track number
+                    // Original format string "track0{0}.{1}" literally puts "0" before the track number.
                     string extension = track.IsAudio ? "raw" : "bin";
                     string outputFilename = $"track{track.TrackNumber:D2}.{extension}";
                     string outputPath = Path.Combine(outputDirectory, outputFilename);
 
                     int sectorCount;  // num3 in original
+
+                    // Try byte-exact reconstruction against TOSEC's expected
+                    // per-track hashes. If reconstruction fails for this
+                    // track, fall through to the strip-path below.
+                    if (tosecUsable)
+                    {
+                        var tosecTrack = tosecEntry.Tracks.FirstOrDefault(t => t.TrackNumber == track.TrackNumber);
+                        if (tosecTrack != null)
+                        {
+                            byte[] redumpBytes = File.ReadAllBytes(sourceBinPath);
+                            byte[] reconstructed = RedumpReconstructor.TryReconstruct(
+                                redumpBytes, !track.IsAudio, tosecTrack.Size, tosecTrack.Crc32, tosecTrack.Md5);
+                            if (reconstructed != null)
+                            {
+                                await File.WriteAllBytesAsync(outputPath, reconstructed, cancellationToken);
+
+                                // Mirror the strip-path LBA arithmetic so the .gdi
+                                // matches the TOSEC reference layout. Source .bin
+                                // size drives the LBA advance, not the TOSEC output
+                                // size (they don't always agree for audio tracks).
+                                // Multi-index tracks still need the pregap bump.
+                                long sourceFileSize = new FileInfo(sourceBinPath).Length;
+                                if (track.Indices.Count == 1)
+                                {
+                                    sectorCount = (int)(sourceFileSize / SectorSize);
+                                }
+                                else
+                                {
+                                    var index01 = track.Indices.FirstOrDefault(i => i.Number == 1);
+                                    int framesToSkip = index01?.TotalFrames ?? 0;
+                                    sectorCount = (int)((sourceFileSize - (long)framesToSkip * SectorSize) / SectorSize);
+                                    currentLba += framesToSkip;
+                                }
+
+                                int tosecTrackType = track.IsAudio ? 0 : 4;
+                                gdiContent.AppendLine($"{track.TrackNumber} {currentLba} {tosecTrackType} 2352 {outputFilename} 0");
+                                currentLba += sectorCount;
+
+                                if (track.Comments.Contains("HIGH-DENSITY AREA") && currentLba < HighDensityAreaLba)
+                                {
+                                    currentLba = HighDensityAreaLba;
+                                }
+                                processedTracks++;
+                                progress?.Report((processedTracks * 100) / trackCount);
+                                continue;
+                            }
+                        }
+                    }
 
                     // Original logic: if track has only one index, copy entire file
                     // If track has multiple indices (INDEX 00 and INDEX 01), skip to INDEX 01 position
@@ -91,7 +171,7 @@ namespace GDMENUCardManager.Core
                     }
                     else
                     {
-                        // Has pregap - get INDEX 01 position and skip to it
+                        // Has pregap, so get INDEX 01 position and skip to it.
                         // Original uses track.Indices[1] which is the second index (INDEX 01)
                         var index01 = track.Indices.FirstOrDefault(i => i.Number == 1);
                         int framesToSkip = index01?.TotalFrames ?? 0;

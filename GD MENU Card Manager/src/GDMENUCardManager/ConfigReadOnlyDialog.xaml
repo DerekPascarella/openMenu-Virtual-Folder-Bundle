@@ -33,8 +33,10 @@
         </ListBox>
 
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button Content="Retry" Width="80" Padding="15,8" Margin="0,0,10,0" Click="RetryButton_Click" IsDefault="True"/>
-            <Button Content="Continue" Width="120" Padding="15,8" Click="ContinueButton_Click" IsCancel="True"/>
+            <Button Content="Retry" Width="80" Padding="15,8" Margin="0,0,10,0" Click="RetryButton_Click" IsDefault="True"
+                    ToolTip="Re-check the settings file after fixing its permissions"/>
+            <Button Content="Continue" Width="120" Padding="15,8" Click="ContinueButton_Click" IsCancel="True"
+                    ToolTip="Proceed without saving settings this session"/>
         </StackPanel>
     </Grid>
 </Window>

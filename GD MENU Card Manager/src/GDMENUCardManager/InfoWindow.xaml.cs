@@ -72,7 +72,14 @@ namespace GDMENUCardManager
         {
             if (item.FileFormat == FileFormat.SevenZip)
             {
-                IpInfo = "Can't load from compressed files.";
+                if (item.Ip != null && !string.IsNullOrWhiteSpace(item.Ip.ProductNumber))
+                {
+                    IpInfo = FormatIpInfo(item.Ip);
+                }
+                else
+                {
+                    IpInfo = "Can't load from compressed files.";
+                }
                 LabelText = "Can't load from compressed files.";
                 return;
             }
@@ -85,20 +92,7 @@ namespace GDMENUCardManager
                 var ip = await ImageHelper.GetIpBinFromImage(filePath);
                 if (ip != null)
                 {
-                    StringBuilder sb = new StringBuilder();
-                    sb.AppendLine($"Title: {ip.Name}");
-                    sb.AppendLine($"Version: {ip.Version}");
-                    sb.AppendLine($"Disc: {ip.Disc}");
-                    sb.AppendLine($"VGA: {(ip.Vga ? "Yes" : "No")}");
-                    sb.AppendLine($"Serial: {ip.ProductNumber}");
-                    sb.Append($"Region: {ip.Region}");
-
-                    if (ip.SpecialDisc != SpecialDisc.None)
-                    {
-                        sb.AppendLine();
-                        sb.Append("Detected as: " + ip.SpecialDisc);
-                    }
-                    IpInfo = sb.ToString();
+                    IpInfo = FormatIpInfo(ip);
                 }
                 else
                 {
@@ -149,6 +143,24 @@ namespace GDMENUCardManager
             {
                 LabelText = "Unable to find or read file";
             }
+        }
+
+        private static string FormatIpInfo(IpBin ip)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine($"Title: {ip.Name}");
+            sb.AppendLine($"Version: {ip.Version}");
+            sb.AppendLine($"Disc: {ip.Disc}");
+            sb.AppendLine($"VGA: {(ip.Vga ? "Yes" : "No")}");
+            sb.AppendLine($"Serial: {ip.ProductNumber}");
+            sb.Append($"Region: {ip.Region}");
+
+            if (ip.SpecialDisc != SpecialDisc.None)
+            {
+                sb.AppendLine();
+                sb.Append("Detected as: " + ip.SpecialDisc);
+            }
+            return sb.ToString();
         }
     }
 }

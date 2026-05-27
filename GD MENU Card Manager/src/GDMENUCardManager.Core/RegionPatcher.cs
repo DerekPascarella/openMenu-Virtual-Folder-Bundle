@@ -33,7 +33,7 @@ namespace GDMENUCardManager.Core
         };
 
         // Region string search patterns
-        // "For JAPAN,TAIWAN,PHILIPINES." (28 bytes) - note: PHILIPINES is the official Dreamcast spelling
+        // "For JAPAN,TAIWAN,PHILIPINES." (28 bytes). Note that PHILIPINES is the official Dreamcast spelling.
         private static readonly byte[] JapanRegionString = Encoding.ASCII.GetBytes("For JAPAN,TAIWAN,PHILIPINES.");
         // "For USA and CANADA." (19 bytes)
         private static readonly byte[] UsaRegionString = Encoding.ASCII.GetBytes("For USA and CANADA.");

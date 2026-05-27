@@ -29,7 +29,7 @@
           <!-- Instructions -->
           <StackPanel Grid.Row="0" Margin="0,0,0,15">
           <TextBlock TextWrapping="Wrap" Foreground="Black" FontWeight="Bold">Import entries to merge into the current DAT files</TextBlock>
-          <TextBlock x:Name="TextImportInstructions" TextWrapping="Wrap" Foreground="Black" Margin="0,8,0,0">Before this process is initiated, the DATs that currently reside in the "tools\openMenu\menu_data" will be backed up to the "dat_backups" folder.
+          <TextBlock x:Name="TextImportInstructions" TextWrapping="Wrap" Foreground="Black" Margin="0,8,0,0">Before this process is initiated, the DATs that currently reside in the "tools\openMenu\menu_data" folder will be backed up to the "dat_backups" folder.
 
 Use "Choose DAT Folder" to select a folder containing either BOX.DAT or META.DAT (or both), as ICON.DAT will be automatically generated from BOX.DAT.
 
@@ -53,9 +53,11 @@ Please note that any unsaved artwork changes from this session will also be incl
 
           <!-- Buttons -->
           <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button Content="Choose DAT Folder" Click="ChooseImportFolder_Click" Padding="15,8" Margin="0,0,10,0"/>
+            <Button Content="Choose DAT Folder" Click="ChooseImportFolder_Click" Padding="15,8" Margin="0,0,10,0"
+                    ToolTip.Tip="Select a folder containing BOX.DAT and/or META.DAT to merge into the current DATs"/>
             <Button x:Name="ButtonBeginImport" Content="Begin Import" Click="BeginImport_Click"
-                    Padding="15,8" IsEnabled="False"/>
+                    Padding="15,8" IsEnabled="False"
+                    ToolTip.Tip="Merge the selected DAT files into the current DATs using the chosen import mode"/>
           </StackPanel>
         </Grid>
       </TabItem>
@@ -86,9 +88,11 @@ Select a target output folder, then click "Begin Export" to perform this operati
 
           <!-- Buttons -->
           <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button Content="Choose Target Folder" Click="ChooseExportFolder_Click" Padding="15,8" Margin="0,0,10,0"/>
+            <Button Content="Choose Target Folder" Click="ChooseExportFolder_Click" Padding="15,8" Margin="0,0,10,0"
+                    ToolTip.Tip="Select an output folder for the exported PNG files"/>
             <Button x:Name="ButtonBeginExport" Content="Begin Export" Click="BeginExport_Click"
-                    Padding="15,8" IsEnabled="False"/>
+                    Padding="15,8" IsEnabled="False"
+                    ToolTip.Tip="Export all assigned artwork (including unsaved changes) as PNGs to the target folder"/>
           </StackPanel>
         </Grid>
       </TabItem>
@@ -106,14 +110,15 @@ Select a target output folder, then click "Begin Export" to perform this operati
           <TextBlock TextWrapping="Wrap" Foreground="Black" FontWeight="Bold">Clear all artwork and metadata from BOX.DAT, ICON.DAT, and META.DAT</TextBlock>
           <TextBlock x:Name="TextClearInstructions" TextWrapping="Wrap" Foreground="Black" Margin="0,8,0,0">Doing so will discard any unsaved artwork changes from Games List, as well as remove all saved entries.
 
-Before this process is initiated, the DATs that currently reside in the "tools\openMenu\menu_data" will be backed up to the "dat_backups" folder.
+Before this process is initiated, the DATs that currently reside in the "tools\openMenu\menu_data" folder will be backed up to the "dat_backups" folder.
 
 Click "Clear DATs" to perform this operation.</TextBlock>
           </StackPanel>
 
           <!-- Button -->
           <Button Grid.Row="1" Content="Clear DATs" Click="ClearDats_Click"
-                  Padding="15,8" HorizontalAlignment="Right"/>
+                  Padding="15,8" HorizontalAlignment="Right"
+                  ToolTip.Tip="Discard all artwork and metadata from BOX.DAT, ICON.DAT, and META.DAT (current DATs are backed up first)"/>
         </Grid>
       </TabItem>
       <!-- Overwrite DATs With SD Card Tab -->
@@ -136,7 +141,8 @@ While such users can easily copy the DAT files from their previous version of GD
 
           <!-- Button -->
           <Button Grid.Row="1" Content="Overwrite DATs" Click="OverwriteDats_Click"
-                  Padding="15,8" HorizontalAlignment="Right"/>
+                  Padding="15,8" HorizontalAlignment="Right"
+                  ToolTip.Tip="Replace the local DAT files with the ones currently on the openMenu SD card"/>
         </Grid>
       </TabItem>
     </TabControl>

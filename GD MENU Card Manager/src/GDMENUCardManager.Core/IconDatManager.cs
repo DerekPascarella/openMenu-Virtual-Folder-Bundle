@@ -15,7 +15,7 @@ namespace GDMENUCardManager.Core
 
     public class IconDatManager
     {
-        // Constants - ICON.DAT uses 128x128 PVRs (0x8020 bytes each)
+        // ICON.DAT uses 128x128 PVRs (0x8020 bytes each).
         public const uint EntrySize = 0x8020;  // 32,800 bytes
         public const int HeaderSize = 16;
         public const int EntryIndexSize = 16;

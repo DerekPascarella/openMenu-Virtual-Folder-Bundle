@@ -437,7 +437,7 @@ namespace GDMENUCardManager.Core
         /// Merge entries from another MetaDatManager.
         /// </summary>
         /// <param name="source">Source MetaDatManager to merge from</param>
-        /// <param name="overwriteExisting">If true, overwrite existing entries; if false, only add missing entries</param>
+        /// <param name="overwriteExisting">If true, overwrite existing entries. If false, only add missing entries.</param>
         /// <returns>Number of entries merged</returns>
         public int MergeFrom(MetaDatManager source, bool overwriteExisting)
         {

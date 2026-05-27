@@ -683,7 +683,7 @@ namespace GDMENUCardManager.Core
             if (string.IsNullOrEmpty(fileName))
                 return "Unknown";
 
-            // First, handle colon specially - replace with " - " for readability
+            // First, handle colon specially by replacing it with " - " for readability.
             // Handle variations like "Title: Subtitle", "Title : Subtitle", "Title:Subtitle"
             var result = System.Text.RegularExpressions.Regex.Replace(fileName, @"\s*:\s*", " - ");
 
@@ -1332,8 +1332,8 @@ namespace GDMENUCardManager.Core
                 CanApplyGDIShrink = Path.GetExtension(itemImageFile).Equals(".gdi", StringComparison.InvariantCultureIgnoreCase),
             };
 
-            // Need all cache files present; if any are missing, Ip stays null
-            // and the metadata scan will parse from disc image later
+            // Need all cache files present. If any are missing, Ip stays null
+            // and the metadata scan will parse from the disc image later.
             bool hasCachedIpData = discFile != null && vgaFile != null && versionFile != null && dateFile != null && regionFile != null;
 
             if (hasCachedIpData)
@@ -1620,7 +1620,7 @@ namespace GDMENUCardManager.Core
                     throw new Exception($"The SD card is no longer accessible at \"{sdPath}\".\n\nPlease reconnect the SD card and try again.");
                 }
 
-                if (ItemList.Count == 0 || await Helper.DependencyManager.ShowYesNoDialog("Save", $"Save changes to \"{sdPath}\" drive?") == false)
+                if (ItemList.Count == 0 || await Helper.DependencyManager.ShowYesNoDialog("Confirmation", $"Save changes to \"{sdPath}\" drive?") == false)
                 {
                     return false;
                 }
@@ -1710,7 +1710,7 @@ namespace GDMENUCardManager.Core
                     if (more > 0)
                         sb.AppendLine($"[and {more} more folders]");
 
-                    if (await Helper.DependencyManager.ShowYesNoDialog("Confirm", $"The following folders need to be deleted.\nConfirm deletion?\n\n{sb.ToString()}") == false)
+                    if (await Helper.DependencyManager.ShowYesNoDialog("Confirmation", $"The following folders need to be deleted.\nConfirm deletion?\n\n{sb.ToString()}") == false)
                     {
                         return false;
                     }
@@ -2795,7 +2795,7 @@ namespace GDMENUCardManager.Core
                                 if (EnableGDIShrink && itemsToShrink.Contains(item))
                                 {
                                     // Convert to GDI in temp dir, then shrink to SD card
-                                    progress.TextContent = $"Converting/Shrinking {item.Name}...";
+                                    progress.TextContent = $"Decompressing/Shrinking {item.Name}...";
 
                                     var tempChdDir = Path.Combine(tempdir, $"chd_{folderNumber}");
                                     if (!await Helper.DirectoryExistsAsync(tempChdDir))
@@ -2825,7 +2825,7 @@ namespace GDMENUCardManager.Core
                                 else
                                 {
                                     // Convert CHD directly to GDI on SD card
-                                    progress.TextContent = $"Converting {item.Name} to GDI...";
+                                    progress.TextContent = $"Decompressing {item.Name} to GDI...";
 
                                     var (success, message) = await ChdConverter.ConvertToGdi(chdPath, newPath);
                                     if (!success)
@@ -2844,7 +2844,7 @@ namespace GDMENUCardManager.Core
                             else
                             {
                                 // CD-ROM CHD: Convert to CUE/BIN, then to CDI
-                                progress.TextContent = $"Converting {item.Name} to CDI...";
+                                progress.TextContent = $"Decompressing {item.Name} to CDI...";
 
                                 var tempChdDir = Path.Combine(tempdir, $"chd_{folderNumber}");
                                 if (!await Helper.DirectoryExistsAsync(tempChdDir))
@@ -3050,7 +3050,7 @@ namespace GDMENUCardManager.Core
 
                                         if (shrink)
                                         {
-                                            progress.TextContent = $"Converting/Shrinking {item.Name}...";
+                                            progress.TextContent = $"Decompressing/Shrinking {item.Name}...";
 
                                             // Convert CHD to GDI in temp, then shrink
                                             var tempChdGdiDir = Path.Combine(tempdir, $"chdgdi_{folderNumber}");
@@ -3071,7 +3071,7 @@ namespace GDMENUCardManager.Core
                                         }
                                         else
                                         {
-                                            progress.TextContent = $"Converting {item.Name} to GDI...";
+                                            progress.TextContent = $"Decompressing {item.Name} to GDI...";
 
                                             var (success, message) = await ChdConverter.ConvertToGdi(extractedChdPath, newPath);
                                             if (!success)
@@ -3094,7 +3094,7 @@ namespace GDMENUCardManager.Core
                                     else
                                     {
                                         // CD-ROM CHD: Convert to CUE/BIN then CDI
-                                        progress.TextContent = $"Converting {item.Name} to CDI...";
+                                        progress.TextContent = $"Decompressing {item.Name} to CDI...";
 
                                         var tempCueBinDir = Path.Combine(tempdir, $"chdcue_{folderNumber}");
                                         if (!await Helper.DirectoryExistsAsync(tempCueBinDir))
@@ -3517,7 +3517,7 @@ namespace GDMENUCardManager.Core
                 {
                     // GD-ROM CHD: Convert to GDI format
                     if (progress != null)
-                        progress.TextContent = $"Converting {item.Name} to GDI...";
+                        progress.TextContent = $"Decompressing {item.Name} to GDI...";
 
                     var (success, message) = await ChdConverter.ConvertToGdi(extractedChdPath, newPath);
                     if (!success)
@@ -3532,7 +3532,7 @@ namespace GDMENUCardManager.Core
                 {
                     // CD-ROM CHD: Convert to CUE/BIN then CDI
                     if (progress != null)
-                        progress.TextContent = $"Converting {item.Name} to CDI...";
+                        progress.TextContent = $"Decompressing {item.Name} to CDI...";
 
                     var tempCueBinDir = Path.Combine(tempdir, $"chdcue_{folderNumber}");
                     if (!await Helper.DirectoryExistsAsync(tempCueBinDir))

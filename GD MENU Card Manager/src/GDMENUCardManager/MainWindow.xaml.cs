@@ -498,7 +498,7 @@ namespace GDMENUCardManager
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Problem loading the following folder(s):\n\n{ex.Message}", "Invalid Folders", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show($"Problem loading the following folder(s):\n\n{ex.Message}", "Information", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             finally
             {
@@ -559,7 +559,7 @@ namespace GDMENUCardManager
                             "Click Yes to create empty DAT files.\n\n" +
                             "Click No to close and add files manually.\n\n" +
                             "Click Cancel to proceed without artwork features.",
-                            "DAT Files Missing",
+                            "Confirmation",
                             MessageBoxButton.YesNoCancel,
                             MessageBoxImage.Warning);
 
@@ -594,7 +594,7 @@ namespace GDMENUCardManager
                             "Click Yes to create an empty BOX.DAT file.\n\n" +
                             "Click No to close and add BOX.DAT manually.\n\n" +
                             "Click Cancel to proceed without artwork features.",
-                            "BOX.DAT Missing",
+                            "Confirmation",
                             MessageBoxButton.YesNoCancel,
                             MessageBoxImage.Warning);
 
@@ -627,7 +627,7 @@ namespace GDMENUCardManager
                             "Click Yes to generate ICON.DAT from BOX.DAT (recommended).\n\n" +
                             "Click No to close and add ICON.DAT manually.\n\n" +
                             "Click Cancel to proceed without artwork features.",
-                            "ICON.DAT Missing",
+                            "Confirmation",
                             MessageBoxButton.YesNoCancel,
                             MessageBoxImage.Question);
 
@@ -660,7 +660,7 @@ namespace GDMENUCardManager
                             "Click Yes to regenerate ICON.DAT from BOX.DAT (recommended).\n\n" +
                             "Click No to proceed with mismatched files (some icons may be missing).\n\n" +
                             "Click Cancel to proceed without artwork features.",
-                            "DAT File Mismatch",
+                            "Confirmation",
                             MessageBoxButton.YesNoCancel,
                             MessageBoxImage.Warning);
 
@@ -732,7 +732,7 @@ namespace GDMENUCardManager
                 {
                     SaveTempFolderConfig();
                     SaveLockCheckConfig();
-                    MessageBox.Show(this, "Done!", "Message", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show(this, "Done!", "Information", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
             catch (Exception ex)
@@ -1034,7 +1034,7 @@ namespace GDMENUCardManager
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message);
+                MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
@@ -1063,7 +1063,7 @@ namespace GDMENUCardManager
                     ? "1 disc image doesn't have a Serial ID assigned to it."
                     : $"{count} disc images don't have Serial IDs assigned to them.";
                 msg += "\n\nA valid openMenu configuration requires all disc images are assigned a Serial ID.";
-                MessageBox.Show(this, msg, "Missing Serial IDs", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(this, msg, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
 
@@ -1093,7 +1093,7 @@ namespace GDMENUCardManager
 
         private void ButtonResetTempFolder_Click(object sender, RoutedEventArgs e)
         {
-            var result = MessageBox.Show(this, "Reset the Temporary Folder path to default?", "Reset", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            var result = MessageBox.Show(this, "Reset the Temporary Folder path to default?", "Confirmation", MessageBoxButton.YesNo, MessageBoxImage.Question);
             if (result == MessageBoxResult.Yes)
             {
                 TempFolder = Path.GetTempPath();
@@ -1131,7 +1131,7 @@ namespace GDMENUCardManager
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message, "Error Loading data", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             IsBusy = false;
         }
@@ -1200,7 +1200,7 @@ namespace GDMENUCardManager
                 : "Your disc images will be automatically sorted in alphanumeric order based on Title.\n\nDo you want to continue?";
             var result = MessageBox.Show(
                 sortDescription,
-                "Sort List",
+                "Confirmation",
                 MessageBoxButton.YesNo,
                 MessageBoxImage.Question);
 
@@ -1214,7 +1214,7 @@ namespace GDMENUCardManager
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message, "Error Loading data", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             IsBusy = false;
         }
@@ -1260,7 +1260,7 @@ namespace GDMENUCardManager
                     }
                 }
 
-                MessageBox.Show($"{count} item(s) renamed", "Done", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show($"{count} item(s) renamed", "Information", MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (Exception ex)
             {
@@ -1339,7 +1339,7 @@ namespace GDMENUCardManager
                             msg += $"\n\n{conflictsRemoved} additional folder path(s) were automatically removed because they became duplicates of their disc image's primary folder path after renaming.";
                         msg += "\n\nClick 'Save Changes' to write updates to SD card.";
 
-                        MessageBox.Show(msg, "Folders Renamed", MessageBoxButton.OK, MessageBoxImage.Information);
+                        MessageBox.Show(msg, "Information", MessageBoxButton.OK, MessageBoxImage.Information);
                     }
                     else
                     {
@@ -1405,7 +1405,7 @@ namespace GDMENUCardManager
                             "The selected folder does not appear to be a GDEMU SD card.\n\n" +
                             "No GDEMU.INI file or numbered folders (01, 02, etc.) were found.\n\n" +
                             "You may proceed, but the folder may not work as expected.",
-                            "Notice",
+                            "Information",
                             MessageBoxButton.OK,
                             MessageBoxImage.Information);
                     }
@@ -1688,7 +1688,7 @@ namespace GDMENUCardManager
             // Only allow in openMenu mode
             if (MenuKindSelected != MenuKind.openMenu)
             {
-                MessageBox.Show("Assign Folder Path is only available in openMenu mode.", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show("Assign Folder Path is only available in openMenu mode.", "Information", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
@@ -1700,7 +1700,7 @@ namespace GDMENUCardManager
 
             if (selectedItems.Count == 0)
             {
-                MessageBox.Show("No valid items selected.", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show("No valid items selected.", "Information", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
@@ -1735,7 +1735,7 @@ namespace GDMENUCardManager
                     if (conflicting.Count > 0)
                     {
                         MessageBox.Show("This folder path is already assigned to this disc image as an additional folder path.",
-                            "Duplicate Folder Path", MessageBoxButton.OK, MessageBoxImage.Information);
+                            "Information", MessageBoxButton.OK, MessageBoxImage.Information);
                         return;
                     }
                 }
@@ -1770,7 +1770,7 @@ namespace GDMENUCardManager
             if (MenuKindSelected != MenuKind.openMenu)
             {
                 MessageBox.Show("Additional folder paths are only available in openMenu mode.",
-                    "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+                    "Information", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
@@ -1926,7 +1926,7 @@ namespace GDMENUCardManager
             {
                 MessageBox.Show(
                     "Only printable ASCII characters (letters, numbers, and standard symbols) are supported by openMenu.",
-                    "Invalid Characters", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    "Information", MessageBoxButton.OK, MessageBoxImage.Warning);
                 // Revert the editing element
                 var revertValue = oldValue as string ?? "";
                 if (e.EditingElement is TextBox revertTb)
@@ -2053,7 +2053,7 @@ namespace GDMENUCardManager
                         var view = System.Windows.Data.CollectionViewSource.GetDefaultView(Manager.ItemList);
                         if (!view.Cast<object>().Any())
                         {
-                            MessageBox.Show("Nothing to show for the currently applied filter.", "Filter", MessageBoxButton.OK, MessageBoxImage.Information);
+                            MessageBox.Show("Nothing to show for the currently applied filter.", "Information", MessageBoxButton.OK, MessageBoxImage.Information);
                             ClearFilterFromGrid();
                         }
                     }
@@ -2115,7 +2115,7 @@ namespace GDMENUCardManager
                 var view = System.Windows.Data.CollectionViewSource.GetDefaultView(Manager.ItemList);
                 if (!view.Cast<object>().Any())
                 {
-                    MessageBox.Show("Nothing to show for the currently applied filter.", "Filter", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show("Nothing to show for the currently applied filter.", "Information", MessageBoxButton.OK, MessageBoxImage.Information);
                     ClearFilterFromGrid();
                 }
             }
@@ -2140,7 +2140,7 @@ namespace GDMENUCardManager
             if (dg1.SelectedIndex == -1 || !searchInGrid(dg1.SelectedIndex))
             {
                 if (!searchInGrid(0))
-                    MessageBox.Show("No matches found.", "Search", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show("No matches found.", "Information", MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
 
@@ -2208,7 +2208,7 @@ namespace GDMENUCardManager
             bool hasMatches = Manager.ItemList.Any(item => FilterInItem(item, filterText));
             if (!hasMatches)
             {
-                MessageBox.Show("No matches found.", "Filter", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show("No matches found.", "Information", MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
@@ -2260,7 +2260,7 @@ namespace GDMENUCardManager
                 {
                     MessageBox.Show(
                         "Only printable ASCII characters (letters, numbers, and standard symbols) are supported by openMenu.",
-                        "Invalid Characters", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        "Information", MessageBoxButton.OK, MessageBoxImage.Warning);
                     comboBox.Text = _originalFolderValue ?? string.Empty;
                     e.Handled = true;
                     return;
@@ -2300,7 +2300,7 @@ namespace GDMENUCardManager
                 {
                     MessageBox.Show(
                         "Only printable ASCII characters (letters, numbers, and standard symbols) are supported by openMenu.",
-                        "Invalid Characters", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        "Information", MessageBoxButton.OK, MessageBoxImage.Warning);
                     item.Folder = _originalFolderValue ?? string.Empty;
                     comboBox.Text = _originalFolderValue ?? string.Empty;
                     _originalFolderValue = null;
@@ -2312,7 +2312,7 @@ namespace GDMENUCardManager
                 if (!string.IsNullOrEmpty(newFolder) && item.AlternativeFolders.Contains(newFolder))
                 {
                     MessageBox.Show("This folder path is already assigned to this disc image as an additional folder path.",
-                        "Duplicate Folder Path", MessageBoxButton.OK, MessageBoxImage.Information);
+                        "Information", MessageBoxButton.OK, MessageBoxImage.Information);
                     item.Folder = _originalFolderValue ?? string.Empty;
                     comboBox.Text = _originalFolderValue ?? string.Empty;
                 }

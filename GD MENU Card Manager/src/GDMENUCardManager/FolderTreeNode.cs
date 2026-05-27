@@ -152,7 +152,7 @@ namespace GDMENUCardManager
 
         public void RecalculateCounts()
         {
-            // Don't recalculate root - it's set manually to the total item count
+            // Don't recalculate root, it's set manually to the total item count.
             if (IsRootNode)
                 return;
 

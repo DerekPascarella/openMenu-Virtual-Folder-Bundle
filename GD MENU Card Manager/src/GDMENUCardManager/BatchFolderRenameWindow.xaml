@@ -69,10 +69,13 @@
 
         <Grid Grid.Row="2" Margin="0,10,0,0">
             <Button HorizontalAlignment="Left" Content="Undo Last Change" Width="130" Padding="15,8"
-                    Click="UndoButton_Click" IsEnabled="{Binding CanUndo}"/>
+                    Click="UndoButton_Click" IsEnabled="{Binding CanUndo}"
+                    ToolTip="Revert the most recent rename or move"/>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button Content="Save" Width="80" Padding="15,8" Margin="0,0,10,0" Click="SaveButton_Click" IsDefault="True"/>
-                <Button Content="Cancel" Width="80" Padding="15,8" Click="CancelButton_Click" IsCancel="True"/>
+                <Button Content="Save" Width="80" Padding="15,8" Margin="0,0,10,0" Click="SaveButton_Click" IsDefault="True"
+                        ToolTip="Apply all folder renames and moves"/>
+                <Button Content="Cancel" Width="80" Padding="15,8" Click="CancelButton_Click" IsCancel="True"
+                        ToolTip="Discard all pending folder changes and close"/>
             </StackPanel>
         </Grid>
     </Grid>

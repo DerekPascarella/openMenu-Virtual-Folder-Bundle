@@ -1,10 +1,11 @@
-﻿using Avalonia;
+﻿using System;
+using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 
 namespace GDMENUCardManager
 {
-    public class App : Application
+    public partial class App : Application
     {
         public override void Initialize()
         {
@@ -17,6 +18,15 @@ namespace GDMENUCardManager
                 desktop.MainWindow = new MainWindow();
 
             base.OnFrameworkInitializationCompleted();
+        }
+
+        private void AboutMenuItem_Click(object sender, EventArgs e)
+        {
+            if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && desktop.MainWindow != null)
+            {
+                var about = new AboutWindow();
+                _ = about.ShowDialog(desktop.MainWindow);
+            }
         }
     }
 }

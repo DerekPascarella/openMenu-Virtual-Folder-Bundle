@@ -68,12 +68,12 @@ namespace GDMENUCardManager
             {
                 if (translationItem.IsChecked)
                 {
-                    // User accepted translation - clear the tracking flags
+                    // User accepted the translation, so clear the tracking flags.
                     translationItem.Item.AcknowledgeSerialTranslation();
                 }
                 else
                 {
-                    // User wants original - revert the translation
+                    // User wants the original serial, so revert the translation.
                     translationItem.Item.RevertSerialTranslation();
                 }
             }

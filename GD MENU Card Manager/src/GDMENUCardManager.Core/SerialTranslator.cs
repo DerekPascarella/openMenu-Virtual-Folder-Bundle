@@ -70,7 +70,7 @@ namespace GDMENUCardManager.Core
                 name.IndexOf("orth", StringComparison.OrdinalIgnoreCase) >= 0)
                 return "T0026M";     // Fist of the North Star (Atomiswave)
 
-            // No match - return original
+            // No match, so return the original.
             return product;
         }
 
@@ -103,7 +103,7 @@ namespace GDMENUCardManager.Core
             if (ArtworkRemapTable.TryGetValue(serial, out string remapped))
                 return remapped;
 
-            // No remap - use serial as-is
+            // No remap, so use the serial as-is.
             return serial;
         }
 

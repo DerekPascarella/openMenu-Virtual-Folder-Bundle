@@ -74,12 +74,12 @@ namespace GDMENUCardManager
             sb.AppendLine($"  \u2022 New disc images ({spaceCheck.NewItemCount}): {Helper.FormatBytes(spaceCheck.NewItemsSize)}");
             if (spaceCheck.MenuFolderExists)
             {
-                // Old menu will be deleted before new is created - net impact is just wiggle room
+                // Old menu is deleted before the new one is created, so the net impact is just wiggle room.
                 sb.AppendLine($"  \u2022 Menu update buffer: {Helper.FormatBytes(spaceCheck.MenuWiggleRoom)}");
             }
             else
             {
-                // No existing menu - need full space for new menu
+                // No existing menu, so the full space for the new menu is required.
                 sb.AppendLine($"  \u2022 Menu disc image: ~{Helper.FormatBytes(spaceCheck.MenuBaseSize + spaceCheck.MenuWiggleRoom)}");
             }
             sb.AppendLine($"  \u2022 Metadata files: ~{Helper.FormatBytes(spaceCheck.MetadataBuffer)}");
@@ -104,7 +104,7 @@ namespace GDMENUCardManager
             sb.AppendLine("\nDo you want to proceed anyway?");
 
             var result = await MessageBoxManager.GetMessageBoxStandardWindow(
-                "Insufficient Space",
+                "Confirmation",
                 sb.ToString(),
                 ButtonEnum.YesNo,
                 Icon.Warning).ShowDialog(getMainWindow());
@@ -136,7 +136,7 @@ namespace GDMENUCardManager
             sb.AppendLine("\nThe application will now close.");
 
             await MessageBoxManager.GetMessageBoxStandardWindow(
-                "Disk Full",
+                "Error",
                 sb.ToString(),
                 ButtonEnum.Ok,
                 Icon.Error).ShowDialog(getMainWindow());
@@ -169,6 +169,48 @@ namespace GDMENUCardManager
                     if (!item.IsDirectory && !toReturn.ContainsKey(item.Key))
                         toReturn.Add(item.Key, item.Size);
             return toReturn;
+        }
+
+        public byte[] ReadArchiveEntryBytes(string archivePath, string entryName, long maxBytes)
+        {
+            if (string.IsNullOrEmpty(archivePath) || string.IsNullOrEmpty(entryName) || maxBytes <= 0)
+                return null;
+
+            try
+            {
+                using var stream = File.OpenRead(archivePath);
+                using var archive = ArchiveFactory.Open(stream);
+
+                var entry = archive.Entries.FirstOrDefault(e =>
+                    !e.IsDirectory &&
+                    e.Key != null &&
+                    string.Equals(
+                        Path.GetFileName(e.Key.Replace('\\', '/')),
+                        entryName,
+                        StringComparison.OrdinalIgnoreCase));
+
+                if (entry == null)
+                    return null;
+
+                using var entryStream = entry.OpenEntryStream();
+                using var ms = new MemoryStream();
+                var buffer = new byte[8192];
+                long remaining = maxBytes;
+                while (remaining > 0)
+                {
+                    int chunk = (int)Math.Min(buffer.Length, remaining);
+                    int read = entryStream.Read(buffer, 0, chunk);
+                    if (read <= 0)
+                        break;
+                    ms.Write(buffer, 0, read);
+                    remaining -= read;
+                }
+                return ms.ToArray();
+            }
+            catch
+            {
+                return null;
+            }
         }
     }
 }

@@ -10,22 +10,23 @@
     <StackPanel>
         <GroupBox Header="Rename all games located on" Margin="5">
             <StackPanel>
-                <CheckBox IsChecked="{Binding OnCard, Mode=TwoWay}">SD card</CheckBox>
-                <CheckBox IsChecked="{Binding NotOnCard, Mode=TwoWay}">Other</CheckBox>
+                <CheckBox IsChecked="{Binding OnCard, Mode=TwoWay}" ToolTip="Include games located on the SD card">SD card</CheckBox>
+                <CheckBox IsChecked="{Binding NotOnCard, Mode=TwoWay}" ToolTip="Include games not located on the SD card">Other</CheckBox>
             </StackPanel>
         </GroupBox>
 
         <GroupBox Header="Copy name from" Margin="5">
             <StackPanel>
-                <RadioButton IsChecked="{Binding FolderName, Mode=TwoWay}">Folder</RadioButton>
-                <RadioButton>File</RadioButton>
+                <RadioButton IsChecked="{Binding FolderName, Mode=TwoWay}" ToolTip="Use each game's folder name as the new title">Folder</RadioButton>
+                <RadioButton ToolTip="Use each game's disc image file name as the new title">File</RadioButton>
             </StackPanel>
         </GroupBox>
         <GroupBox Header="Special parsing" Margin="5">
-            <CheckBox IsChecked="{Binding ParseTosec, Mode=TwoWay}">Read TOSEC naming</CheckBox>
+            <CheckBox IsChecked="{Binding ParseTosec, Mode=TwoWay}" ToolTip="Strip TOSEC-style suffixes (e.g. region, version, dump flags) from the name">Read TOSEC naming</CheckBox>
         </GroupBox>
 
-        <Button Click="Button_Click" IsDefault="True" Margin="5" Padding="20 10">Ok</Button>
+        <Button Click="Button_Click" IsDefault="True" Margin="5" Padding="20 10"
+                ToolTip="Apply the batch rename to the matching games">Ok</Button>
 
     </StackPanel>
 </Window>

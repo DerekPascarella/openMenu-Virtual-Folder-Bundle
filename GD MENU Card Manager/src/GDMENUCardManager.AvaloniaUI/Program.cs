@@ -25,7 +25,7 @@ namespace GDMENUCardManager
             BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
         }
 
-        // Avalonia configuration, don't remove; also used by visual designer.
+        // Avalonia configuration. Don't remove. Also used by the visual designer.
         public static AppBuilder BuildAvaloniaApp()
             => AppBuilder.Configure<App>()
             .UsePlatformDetect()

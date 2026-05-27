@@ -184,7 +184,7 @@ namespace GDMENUCardManager
             // Sort the entire tree alphanumerically
             rootNode.SortChildren();
 
-            // Don't recalculate root - we set it manually to the total item count
+            // Don't recalculate root, we set it manually to the total item count.
             RootNodes.Add(rootNode);
         }
 
@@ -224,7 +224,7 @@ namespace GDMENUCardManager
                 {
                     MessageBox.Show(
                         "Only printable ASCII characters (letters, numbers, and standard symbols) are supported by openMenu.",
-                        "Invalid Characters", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        "Information", MessageBoxButton.OK, MessageBoxImage.Warning);
                     node.Name = "PLEASE RENAME";
                     _editingOriginalName = null;
                     return;
@@ -255,7 +255,7 @@ namespace GDMENUCardManager
                     {
                         MessageBox.Show(
                             "Only printable ASCII characters (letters, numbers, and standard symbols) are supported by openMenu.",
-                            "Invalid Characters", MessageBoxButton.OK, MessageBoxImage.Warning);
+                            "Information", MessageBoxButton.OK, MessageBoxImage.Warning);
                         node.Name = "PLEASE RENAME";
                         _editingOriginalName = null;
                     }
@@ -398,7 +398,7 @@ namespace GDMENUCardManager
                         // Prevent dropping node onto itself or its own descendants
                         if (IsDescendant(targetNode, droppedNode))
                         {
-                            MessageBox.Show("Cannot move a folder into its own subfolder.", "Invalid Operation", MessageBoxButton.OK, MessageBoxImage.Warning);
+                            MessageBox.Show("Cannot move a folder into its own subfolder.", "Information", MessageBoxButton.OK, MessageBoxImage.Warning);
                             return;
                         }
 

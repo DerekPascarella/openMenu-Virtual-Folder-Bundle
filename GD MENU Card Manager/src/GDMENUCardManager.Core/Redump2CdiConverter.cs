@@ -30,7 +30,7 @@ namespace GDMENUCardManager.Core
             try
             {
                 var content = File.ReadAllText(cuePath);
-                // GD-ROM images have HIGH-DENSITY AREA comment - if present, it's not a CD-ROM
+                // GD-ROM images have a HIGH-DENSITY AREA comment. If that's present, it's not a CD-ROM.
                 if (content.Contains("HIGH-DENSITY AREA", StringComparison.OrdinalIgnoreCase))
                     return false;
 
@@ -197,7 +197,7 @@ namespace GDMENUCardManager.Core
             }
             catch
             {
-                // Ignore chmod errors - the file might already be executable
+                // Ignore chmod errors. The file might already be executable.
             }
         }
 
