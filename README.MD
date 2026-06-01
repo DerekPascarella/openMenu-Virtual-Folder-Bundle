@@ -103,6 +103,8 @@ The latest version of **openMenu Virtual Folder Bundle** is [1.5.5-ateam](https:
 
 ## Changelog
 - **Version 1.5.5-ateam (2026-05-27)**
+  - **openMenu**
+    - CodeBreaker cheat database upgraded to version 2.8 (see [Issue 167](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/167)).
   - **GD MENU Card Manager**
     - Extended GDI shrink blacklist to include additional games (see [Issue 159](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/159)).
     - In macOS, fixed System Bar's "About \<Application Name\>" string (see [Issue 160](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/160)).
@@ -112,7 +114,6 @@ The latest version of **openMenu Virtual Folder Bundle** is [1.5.5-ateam](https:
     - Single GDI or CUE/BIN inside a ZIP, 7z, or RAR archive now "peeked" for quick IP.BIN metadata parsing (see [Issue 164](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/164)).
     - SharpCompress upgraded from version 0.33.0 to 0.36.0 for enhanced archive support (see [Issue 165](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/165)).
     - Fixed UI lockup when automatically converting GD-ROM CUE/BIN to GDI (see [Issue 166](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/166)).
-    - CodeBreaker cheat database upgraded to version 2.8 (see [Issue 167](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/167)).
 - **Version 1.5.4-ateam (2026-05-05)**
   - **openMenu**
     - The X button now zooms artwork in LineDesc mode (see [Issue 151](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/151)).
