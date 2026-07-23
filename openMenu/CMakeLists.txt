@@ -28,3 +28,24 @@ add_subdirectory(external/easing)
 add_subdirectory(external/ini)
 
 add_subdirectory(src)
+
+# --- Code Formatting (optional, requires clang-format) ---
+find_program(CLANG_FORMAT clang-format)
+if(CLANG_FORMAT)
+    file(GLOB_RECURSE ALL_SOURCE_FILES
+        ${CMAKE_SOURCE_DIR}/src/*.c
+        ${CMAKE_SOURCE_DIR}/src/*.h
+    )
+
+    add_custom_target(format
+        COMMAND ${CLANG_FORMAT} -i ${ALL_SOURCE_FILES}
+        COMMENT "Formatting source files with clang-format"
+        VERBATIM
+    )
+
+    add_custom_target(format-check
+        COMMAND ${CLANG_FORMAT} --dry-run --Werror ${ALL_SOURCE_FILES}
+        COMMENT "Checking source formatting with clang-format"
+        VERBATIM
+    )
+endif()

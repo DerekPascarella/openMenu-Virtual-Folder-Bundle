@@ -31,7 +31,7 @@ namespace GDMENUCardManager
 
             var listBox = this.FindControl<ListBox>("FileListBox");
             if (listBox != null)
-                listBox.Items = items;
+                listBox.ItemsSource = items;
         }
 
         private void InitializeComponent()

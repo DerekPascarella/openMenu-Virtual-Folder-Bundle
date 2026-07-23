@@ -17,8 +17,10 @@
                   MaxDropDownHeight="200"/>
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 20 0 0">
-            <Button Content="OK" Click="OkButton_Click" IsDefault="True" Width="80" Padding="15,8" Margin="0 0 10 0"/>
-            <Button Content="Cancel" Click="CancelButton_Click" IsCancel="True" Width="80" Padding="15,8"/>
+            <Button Content="OK" Click="OkButton_Click" IsDefault="True" Width="80" Padding="15,8" Margin="0 0 10 0"
+                    ToolTip="Assign the entered folder path to the selected game(s)"/>
+            <Button Content="Cancel" Click="CancelButton_Click" IsCancel="True" Width="80" Padding="15,8"
+                    ToolTip="Close without assigning a folder path"/>
         </StackPanel>
     </StackPanel>
 </Window>

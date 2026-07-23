@@ -1,0 +1,96 @@
+<Window x:Class="GDMENUCardManager.MenuOptionsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="Menu Options" Width="440" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </Window.Resources>
+    <Grid Margin="15">
+        <TabControl>
+            <TabItem Header="Default Style and Theme">
+                <StackPanel Margin="10">
+                    <!-- Instructions -->
+                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,15" xml:space="preserve"><Run FontWeight="Bold">Force a default openMenu style and theme</Run><LineBreak/><LineBreak/><Run>Each boot, openMenu will apply the style and theme chosen below instead of the ones saved on the VMU or serial SD card. This can be turned off on the console via the "Honor Menu Defaults" setting in openMenu.</Run><LineBreak/><LineBreak/><Run>Changes take effect after clicking </Run><Run FontWeight="Bold">Save Changes</Run><Run> in the main window.</Run></TextBlock>
+
+                    <CheckBox IsChecked="{Binding ForceStyleTheme}" Margin="0,0,0,10"
+                              ToolTip="Write the chosen style and theme to the menu disc so openMenu applies them at boot">
+                        <TextBlock Text="Force default style and theme on boot"/>
+                    </CheckBox>
+
+                    <GroupBox Margin="0,0,0,10" IsEnabled="{Binding ForceStyleTheme}">
+                        <GroupBox.Header>
+                            <TextBlock Text="Style" FontWeight="Bold"/>
+                        </GroupBox.Header>
+                        <UniformGrid Columns="2" Margin="8">
+                            <RadioButton GroupName="StyleGroup" Content="Folders" Margin="0,2" IsChecked="{Binding IsStyleFolders}"
+                                         ToolTip="Folder based browsing with artwork"/>
+                            <RadioButton GroupName="StyleGroup" Content="Scroll" Margin="0,2" IsChecked="{Binding IsStyleScroll}"
+                                         ToolTip="Scrolling list with artwork"/>
+                            <RadioButton GroupName="StyleGroup" Content="Grid3" Margin="0,2" IsChecked="{Binding IsStyleGrid3}"
+                                         ToolTip="Three column grid of box art"/>
+                            <RadioButton GroupName="StyleGroup" Content="LineDesc" Margin="0,2" IsChecked="{Binding IsStyleLineDesc}"
+                                         ToolTip="Simple list with game details"/>
+                        </UniformGrid>
+                    </GroupBox>
+
+                    <GroupBox IsEnabled="{Binding ForceStyleTheme}">
+                        <GroupBox.Header>
+                            <TextBlock Text="Theme" FontWeight="Bold"/>
+                        </GroupBox.Header>
+                        <StackPanel Margin="8">
+                            <TextBlock Text="Only themes compatible with the selected style are listed" TextWrapping="Wrap"
+                                       Foreground="Gray" FontSize="11" Margin="0,0,0,8"/>
+                            <ComboBox ItemsSource="{Binding Themes}" SelectedItem="{Binding SelectedTheme}"
+                                      ToolTip="Theme openMenu will apply at boot"/>
+                        </StackPanel>
+                    </GroupBox>
+
+                    <!-- Apply Button -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+                        <Button Content="Apply" Width="80" Padding="15,8" Click="ApplyStyleButton_Click"
+                                ToolTip="Save the default style and theme settings"/>
+                    </StackPanel>
+                </StackPanel>
+            </TabItem>
+
+            <TabItem Header="Background Music">
+                <StackPanel Margin="10">
+                    <!-- Instructions -->
+                    <TextBlock TextWrapping="Wrap" Margin="0,0,0,15" xml:space="preserve"><Run FontWeight="Bold">Play looping background music in openMenu</Run><LineBreak/><LineBreak/><Run>The selected track is converted to Dreamcast ADPCM at 44.1 kHz (about 2.65 MB per minute of audio) and stored inside the menu disc image. Use </Run><Run FontWeight="Bold">Browse</Run><Run> to select a WAV, MP3, OGG, or FLAC file, then click </Run><Run FontWeight="Bold">Apply</Run><Run>. Music can be toggled on the console via the "Play BGM" setting in openMenu.</Run><LineBreak/><LineBreak/><Run>Changes take effect after clicking </Run><Run FontWeight="Bold">Save Changes</Run><Run> in the main window.</Run></TextBlock>
+
+                    <CheckBox IsChecked="{Binding BgmEnabled}" Margin="0,0,0,10"
+                              ToolTip="Include a background music track on the menu disc">
+                        <TextBlock Text="Enable background music"/>
+                    </CheckBox>
+
+                    <GroupBox IsEnabled="{Binding BgmEnabled}">
+                        <GroupBox.Header>
+                            <TextBlock Text="Music Track" FontWeight="Bold"/>
+                        </GroupBox.Header>
+                        <StackPanel Margin="8">
+                            <TextBlock Text="{Binding BgmCurrentText}" TextWrapping="Wrap" Foreground="Gray" FontSize="11"
+                                       Margin="0,0,0,8" Visibility="{Binding HasExistingBgm, Converter={StaticResource BoolToVis}}"/>
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Content="Browse..." Padding="10,3" Margin="8,0,0,0" Click="BrowseButton_Click"
+                                        ToolTip="Select a WAV, MP3, OGG, or FLAC file to convert"/>
+                                <TextBox Text="{Binding SelectedSourceDisplay, Mode=OneWay}" IsReadOnly="True" VerticalContentAlignment="Center"/>
+                            </DockPanel>
+                            <TextBlock Text="Select a music file to enable the Apply button." Foreground="DarkRed" FontSize="11" Margin="0,8,0,0"
+                                       Visibility="{Binding ShowBgmHint, Converter={StaticResource BoolToVis}}"/>
+                        </StackPanel>
+                    </GroupBox>
+
+                    <!-- Apply Button -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+                        <Button Content="Apply" Width="80" Padding="15,8" Click="ApplyBgmButton_Click"
+                                IsEnabled="{Binding CanApplyBgm}" ToolTip="Save the background music setting and convert the selected track"/>
+                    </StackPanel>
+                </StackPanel>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</Window>

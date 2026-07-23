@@ -1,7 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
-using MessageBox.Avalonia;
+using MsBox.Avalonia;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -80,7 +80,7 @@ namespace GDMENUCardManager
             }
 
             if (_listControl != null)
-                _listControl.Items = _altFolders;
+                _listControl.ItemsSource = _altFolders;
 
             UpdateAddButton();
         }
@@ -139,9 +139,9 @@ namespace GDMENUCardManager
 
                 if (isDuplicate)
                 {
-                    await MessageBoxManager.GetMessageBoxStandardWindow("Information",
+                    await MessageBoxManager.GetMessageBoxStandard("Information",
                         "This folder path is already assigned to this disc image.",
-                        icon: MessageBox.Avalonia.Enums.Icon.Info).ShowDialog(this);
+                        icon: MsBox.Avalonia.Enums.Icon.Info).ShowWindowDialogAsync(this);
                     entry.FolderPath = string.Empty;
                 }
             }

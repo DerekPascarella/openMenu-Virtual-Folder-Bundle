@@ -75,9 +75,8 @@ namespace GDMENUCardManager.Core
             }
             catch
             {
-                // Graceful degradation: if Application Support cannot be created/written to,
-                // the app will fall back to reading/writing from the bundle path.
-                // This may fail under App Translocation, but we must not crash here.
+                // if Application Support can't be written, fall back to the bundle path.
+                // may fail under App Translocation, but don't crash here.
             }
         }
 
@@ -91,7 +90,7 @@ namespace GDMENUCardManager.Core
         }
 
         /// <summary>
-        /// Copies BOX.DAT, ICON.DAT, and META.DAT from the bundle's tools/openMenu/menu_data/
+        /// Copies the DAT files (and the folder art map) from the bundle's tools/openMenu/menu_data/
         /// directory to ~/Library/Application Support/GDMENUCardManager/menu_data/.
         /// Creates the menu_data directory (the sentinel for NeedsFirstTimeDatSetup).
         /// Reports progress as (current, total, filename).
@@ -106,7 +105,7 @@ namespace GDMENUCardManager.Core
 
             var sourceDatDir = Path.Combine(bundleBasePath, "tools", "openMenu", "menu_data");
 
-            var files = new[] { "BOX.DAT", "ICON.DAT", "META.DAT" };
+            var files = new[] { "BOX.DAT", "ICON.DAT", "META.DAT", "FOLDRART.DAT", "FOLDRART.MAP" };
             int total = files.Length;
 
             for (int i = 0; i < total; i++)

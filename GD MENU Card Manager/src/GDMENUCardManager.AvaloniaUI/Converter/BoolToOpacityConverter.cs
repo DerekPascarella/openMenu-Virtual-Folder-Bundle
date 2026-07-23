@@ -6,7 +6,7 @@ namespace GDMENUCardManager.Converter
 {
     /// <summary>
     /// Converts bool to opacity (1.0 or 0.0).
-    /// Use with IsHitTestVisible binding to simulate WPF's Visibility.Hidden.
+    /// Pair with IsHitTestVisible to hide a control while keeping its layout space.
     /// </summary>
     public class BoolToOpacityConverter : IValueConverter
     {

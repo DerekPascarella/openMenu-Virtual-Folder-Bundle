@@ -4,7 +4,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="680" d:DesignHeight="400"
         x:Class="GDMENUCardManager.AboutWindow"
-        Title="About" SizeToContent="Height" Width="680" CanResize="False"
+        Title="About" SizeToContent="Height" Width="680" CanResize="False" CanMinimize="False"
         WindowStartupLocation="CenterOwner">
     <Grid Margin="15">
         <StackPanel>
@@ -91,7 +91,7 @@
                         <TextBlock Grid.Row="1" Grid.Column="0" FontWeight="SemiBold">Remove</TextBlock>
                         <TextBlock Grid.Row="1" Grid.Column="1">[-] or Delete key</TextBlock>
                         <TextBlock Grid.Row="2" Grid.Column="0" FontWeight="SemiBold">Reorder</TextBlock>
-                        <TextBlock Grid.Row="2" Grid.Column="1">Up/Down buttons</TextBlock>
+                        <TextBlock Grid.Row="2" Grid.Column="1">Drag and drop or up/down buttons</TextBlock>
                         <TextBlock Grid.Row="3" Grid.Column="0" FontWeight="SemiBold">Sort</TextBlock>
                         <TextBlock Grid.Row="3" Grid.Column="1">[Sort List] button</TextBlock>
                     </Grid>
@@ -118,19 +118,25 @@
                         <TextBlock Grid.Row="2" Grid.Column="1">Title / Upper / Lower case</TextBlock>
                     </Grid>
 
-                </StackPanel>
+                    <Rectangle Fill="Gray" Height="1" Margin="0,12"/>
 
-                <!-- Right Column -->
-                <StackPanel Grid.Column="2">
                     <!-- Folder Paths -->
                     <TextBlock FontWeight="Bold" TextWrapping="Wrap">Folder Paths (openMenu mode)</TextBlock>
                     <TextBlock Margin="0,4,0,0" TextWrapping="Wrap">Context menu → Assign Folder Path to organize one or more games into a folder. Assign Additional Folder Paths to place a single game in up to five additional folders.</TextBlock>
 
-                    <Rectangle Fill="Gray" Height="1" Margin="0,12"/>
+                </StackPanel>
 
+                <!-- Right Column -->
+                <StackPanel Grid.Column="2">
                     <!-- Artwork -->
                     <TextBlock FontWeight="Bold" TextWrapping="Wrap">Artwork (openMenu mode)</TextBlock>
-                    <TextBlock Margin="0,4,0,0" TextWrapping="Wrap">Click Assign/Manage button in the Art column to set box art.</TextBlock>
+                    <TextBlock Margin="0,4,0,0" TextWrapping="Wrap">Click Assign/Manage button in the Artwork column to set a game's box art. Click Folder Tools button and open the Folder Artwork tab to set artwork shown when hovering a folder in Folders view mode.</TextBlock>
+
+                    <Rectangle Fill="Gray" Height="1" Margin="0,12"/>
+
+                    <!-- Batch Folder Move/Rename -->
+                    <TextBlock FontWeight="Bold" TextWrapping="Wrap">Batch Folder Move/Rename (openMenu mode)</TextBlock>
+                    <TextBlock Margin="0,4,0,0" TextWrapping="Wrap">Click Folder Tools button and open the Batch Folder Move/Rename tab to reorganize folder hierarchy via tree view. Double-click to rename, drag to reparent.</TextBlock>
 
                     <Rectangle Fill="Gray" Height="1" Margin="0,12"/>
 
@@ -178,6 +184,7 @@
         <!-- Check for Updates button (top-right, rendered after StackPanel so it's on top for clicks) -->
         <Button Content="Check for Updates" Click="CheckForUpdatesButton_Click"
                 HorizontalAlignment="Right" VerticalAlignment="Top"
-                Height="28" Padding="12 0"/>
+                Height="28" Padding="12 0"
+                ToolTip.Tip="Check GitHub for a newer version of openMenu Virtual Folder Bundle"/>
     </Grid>
 </Window>

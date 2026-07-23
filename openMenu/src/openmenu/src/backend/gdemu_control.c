@@ -5,6 +5,7 @@
 
 #include <backend/gd_item.h>
 #include <openmenu_settings.h>
+#include "backend/bgm.h"
 #include "backend/cb_loader.h"
 #include "backend/controls.p1.h"
 #include "backend/gdemu_sdk.h"
@@ -65,6 +66,9 @@ bloom_launch(gd_item* disc) {
         return;
     }
 
+    /* Committed to launching, hand it a quiet AICA */
+    bgm_shutdown();
+
     fs_seek(fd, 0, SEEK_END);
     bloom_size = fs_tell(fd);
     fs_seek(fd, 0, SEEK_SET);
@@ -96,6 +100,9 @@ bleem_launch(gd_item* disc) {
         return;
     }
 
+    /* Committed to launching, hand it a quiet AICA */
+    bgm_shutdown();
+
     fs_seek(fd, 0, SEEK_END);
     bleem_size = fs_tell(fd);
     fs_seek(fd, 0, SEEK_SET);
@@ -125,6 +132,9 @@ bleem_launch(gd_item* disc) {
 
 void
 dreamcast_launch_disc(gd_item* disc) {
+    /* Hand the next program a quiet AICA */
+    bgm_shutdown();
+
     /* For non-game discs (audio CDs, etc.), just mount and exit to BIOS */
     if (!strcmp(disc->type, "other")) {
         gdemu_set_img_num((uint16_t)disc->slot_num);
@@ -227,6 +237,9 @@ dreamcast_launch_cb(gd_item* disc) {
     if (fd == -1) {
         return;
     }
+
+    /* Committed to launching, hand it a quiet AICA */
+    bgm_shutdown();
 
     fs_seek(fd, 0, SEEK_END);
     cb_size = fs_tell(fd);

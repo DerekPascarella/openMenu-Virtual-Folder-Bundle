@@ -4,7 +4,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="870" d:DesignHeight="400"
         x:Class="GDMENUCardManager.DatToolsWindow"
-        Title="DAT Tools" SizeToContent="Height" Width="655" CanResize="False"
+        Title="DAT Tools" SizeToContent="Height" Width="655" CanResize="False" CanMinimize="False"
         WindowStartupLocation="CenterOwner">
   <Grid Margin="10">
     <TabControl>
@@ -31,7 +31,7 @@
           <TextBlock TextWrapping="Wrap" Foreground="Black" FontWeight="Bold">Import entries to merge into the current DAT files</TextBlock>
           <TextBlock x:Name="TextImportInstructions" TextWrapping="Wrap" Foreground="Black" Margin="0,8,0,0">Before this process is initiated, the DATs that currently reside in the "tools\openMenu\menu_data" folder will be backed up to the "dat_backups" folder.
 
-Use "Choose DAT Folder" to select a folder containing either BOX.DAT or META.DAT (or both), as ICON.DAT will be automatically generated from BOX.DAT.
+Use "Browse" to select a folder containing either BOX.DAT or META.DAT (or both), as ICON.DAT will be automatically generated from BOX.DAT.
 
 Decide if only entries missing from the current DATs should be imported, or if all entries should be imported, overwriting anything currently existing. Then, click "Begin Import" to perform this operation.
 
@@ -40,21 +40,21 @@ Please note that any unsaved artwork changes from this session will also be incl
 
           <!-- Radio buttons for import mode -->
           <StackPanel Grid.Row="1" Margin="0,0,0,15">
-            <RadioButton x:Name="RadioImportMissing" Content="Import only missing entries" IsChecked="True" Foreground="Black"/>
-            <RadioButton x:Name="RadioImportAll" Content="Import all entries (overwrite existing)" Foreground="Black"/>
+            <RadioButton x:Name="RadioImportMissing" Content="Import only missing entries" IsChecked="True" Foreground="Black"
+                         ToolTip.Tip="Only add entries that don't already exist in the current DATs"/>
+            <RadioButton x:Name="RadioImportAll" Content="Import all entries (overwrite existing)" Foreground="Black"
+                         ToolTip.Tip="Import every entry, replacing any that already exist in the current DATs"/>
           </StackPanel>
 
-          <!-- Source folder display -->
-          <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,15">
-            <TextBlock Text="Source: " VerticalAlignment="Center" Foreground="Black" FontWeight="Bold"/>
-            <TextBlock x:Name="TextImportSourcePath" Text="[no folder selected]" VerticalAlignment="Center"
-                       Foreground="Gray" MaxWidth="450" TextTrimming="CharacterEllipsis"/>
-          </StackPanel>
+          <!-- Source folder -->
+          <DockPanel Grid.Row="2" Margin="0,0,0,15">
+            <Button DockPanel.Dock="Right" Content="Browse..." Padding="10,3" Margin="8,0,0,0" Click="ChooseImportFolder_Click"
+                    ToolTip.Tip="Select a folder containing BOX.DAT and/or META.DAT to merge into the current DATs"/>
+            <TextBox x:Name="TextImportSourcePath" Text="(no folder selected)" IsReadOnly="True" VerticalContentAlignment="Center"/>
+          </DockPanel>
 
           <!-- Buttons -->
           <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button Content="Choose DAT Folder" Click="ChooseImportFolder_Click" Padding="15,8" Margin="0,0,10,0"
-                    ToolTip.Tip="Select a folder containing BOX.DAT and/or META.DAT to merge into the current DATs"/>
             <Button x:Name="ButtonBeginImport" Content="Begin Import" Click="BeginImport_Click"
                     Padding="15,8" IsEnabled="False"
                     ToolTip.Tip="Merge the selected DAT files into the current DATs using the chosen import mode"/>
@@ -74,22 +74,20 @@ Please note that any unsaved artwork changes from this session will also be incl
           <!-- Instructions -->
           <StackPanel Grid.Row="0" Margin="0,0,0,15">
           <TextBlock TextWrapping="Wrap" Foreground="Black" FontWeight="Bold">Export all assigned artwork, including any in-flight updates from this session, to PNG image files</TextBlock>
-          <TextBlock TextWrapping="Wrap" Foreground="Black" Margin="0,8,0,0">Image files will use the following file name syntax: "Title [Serial].png"
+          <TextBlock TextWrapping="Wrap" Foreground="Black" Margin="0,8,0,0">Image files will use the following file name syntax: "Title [Serial].png" for game artwork and "Folder-Path [Folder ID].png" for folder artwork.
 
 Select a target output folder, then click "Begin Export" to perform this operation.</TextBlock>
           </StackPanel>
 
-          <!-- Target folder display -->
-          <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,15">
-            <TextBlock Text="Target: " VerticalAlignment="Center" Foreground="Black" FontWeight="Bold"/>
-            <TextBlock x:Name="TextExportTargetPath" Text="[no folder selected]" VerticalAlignment="Center"
-                       Foreground="Gray" MaxWidth="450" TextTrimming="CharacterEllipsis"/>
-          </StackPanel>
+          <!-- Target folder -->
+          <DockPanel Grid.Row="1" Margin="0,0,0,15">
+            <Button DockPanel.Dock="Right" Content="Browse..." Padding="10,3" Margin="8,0,0,0" Click="ChooseExportFolder_Click"
+                    ToolTip.Tip="Select an output folder for the exported PNG files"/>
+            <TextBox x:Name="TextExportTargetPath" Text="(no folder selected)" IsReadOnly="True" VerticalContentAlignment="Center"/>
+          </DockPanel>
 
           <!-- Buttons -->
           <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button Content="Choose Target Folder" Click="ChooseExportFolder_Click" Padding="15,8" Margin="0,0,10,0"
-                    ToolTip.Tip="Select an output folder for the exported PNG files"/>
             <Button x:Name="ButtonBeginExport" Content="Begin Export" Click="BeginExport_Click"
                     Padding="15,8" IsEnabled="False"
                     ToolTip.Tip="Export all assigned artwork (including unsaved changes) as PNGs to the target folder"/>
@@ -134,7 +132,7 @@ Click "Clear DATs" to perform this operation.</TextBlock>
           <TextBlock TextWrapping="Wrap" Foreground="Black" FontWeight="Bold">Overwrite GD MENU Card Manager's local DAT files with those already on the openMenu SD card</TextBlock>
           <TextBlock x:Name="TextOverwriteInstructions" TextWrapping="Wrap" Foreground="Black" Margin="0,8,0,0">The DAT files in the "tools\openMenu\menu_data" folder are used each time openMenu is rebuilt and saved to the GDEMU SD card.
 
-However, there are several scenarios where a user may wish to immediately overwrite those with the DAT files that were used to generate their SD card's openMenu. For example, a user upgrading from a previous version of openMenu Virtual Folder Bundle will likely already have custom artwork.
+However, there are several scenarios where a user may wish to immediately overwrite those with the DAT files that were used to generate their SD card's openMenu. For example, a macOS user who cannot use the auto-update function and is upgrading from a previous version of openMenu Virtual Folder Bundle will likely already have custom artwork.
 
 While such users can easily copy the DAT files from their previous version of GD MENU Card Manager's "tools\openMenu\menu_data" folder into the current version's "menu_data" folder, the tool here can perform this automatically using the SD card itself as the source.</TextBlock>
           </StackPanel>

@@ -4,7 +4,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="150"
         x:Class="GDMENUCardManager.AssignFolderWindow"
-        Title="Assign Folder Path" SizeToContent="Height" Width="400" CanResize="False"
+        Title="Assign Folder Path" SizeToContent="Height" Width="400" CanResize="False" CanMinimize="False"
         WindowStartupLocation="CenterOwner">
   <StackPanel Margin="15">
     <TextBlock Text="{Binding SelectionInfo}" Margin="0 0 0 15" FontWeight="Bold"/>
@@ -16,8 +16,10 @@
              Watermark="e.g., Games\Action\US"/>
 
     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 20 0 0">
-      <Button Content="OK" Click="OkButton_Click" IsDefault="True" Width="80" Padding="15,8" Margin="0 0 10 0"/>
-      <Button Content="Cancel" Click="CancelButton_Click" IsCancel="True" Width="80" Padding="15,8"/>
+      <Button Content="OK" Click="OkButton_Click" IsDefault="True" Width="80" Padding="15,8" Margin="0 0 10 0"
+              ToolTip.Tip="Assign the entered folder path to the selected game(s)"/>
+      <Button Content="Cancel" Click="CancelButton_Click" IsCancel="True" Width="80" Padding="15,8"
+              ToolTip.Tip="Close without assigning a folder path"/>
     </StackPanel>
   </StackPanel>
 </Window>

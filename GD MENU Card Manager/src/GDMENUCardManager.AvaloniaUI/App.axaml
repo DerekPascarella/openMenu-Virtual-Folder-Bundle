@@ -1,11 +1,11 @@
 ﻿<Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="GDMENUCardManager.App"
-             Name="GD MENU Card Manager">
+             Name="GD MENU Card Manager"
+             RequestedThemeVariant="Light">
 
-    <!-- Override Avalonia's hardcoded "About Avalonia" entry in the macOS app menu.
-         Defining a NativeMenu here suppresses CreateDefaultAppMenu(); the standard
-         Services/Hide/Quit items are still appended automatically. -->
+    <!-- Custom macOS app menu. Defining a NativeMenu replaces the default
+         "About" item. Services/Hide/Quit are still added automatically. -->
     <NativeMenu.Menu>
         <NativeMenu>
             <NativeMenuItem Header="About GD MENU Card Manager" Click="AboutMenuItem_Click"/>
@@ -13,10 +13,9 @@
     </NativeMenu.Menu>
 
     <Application.Styles>
-        <StyleInclude Source="avares://Avalonia.Themes.Default/DefaultTheme.xaml"/>
-        <StyleInclude Source="avares://Avalonia.Themes.Default/Accents/BaseLight.xaml"/>
-        <!--<StyleInclude Source="avares://Avalonia.Themes.Default/Accents/BaseDark.xaml"/>-->
-      <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Default.xaml"/>
+        <!-- Simple theme is the old default theme under its new name, kept on Light -->
+        <SimpleTheme/>
+      <StyleInclude Source="avares://Avalonia.Controls.DataGrid/Themes/Simple.xaml"/>
 
       <!--based on https://github.com/AvaloniaUI/Avalonia/issues/823-->
       <Style Selector="HeaderedContentControl">

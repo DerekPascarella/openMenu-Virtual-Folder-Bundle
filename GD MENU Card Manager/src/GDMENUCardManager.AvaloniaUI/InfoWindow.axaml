@@ -5,7 +5,7 @@
         xmlns:conv="clr-namespace:GDMENUCardManager.Converter"
         mc:Ignorable="d" d:DesignWidth="630" d:DesignHeight="250"
         x:Class="GDMENUCardManager.InfoWindow"
-        Title="Info" SizeToContent="WidthAndHeight" CanResize="False"
+        Title="Info" SizeToContent="WidthAndHeight" CanResize="False" CanMinimize="False"
         WindowStartupLocation="CenterOwner">
   <Window.Resources>
     <conv:SubtractConverter x:Key="SubtractConverter"/>

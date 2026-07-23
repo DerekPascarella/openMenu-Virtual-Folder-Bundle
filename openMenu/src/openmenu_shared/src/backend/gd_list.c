@@ -1043,6 +1043,23 @@ list_folder_init(void) {
     printf("Info: Folder tree built successfully\n");
 }
 
+/* FNV-1a 32 bit over the backslash separated folder path. Matches the key
+ * GD MENU Card Manager writes into FOLDRART.DAT for folder artwork. */
+static uint32_t
+folder_hash(const char* path) {
+    uint32_t h = 2166136261u;
+    while (*path) {
+        h ^= (uint8_t)*path++;
+        h *= 16777619u;
+    }
+    return h;
+}
+
+static void
+folder_set_art_id(gd_item* folder_entry, const char* path) {
+    snprintf(folder_entry->product, sizeof(folder_entry->product), "F%08lX", (unsigned long)folder_hash(path));
+}
+
 void
 list_set_folder_root(void) {
     printf("list_set_folder_root: Starting\n");
@@ -1079,7 +1096,7 @@ list_set_folder_root(void) {
 
         snprintf(folder_entry->name, 128, "[%s]", folder_tree_root->children[i]->name);
         strcpy(folder_entry->disc, "DIR");
-        folder_entry->product[0] = 'F';
+        folder_set_art_id(folder_entry, folder_tree_root->children[i]->name);
         folder_entry->slot_num = folder_tree_root->children[i]->first_seen_slot;
 
         list_temp[temp_idx++] = folder_entry;
@@ -1152,7 +1169,13 @@ list_set_folder_path(const char* path) {
 
         snprintf(folder_entry->name, 128, "[%s]", node->children[i]->name);
         strcpy(folder_entry->disc, "DIR");
-        folder_entry->product[0] = 'F';
+        char art_path[768];
+        if (path[0]) {
+            snprintf(art_path, sizeof(art_path), "%s\\%s", path, node->children[i]->name);
+        } else {
+            snprintf(art_path, sizeof(art_path), "%s", node->children[i]->name);
+        }
+        folder_set_art_id(folder_entry, art_path);
         folder_entry->slot_num = node->children[i]->first_seen_slot;
 
         list_temp[temp_idx++] = folder_entry;

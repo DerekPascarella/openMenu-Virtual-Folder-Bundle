@@ -11,7 +11,7 @@ namespace GDMENUCardManager.Core
 {
     /// <summary>
     /// Converts Redump GD-ROM CUE/BIN format to GDI format.
-    /// Based on convertredumptogdi logic. Matches the original behavior exactly.
+    /// Based on convertredumptogdi logic.
     /// </summary>
     public static class GdiConverter
     {
@@ -32,9 +32,7 @@ namespace GDMENUCardManager.Core
             IProgress<int> progress = null,
             CancellationToken cancellationToken = default)
         {
-            // Heavy synchronous file I/O inside the impl runs before its first await,
-            // so calling directly from the UI thread blocks the window. Task.Run
-            // pushes the whole call onto the thread pool.
+            // Task.Run so the sync file I/O before the first await doesn't block the UI thread
             return Task.Run(
                 () => ConvertToGdiImpl(cuePath, outputDirectory, progress, cancellationToken),
                 cancellationToken);

@@ -9,7 +9,7 @@
         Width="550"
         MinHeight="200"
         MaxHeight="500"
-        CanResize="False"
+        CanResize="False" CanMinimize="False"
         WindowStartupLocation="CenterOwner">
     <Grid Margin="20">
         <Grid.RowDefinitions>
@@ -39,7 +39,8 @@
                 <ItemsControl x:Name="TranslationList" Padding="10">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <CheckBox IsChecked="{Binding IsChecked, Mode=TwoWay}" Margin="0,3">
+                            <CheckBox IsChecked="{Binding IsChecked, Mode=TwoWay}" Margin="0,3"
+                                      ToolTip.Tip="Keep this serial translation (uncheck to revert to the original serial)">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Text="{Binding OriginalSerial}"/>
                                     <TextBlock Text=" → "/>
@@ -60,7 +61,8 @@
                 Uncheck any you want to revert to the original serial.
             </TextBlock>
             <Button Content="OK" Width="80" HorizontalAlignment="Right"
-                    Padding="10,5" Click="OkButton_Click"/>
+                    Padding="15,8" Click="OkButton_Click"
+                    ToolTip.Tip="Apply the checked translations"/>
         </Grid>
     </Grid>
 </Window>

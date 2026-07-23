@@ -36,7 +36,8 @@
                 <ItemsControl x:Name="TranslationList" Padding="10">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <CheckBox IsChecked="{Binding IsChecked, Mode=TwoWay}" Margin="0,3">
+                            <CheckBox IsChecked="{Binding IsChecked, Mode=TwoWay}" Margin="0,3"
+                                      ToolTip="Keep this serial translation (uncheck to revert to the original serial)">
                                 <TextBlock>
                                     <Run Text="{Binding OriginalSerial, Mode=OneWay}"/>
                                     <Run Text=" → "/>
@@ -58,6 +59,7 @@
 
         <!-- OK Button -->
         <Button Grid.Row="3" Content="OK" Width="80" HorizontalAlignment="Right"
-                Padding="10,5" Click="OkButton_Click"/>
+                Padding="15,8" Click="OkButton_Click"
+                ToolTip="Apply the checked translations"/>
     </Grid>
 </Window>

@@ -19,14 +19,16 @@
             <TextBlock TextWrapping="Wrap" Margin="0 0 0 10" Text="To upgrade, download the release package from the GitHub repository:"/>
 
             <TextBlock Margin="0 0 0 0">
-                <Hyperlink RequestNavigate="ReleasesLink_RequestNavigate" NavigateUri="https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/releases">https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/releases</Hyperlink>
+                <Hyperlink RequestNavigate="ReleasesLink_RequestNavigate" NavigateUri="https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/releases" ToolTip="Open the releases page in your web browser">https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/releases</Hyperlink>
             </TextBlock>
         </StackPanel>
 
         <!-- Buttons -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 15 0 0">
-            <Button Content="Skip This Version" Click="SkipButton_Click" Width="120" Height="28" Margin="0 0 10 0"/>
-            <Button Content="OK" Click="OkButton_Click" Width="90" Height="28" IsDefault="True"/>
+            <Button Content="Skip This Version" Click="SkipButton_Click" Width="120" Padding="15,8" Margin="0 0 10 0"
+                    ToolTip="Ignore this version and don't ask again until the next release"/>
+            <Button Content="OK" Click="OkButton_Click" Width="90" Padding="15,8" IsDefault="True"
+                    ToolTip="Close this notice"/>
         </StackPanel>
     </Grid>
 </Window>

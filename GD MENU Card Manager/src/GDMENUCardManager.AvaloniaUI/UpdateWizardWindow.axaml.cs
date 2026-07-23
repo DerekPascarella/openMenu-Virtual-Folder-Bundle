@@ -2,8 +2,8 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
-using MessageBox.Avalonia;
-using MessageBox.Avalonia.Enums;
+using MsBox.Avalonia;
+using MsBox.Avalonia.Enums;
 using System;
 using System.ComponentModel;
 using System.Threading;
@@ -72,7 +72,7 @@ namespace GDMENUCardManager
             ChkPreserveSettings = this.FindControl<CheckBox>("ChkPreserveSettings");
         }
 
-        protected override void OnClosing(CancelEventArgs e)
+        protected override void OnClosing(WindowClosingEventArgs e)
         {
             if (_installing)
             {
@@ -170,9 +170,9 @@ namespace GDMENUCardManager
             catch (Exception ex)
             {
                 UpdateManager.CleanupStagingDirectory();
-                var msgBox = MessageBoxManager.GetMessageBoxStandardWindow("Error",
-                    $"Update failed: {ex.Message}", ButtonEnum.Ok, MessageBox.Avalonia.Enums.Icon.Error);
-                await msgBox.ShowDialog(this);
+                var msgBox = MessageBoxManager.GetMessageBoxStandard("Error",
+                    $"Update failed: {ex.Message}", ButtonEnum.Ok, MsBox.Avalonia.Enums.Icon.Error);
+                await msgBox.ShowWindowDialogAsync(this);
                 Close();
             }
         }

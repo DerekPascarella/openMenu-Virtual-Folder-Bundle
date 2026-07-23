@@ -364,33 +364,42 @@ draw_gamelist(void) {
 
 static void
 draw_gameart(void) {
-#ifndef STANDALONE_BINARY
-    if (sf_folders_art[0] == FOLDERS_ART_OFF) {
-        return;
-    }
-#endif
-
     if (list_len <= 0) {
         return;
     }
 
     const gd_item* item = list_current[current_selected_item];
 
-    /* Don't show artwork for folders */
     if (!strncmp(item->disc, "DIR", 3)) {
-        return;
-    }
-
-    /* Load artwork for games */
-    {
-        txr_get_large(item->product, &txr_focus);
-        if (txr_focus.texture == img_empty_boxart.texture) {
-            txr_get_small(item->product, &txr_focus);
+#ifndef STANDALONE_BINARY
+        if (sf_folder_art[0] == FOLDER_ART_OFF) {
+            return;
         }
-    }
+#endif
+        /* Folder artwork keyed by hashed path. The parent row and folders
+         * without an entry come back empty and draw nothing. */
+        txr_get_folder(item->product, &txr_focus);
+        if (txr_focus.texture == img_empty_boxart.texture) {
+            return;
+        }
+    } else {
+#ifndef STANDALONE_BINARY
+        if (sf_folders_art[0] == FOLDERS_ART_OFF) {
+            return;
+        }
+#endif
 
-    if (txr_focus.texture == img_empty_boxart.texture) {
-        return;
+        /* Load artwork for games */
+        {
+            txr_get_large(item->product, &txr_focus);
+            if (txr_focus.texture == img_empty_boxart.texture) {
+                txr_get_small(item->product, &txr_focus);
+            }
+        }
+
+        if (txr_focus.texture == img_empty_boxart.texture) {
+            return;
+        }
     }
 
     int artwork_x = cur_theme->artwork_x ? cur_theme->artwork_x : 415;

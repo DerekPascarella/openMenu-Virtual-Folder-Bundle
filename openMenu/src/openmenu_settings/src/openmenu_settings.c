@@ -14,6 +14,7 @@ uint8_t* sf_bios_3d;
 uint8_t* sf_scroll_art;
 uint8_t* sf_scroll_index;
 uint8_t* sf_folders_art;
+uint8_t* sf_folder_art;
 uint8_t* sf_folders_item_details;
 uint8_t* sf_marquee_speed;
 uint8_t* sf_disc_details;
@@ -23,6 +24,8 @@ uint8_t* sf_boot_mode;
 uint8_t* sf_vmu_time_sync;
 uint8_t* sf_serial_vmu;
 uint8_t* sf_serial_vmu_multislot;
+uint8_t* sf_music;
+uint8_t* sf_honor_defaults;
 
 void
 settings_sanitize() {
@@ -46,8 +49,9 @@ settings_sanitize() {
         sf_filter[0] = FILTER_ALL;
     }
 
-    /* Force beep OFF - UI option is hidden, may re-enable later */
-    sf_beep[0] = BEEP_OFF;
+    if ((sf_beep[0] < BEEP_START) || (sf_beep[0] > BEEP_END)) {
+        sf_beep[0] = BEEP_OFF;
+    }
 
     if ((sf_multidisc[0] < MULTIDISC_START) || (sf_multidisc[0] > MULTIDISC_END)) {
         sf_multidisc[0] = MULTIDISC_SHOW;
@@ -58,7 +62,7 @@ settings_sanitize() {
     }
 
     if ((sf_custom_theme[0] < THEME_START) || (sf_custom_theme[0] > THEME_END)) {
-        sf_custom_theme_num[0] = (CFG_CUSTOM_THEME_NUM)THEME_OFF;
+        sf_custom_theme[0] = THEME_OFF;
     }
 
     if ((sf_custom_theme_num[0] < THEME_NUM_START) || (sf_custom_theme_num[0] > THEME_NUM_END)) {
@@ -67,10 +71,6 @@ settings_sanitize() {
 
     if (sf_custom_theme[0]) {
         sf_region[0] = REGION_END + 1 + sf_custom_theme_num[0];
-    }
-
-    if ((sf_beep[0] < BIOS_3D_START) || (sf_beep[0] > BIOS_3D_END)) {
-        sf_beep[0] = BIOS_3D_STANDARD;
     }
 
     if ((sf_bios_3d[0] < BIOS_3D_START) || (sf_bios_3d[0] > BIOS_3D_END)) {
@@ -87,6 +87,10 @@ settings_sanitize() {
 
     if ((sf_folders_art[0] < FOLDERS_ART_START) || (sf_folders_art[0] > FOLDERS_ART_END)) {
         sf_folders_art[0] = FOLDERS_ART_ON;
+    }
+
+    if ((sf_folder_art[0] < FOLDER_ART_START) || (sf_folder_art[0] > FOLDER_ART_END)) {
+        sf_folder_art[0] = FOLDER_ART_ON;
     }
 
     if ((sf_folders_item_details[0] < FOLDERS_ITEM_DETAILS_START)
@@ -125,5 +129,13 @@ settings_sanitize() {
     if ((sf_serial_vmu_multislot[0] < SERIAL_VMU_MULTISLOT_START)
         || (sf_serial_vmu_multislot[0] > SERIAL_VMU_MULTISLOT_END)) {
         sf_serial_vmu_multislot[0] = SERIAL_VMU_MULTISLOT_OFF;
+    }
+
+    if ((sf_music[0] < MUSIC_START) || (sf_music[0] > MUSIC_END)) {
+        sf_music[0] = MUSIC_ON;
+    }
+
+    if ((sf_honor_defaults[0] < HONOR_DEFAULTS_START) || (sf_honor_defaults[0] > HONOR_DEFAULTS_END)) {
+        sf_honor_defaults[0] = HONOR_DEFAULTS_ON;
     }
 }

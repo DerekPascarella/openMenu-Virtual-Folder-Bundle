@@ -15,6 +15,7 @@ namespace GDMENUCardManager.Core
         public bool Success { get; set; }
         public int RegionPatchCount { get; set; }
         public int VgaPatchCount { get; set; }
+        public int IpBinHeaderCount { get; set; }
         public string ErrorMessage { get; set; }
         public List<string> Details { get; } = new List<string>();
     }
@@ -32,24 +33,6 @@ namespace GDMENUCardManager.Core
             0x41, 0x4B, 0x41, 0x54, 0x41, 0x4E, 0x41, 0x20
         };
 
-        // Region string search patterns
-        // "For JAPAN,TAIWAN,PHILIPINES." (28 bytes). Note that PHILIPINES is the official Dreamcast spelling.
-        private static readonly byte[] JapanRegionString = Encoding.ASCII.GetBytes("For JAPAN,TAIWAN,PHILIPINES.");
-        // "For USA and CANADA." (19 bytes)
-        private static readonly byte[] UsaRegionString = Encoding.ASCII.GetBytes("For USA and CANADA.");
-        // "For EUROPE." (11 bytes)
-        private static readonly byte[] EuropeRegionString = Encoding.ASCII.GetBytes("For EUROPE.");
-
-        // Marker that appears before the Japan region string (used for validation)
-        private static readonly byte[] RegionBlockMarker = new byte[] { 0x0E, 0xA0, 0x09, 0x00 };
-
-        // Full region-free patch data (92 bytes)
-        // Structure: [Japan 28 bytes][0E A0 09 00][USA 28 bytes][0E A0 09 00][Europe 28 bytes]
-        private static readonly byte[] RegionStringPatch = BuildRegionStringPatch();
-
-        // Patch data for region flag: "JUE" (Japan, USA, Europe)
-        private static readonly byte[] RegionFlagPatch = new byte[] { 0x4A, 0x55, 0x45 };
-
         // Patch data for VGA flag: "1"
         private static readonly byte[] VgaFlagPatch = new byte[] { 0x31 };
 
@@ -59,21 +42,18 @@ namespace GDMENUCardManager.Core
         // Offset from IP.BIN header to VGA flag
         private const int VgaFlagOffset = 61;
 
-        // Offsets within the region block (relative to Japan string start)
-        private const int UsaStringOffset = 32;    // Japan (28) + marker (4)
-        private const int EuropeStringOffset = 64; // Japan (28) + marker (4) + USA (28) + marker (4)
-
         /// <summary>
-        /// Builds the 92-byte region-free patch data.
-        /// Structure: [Japan 28][Marker 4][USA 28][Marker 4][Europe 28] = 92 bytes
+        /// Builds the 92-byte region string patch for the given region combination.
+        /// Structure: [Japan 28][Marker 4][USA 28][Marker 4][Europe 28] = 92 bytes.
+        /// Slots for disabled regions are filled with spaces.
         /// </summary>
-        private static byte[] BuildRegionStringPatch()
+        private static byte[] BuildRegionStringPatch(string region)
         {
             var patch = new byte[92];
             int offset = 0;
 
-            // Japan: "For JAPAN,TAIWAN,PHILIPINES." (exactly 28 bytes)
-            CopyPaddedString("For JAPAN,TAIWAN,PHILIPINES.", patch, ref offset, 28);
+            // PHILIPINES is the official Dreamcast spelling
+            CopyPaddedString(region.Contains("J") ? "For JAPAN,TAIWAN,PHILIPINES." : string.Empty, patch, ref offset, 28);
 
             // Marker: 0E A0 09 00
             patch[offset++] = 0x0E;
@@ -81,8 +61,7 @@ namespace GDMENUCardManager.Core
             patch[offset++] = 0x09;
             patch[offset++] = 0x00;
 
-            // USA: "For USA and CANADA." padded to 28 bytes with spaces
-            CopyPaddedString("For USA and CANADA.", patch, ref offset, 28);
+            CopyPaddedString(region.Contains("U") ? "For USA and CANADA." : string.Empty, patch, ref offset, 28);
 
             // Marker: 0E A0 09 00
             patch[offset++] = 0x0E;
@@ -90,10 +69,23 @@ namespace GDMENUCardManager.Core
             patch[offset++] = 0x09;
             patch[offset++] = 0x00;
 
-            // Europe: "For EUROPE." padded to 28 bytes with spaces
-            CopyPaddedString("For EUROPE.", patch, ref offset, 28);
+            CopyPaddedString(region.Contains("E") ? "For EUROPE." : string.Empty, patch, ref offset, 28);
 
             return patch;
+        }
+
+        /// <summary>
+        /// Builds the 3-byte area symbols patch. The field is positional:
+        /// byte 0 is 'J' or space, byte 1 is 'U' or space, byte 2 is 'E' or space.
+        /// </summary>
+        private static byte[] BuildRegionFlagPatch(string region)
+        {
+            return new byte[]
+            {
+                region.Contains("J") ? (byte)'J' : (byte)' ',
+                region.Contains("U") ? (byte)'U' : (byte)' ',
+                region.Contains("E") ? (byte)'E' : (byte)' '
+            };
         }
 
         /// <summary>
@@ -119,11 +111,23 @@ namespace GDMENUCardManager.Core
         /// <param name="patchRegion">Whether to apply region-free patch</param>
         /// <param name="patchVga">Whether to apply VGA patch</param>
         /// <returns>Result of the patching operation</returns>
-        public static async Task<PatchResult> PatchImageAsync(string imagePath, bool patchRegion, bool patchVga)
+        public static Task<PatchResult> PatchImageAsync(string imagePath, bool patchRegion, bool patchVga)
+        {
+            return PatchImageAsync(imagePath, patchRegion ? "JUE" : null, patchVga);
+        }
+
+        /// <summary>
+        /// Patch a disc image to a specific region combination and/or apply the VGA patch.
+        /// </summary>
+        /// <param name="imagePath">Path to the disc image file (.gdi or .cdi)</param>
+        /// <param name="region">Target regions ("J", "U", "E" or a combination), or null to skip region patching</param>
+        /// <param name="patchVga">Whether to apply VGA patch</param>
+        /// <returns>Result of the patching operation</returns>
+        public static async Task<PatchResult> PatchImageAsync(string imagePath, string region, bool patchVga)
         {
             var result = new PatchResult { Success = true };
 
-            if (!patchRegion && !patchVga)
+            if (region == null && !patchVga)
             {
                 result.Details.Add("No patches selected.");
                 return result;
@@ -135,11 +139,11 @@ namespace GDMENUCardManager.Core
             {
                 if (extension == ".gdi")
                 {
-                    await PatchGdiAsync(imagePath, patchRegion, patchVga, result);
+                    await PatchGdiAsync(imagePath, region, patchVga, result);
                 }
                 else if (extension == ".cdi")
                 {
-                    await PatchSingleFileAsync(imagePath, patchRegion, patchVga, result);
+                    await PatchSingleFileAsync(imagePath, region, patchVga, result);
                 }
                 else
                 {
@@ -147,7 +151,7 @@ namespace GDMENUCardManager.Core
                     var dataFile = FindDataFile(imagePath);
                     if (dataFile != null)
                     {
-                        await PatchSingleFileAsync(dataFile, patchRegion, patchVga, result);
+                        await PatchSingleFileAsync(dataFile, region, patchVga, result);
                     }
                     else
                     {
@@ -168,7 +172,7 @@ namespace GDMENUCardManager.Core
         /// <summary>
         /// Patch a GDI disc image by parsing the .gdi file and patching all data tracks.
         /// </summary>
-        private static async Task PatchGdiAsync(string gdiPath, bool patchRegion, bool patchVga, PatchResult result)
+        private static async Task PatchGdiAsync(string gdiPath, string region, bool patchVga, PatchResult result)
         {
             var baseFolder = Path.GetDirectoryName(gdiPath);
             var dataTracks = await ParseGdiFileAsync(gdiPath);
@@ -185,7 +189,7 @@ namespace GDMENUCardManager.Core
                 if (File.Exists(trackPath))
                 {
                     result.Details.Add($"Processing track: {track}");
-                    await PatchSingleFileAsync(trackPath, patchRegion, patchVga, result);
+                    await PatchSingleFileAsync(trackPath, region, patchVga, result);
                 }
                 else
                 {
@@ -224,12 +228,18 @@ namespace GDMENUCardManager.Core
         /// Patch a single binary file (data track or CDI).
         /// Uses optimized single-pass search for all patterns.
         /// </summary>
-        private static async Task PatchSingleFileAsync(string filePath, bool patchRegion, bool patchVga, PatchResult result)
+        private static async Task PatchSingleFileAsync(string filePath, string region, bool patchVga, PatchResult result)
         {
             await Task.Run(() =>
             {
+                bool patchRegion = region != null;
+                var regionFlagPatch = patchRegion ? BuildRegionFlagPatch(region) : null;
+                var regionStringPatch = patchRegion ? BuildRegionStringPatch(region) : null;
+
                 // Single pass: find ALL patterns at once (IP.BIN headers + region strings)
                 var (ipBinHeaders, regionBlockStarts) = FindAllPatternsInSinglePass(filePath, patchRegion);
+
+                result.IpBinHeaderCount += ipBinHeaders.Count;
 
                 if (ipBinHeaders.Count > 0)
                 {
@@ -277,24 +287,20 @@ namespace GDMENUCardManager.Core
                                 continue;
                             }
 
-                            // Read block to check if already region-free
+                            // Read block to check if it already matches the target regions
                             fs.Seek(blockStart, SeekOrigin.Begin);
                             if (fs.Read(buffer, 0, 92) != 92)
                                 continue;
 
-                            bool hasJapan = MatchesPattern(buffer, 0, JapanRegionString);
-                            bool hasUsa = MatchesPattern(buffer, UsaStringOffset, UsaRegionString);
-                            bool hasEurope = MatchesPattern(buffer, EuropeStringOffset, EuropeRegionString);
-
-                            if (hasJapan && hasUsa && hasEurope)
+                            if (new ReadOnlySpan<byte>(buffer, 0, 92).SequenceEqual(regionStringPatch))
                             {
-                                result.Details.Add($"    Region block at {blockStart}: already region-free, skipping");
+                                result.Details.Add($"    Region block at {blockStart}: already matches target, skipping");
                                 continue;
                             }
 
                             // Apply patch
                             fs.Seek(blockStart, SeekOrigin.Begin);
-                            fs.Write(RegionStringPatch, 0, RegionStringPatch.Length);
+                            fs.Write(regionStringPatch, 0, regionStringPatch.Length);
                             result.RegionPatchCount++;
                             result.Details.Add($"    Patched region strings at {blockStart}");
                         }
@@ -303,7 +309,7 @@ namespace GDMENUCardManager.Core
                     // Patch IP.BIN headers (region flag and/or VGA flag)
                     foreach (var headerOffset in ipBinHeaders)
                     {
-                        // Patch region flag (JUE) at header + 48
+                        // Patch region flag at header + 48
                         if (patchRegion)
                         {
                             var flagOffset = headerOffset + RegionFlagOffset;
@@ -312,17 +318,16 @@ namespace GDMENUCardManager.Core
                                 fs.Seek(flagOffset, SeekOrigin.Begin);
                                 if (fs.Read(buffer, 0, 3) == 3)
                                 {
-                                    // Check if already JUE
-                                    if (buffer[0] == 0x4A && buffer[1] == 0x55 && buffer[2] == 0x45)
+                                    if (buffer[0] == regionFlagPatch[0] && buffer[1] == regionFlagPatch[1] && buffer[2] == regionFlagPatch[2])
                                     {
-                                        result.Details.Add($"    Region flag at {flagOffset}: already JUE, skipping");
+                                        result.Details.Add($"    Region flag at {flagOffset}: already {region}, skipping");
                                     }
                                     else
                                     {
                                         fs.Seek(flagOffset, SeekOrigin.Begin);
-                                        fs.Write(RegionFlagPatch, 0, RegionFlagPatch.Length);
+                                        fs.Write(regionFlagPatch, 0, regionFlagPatch.Length);
                                         result.RegionPatchCount++;
-                                        result.Details.Add($"    Patched region flag to JUE at {flagOffset}");
+                                        result.Details.Add($"    Patched region flag to {region} at {flagOffset}");
                                     }
                                 }
                             }
@@ -441,17 +446,6 @@ namespace GDMENUCardManager.Core
                     pos += idx + 1;
                 }
             }
-        }
-
-        /// <summary>
-        /// Checks if a pattern matches at a specific offset in a buffer.
-        /// </summary>
-        private static bool MatchesPattern(byte[] buffer, int offset, byte[] pattern)
-        {
-            if (offset + pattern.Length > buffer.Length)
-                return false;
-
-            return new ReadOnlySpan<byte>(buffer, offset, pattern.Length).SequenceEqual(pattern);
         }
 
         /// <summary>

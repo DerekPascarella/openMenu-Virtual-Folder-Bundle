@@ -23,6 +23,8 @@
 #include <dc/video.h>
 #include <kos/thread.h>
 
+#include <backend/bgm.h>
+#include <backend/boot_defaults.h>
 #include <backend/db_list.h>
 #include <backend/gd_list.h>
 #include <openmenu_debug.h>
@@ -290,6 +292,11 @@ init() {
     check_bloom_available(); /* Check for BLOOM.BIN once at startup */
     ret += db_load_DAT();
     ret += theme_manager_load();
+    bgm_init(); /* Check for BGM.ADP once at startup */
+
+    /* Force the disc's default style/theme if configured and honored.
+     * Needs the theme scan above so names resolve to indices. */
+    boot_defaults_apply();
 
     /* Initialize folder tree after loading game list */
     list_folder_init();
@@ -634,6 +641,7 @@ main(int argc, char* argv[]) {
         z_reset();
         (*current_ui_handle_input)(translate_input());
         vmu_lcd_check_insertions();
+        bgm_poll();
         vid_waitvbl();
         if (need_reload_ui) {
             ui_set_choice(sf_ui[0]);
@@ -648,6 +656,7 @@ main(int argc, char* argv[]) {
 
 void
 exit_to_bios_ex(int do_mount, int do_send_id) {
+    bgm_shutdown(); /* BIOS expects a quiet AICA */
     const gd_item* item = get_cur_game_item();
     /* Only mount/set ID if we have a valid item and it's not a folder */
     /* Folders have disc="DIR" and product[0]='F' */

@@ -17,6 +17,8 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <backend/bgm.h>
+#include <backend/boot_defaults.h>
 #include <backend/db_item.h>
 #include <backend/gd_item.h>
 #include <backend/gd_list.h>
@@ -204,8 +206,9 @@ typedef enum CB_OPTION { CB_OPT_LAUNCH = 0, CB_OPT_CLOSE } CB_OPTION;
 
 static const char* menu_choice_text[] = {"Style",
                                          "Theme",
+                                         "Play BGM",
+                                         "Honor Menu Defaults",
                                          "Aspect",
-                                         "Beep",
                                          "Exit to BIOS",
                                          "Sort",
                                          "Filter",
@@ -214,7 +217,8 @@ static const char* menu_choice_text[] = {"Style",
                                          "Artwork",
                                          "Display Index Numbers",
                                          "Disc Details",
-                                         "Artwork",
+                                         "Game Artwork",
+                                         "Folder Artwork",
                                          "Item Details",
                                          "Clock",
                                          "Marquee Speed",
@@ -222,13 +226,16 @@ static const char* menu_choice_text[] = {"Style",
                                          "Serial VMU",
                                          "Serial VMU Multi-Slot",
                                          "VMU Game ID",
-                                         "Boot Mode"};
+                                         "Boot Mode",
+                                         "VMU Beep on Save"};
 static const char* theme_choice_text[] = {"LineDesc", "Grid3", "Scroll", "Folders"};
 static const char* region_choice_text[] = {"NTSC-U", "NTSC-J", "PAL"};
 static const char* region_choice_text_scroll[] = {"GDMENU"};
 static const char* region_choice_text_folders[] = {"FoldersDefault"};
+static const char* music_choice_text[] = {"Off", "On"};
+static const char* honor_defaults_choice_text[] = {"Off", "On"};
 static const char* aspect_choice_text[] = {"4:3", "16:9"};
-static const char* beep_choice_text[] = {"Off", "On"}; /* Hidden from UI but kept for array sizing */
+static const char* beep_choice_text[] = {"Off", "On"};
 static const char* bios_3d_choice_text[] = {"Standard", "Alternate", "Alternate + 3D"};
 static const char* sort_choice_text[] = {"Alphabetical", "Name", "Region", "Genre", "SD Card Order"};
 static const char* sort_choice_text_folders[] = {"Alphabetical", "SD Card Order"};
@@ -242,6 +249,7 @@ static const char* scroll_art_choice_text[] = {"Off", "On"};
 static const char* scroll_index_choice_text[] = {"Off", "On"};
 static const char* disc_details_choice_text[] = {"Show", "Hide"};
 static const char* folders_art_choice_text[] = {"Off", "On"};
+static const char* folder_art_choice_text[] = {"Off", "On"};
 static const char* folders_item_details_choice_text[] = {"Off", "On"};
 static const char* marquee_speed_choice_text[] = {"Slow", "Medium", "Fast"};
 static const char* clock_choice_text[] = {"On (12-Hour)", "On (24-Hour)", "Off"};
@@ -267,8 +275,10 @@ static const gd_item* cur_game_item = NULL;
 #define MENU_CHOICES  (MENU_OPTIONS)
 #define THEME_CHOICES (sizeof(theme_choice_text) / sizeof(theme_choice_text)[0])
 static int REGION_CHOICES = (sizeof(region_choice_text) / sizeof(region_choice_text)[0]);
+#define MUSIC_CHOICES              (sizeof(music_choice_text) / sizeof(music_choice_text)[0])
+#define HONOR_DEFAULTS_CHOICES     (sizeof(honor_defaults_choice_text) / sizeof(honor_defaults_choice_text)[0])
 #define ASPECT_CHOICES             (sizeof(aspect_choice_text) / sizeof(aspect_choice_text)[0])
-#define BEEP_CHOICES               (sizeof(beep_choice_text) / sizeof(beep_choice_text)[0]) /* Hidden from UI */
+#define BEEP_CHOICES               (sizeof(beep_choice_text) / sizeof(beep_choice_text)[0])
 #define BIOS_3D_CHOICES            (sizeof(bios_3d_choice_text) / sizeof(bios_3d_choice_text)[0])
 #define SORT_CHOICES               (sizeof(sort_choice_text) / sizeof(sort_choice_text)[0])
 #define FILTER_CHOICES             (sizeof(filter_choice_text) / sizeof(filter_choice_text)[0])
@@ -278,6 +288,7 @@ static int REGION_CHOICES = (sizeof(region_choice_text) / sizeof(region_choice_t
 #define SCROLL_INDEX_CHOICES       (sizeof(scroll_index_choice_text) / sizeof(scroll_index_choice_text)[0])
 #define DISC_DETAILS_CHOICES       (sizeof(disc_details_choice_text) / sizeof(disc_details_choice_text)[0])
 #define FOLDERS_ART_CHOICES        (sizeof(folders_art_choice_text) / sizeof(folders_art_choice_text)[0])
+#define FOLDER_ART_CHOICES         (sizeof(folder_art_choice_text) / sizeof(folder_art_choice_text)[0])
 #define FOLDERS_ITEM_DETAILS_CHOICES                                                                                   \
     (sizeof(folders_item_details_choice_text) / sizeof(folders_item_details_choice_text)[0])
 #define MARQUEE_SPEED_CHOICES (sizeof(marquee_speed_choice_text) / sizeof(marquee_speed_choice_text)[0])
@@ -293,8 +304,9 @@ typedef enum MENU_CHOICE {
     CHOICE_START,
     CHOICE_THEME = CHOICE_START,
     CHOICE_REGION,
+    CHOICE_MUSIC,
+    CHOICE_HONOR_DEFAULTS,
     CHOICE_ASPECT,
-    CHOICE_BEEP,
     CHOICE_BIOS_3D,
     CHOICE_SORT,
     CHOICE_FILTER,
@@ -304,6 +316,7 @@ typedef enum MENU_CHOICE {
     CHOICE_SCROLL_INDEX,
     CHOICE_DISC_DETAILS,
     CHOICE_FOLDERS_ART,
+    CHOICE_FOLDER_ART,
     CHOICE_FOLDERS_ITEM_DETAILS,
     CHOICE_CLOCK,
     CHOICE_MARQUEE_SPEED,
@@ -312,6 +325,7 @@ typedef enum MENU_CHOICE {
     CHOICE_SERIAL_VMU_MULTISLOT,
     CHOICE_VM2_SEND_ALL,
     CHOICE_BOOT_MODE,
+    CHOICE_BEEP,
     CHOICE_SAVE,
     CHOICE_CREDITS,
     CHOICE_END = CHOICE_CREDITS
@@ -322,8 +336,9 @@ typedef enum MENU_CHOICE {
 static int choices[MENU_CHOICES + 1];
 static int choices_max[MENU_CHOICES + 1] = {THEME_CHOICES,
                                             3,
+                                            MUSIC_CHOICES,
+                                            HONOR_DEFAULTS_CHOICES,
                                             ASPECT_CHOICES,
-                                            BEEP_CHOICES,
                                             BIOS_3D_CHOICES,
                                             SORT_CHOICES,
                                             FILTER_CHOICES,
@@ -333,6 +348,7 @@ static int choices_max[MENU_CHOICES + 1] = {THEME_CHOICES,
                                             SCROLL_INDEX_CHOICES,
                                             DISC_DETAILS_CHOICES,
                                             FOLDERS_ART_CHOICES,
+                                            FOLDER_ART_CHOICES,
                                             FOLDERS_ITEM_DETAILS_CHOICES,
                                             CLOCK_CHOICES,
                                             MARQUEE_SPEED_CHOICES,
@@ -341,11 +357,13 @@ static int choices_max[MENU_CHOICES + 1] = {THEME_CHOICES,
                                             SERIAL_VMU_MULTISLOT_CHOICES,
                                             VM2_SEND_ALL_CHOICES,
                                             BOOT_MODE_CHOICES,
+                                            BEEP_CHOICES,
                                             2 /* Apply/Save */};
 static const char** menu_choice_array[MENU_CHOICES] = {theme_choice_text,
                                                        region_choice_text,
+                                                       music_choice_text,
+                                                       honor_defaults_choice_text,
                                                        aspect_choice_text,
-                                                       beep_choice_text,
                                                        bios_3d_choice_text,
                                                        sort_choice_text,
                                                        filter_choice_text,
@@ -355,6 +373,7 @@ static const char** menu_choice_array[MENU_CHOICES] = {theme_choice_text,
                                                        scroll_index_choice_text,
                                                        disc_details_choice_text,
                                                        folders_art_choice_text,
+                                                       folder_art_choice_text,
                                                        folders_item_details_choice_text,
                                                        clock_choice_text,
                                                        marquee_speed_choice_text,
@@ -362,9 +381,14 @@ static const char** menu_choice_array[MENU_CHOICES] = {theme_choice_text,
                                                        serial_vmu_choice_text,
                                                        serial_vmu_multislot_choice_text,
                                                        vm2_send_all_choice_text,
-                                                       boot_mode_choice_text};
+                                                       boot_mode_choice_text,
+                                                       beep_choice_text};
 static int current_choice = CHOICE_START;
 static int* input_timeout_ptr = NULL;
+
+/* Scroll window over the settings rows in the settings menu */
+#define SETTINGS_WINDOW_ROWS 9
+static int settings_scroll_offset = 0;
 
 #pragma endregion Settings_Menu
 
@@ -404,6 +428,9 @@ static uint32_t menu_title_color;
 /* Forward declaration for Save/Load window initialization */
 static void saveload_init_state(void);
 
+/* Forward declaration, menu_setup needs it before its definition */
+static int settings_option_visible(int option);
+
 /* COMPACTION_TEST_START */
 /* Forward declaration for compaction test */
 static void compaction_test_setup_internal(void);
@@ -438,43 +465,14 @@ common_setup(enum draw_state* state, theme_color* _colors, int* timeout_ptr) {
     *input_timeout_ptr = 3;
 }
 
-void
-menu_setup(enum draw_state* state, theme_color* _colors, int* timeout_ptr, uint32_t title_color) {
-    common_setup(state, _colors, timeout_ptr);
-    menu_title_color = title_color;
-
+/* Rebuilds the Style and Theme rows from the live settings: row values,
+ * the theme name list for the active style, and the row's choice count.
+ * Used by menu_setup and by anything that changes style or theme behind
+ * the menu's back (boot defaults toggle, loading a savefile). */
+static void
+settings_sync_theme_row_from_settings(void) {
     choices[CHOICE_THEME] = sf_ui[0];
     choices[CHOICE_REGION] = sf_region[0];
-    choices[CHOICE_ASPECT] = sf_aspect[0];
-    choices[CHOICE_SORT] = sf_sort[0];
-    /* In Folders mode, clamp Sort to valid range (0-1) */
-    if (sf_ui[0] == UI_FOLDERS && choices[CHOICE_SORT] >= SORT_CHOICES_FOLDERS) {
-        choices[CHOICE_SORT] = 0; /* Default to Alphabetical */
-    }
-    choices[CHOICE_FILTER] = sf_filter[0];
-    choices[CHOICE_BEEP] = sf_beep[0]; /* Hidden from UI */
-    choices[CHOICE_BIOS_3D] = sf_bios_3d[0];
-    choices[CHOICE_MULTIDISC] = sf_multidisc[0];
-    choices[CHOICE_MULTIDISC_GROUPING] = sf_multidisc_grouping[0];
-    choices[CHOICE_SCROLL_ART] = sf_scroll_art[0];
-    choices[CHOICE_SCROLL_INDEX] = sf_scroll_index[0];
-    choices[CHOICE_DISC_DETAILS] = sf_disc_details[0];
-    choices[CHOICE_FOLDERS_ART] = sf_folders_art[0];
-    choices[CHOICE_FOLDERS_ITEM_DETAILS] = sf_folders_item_details[0];
-    choices[CHOICE_MARQUEE_SPEED] = sf_marquee_speed[0];
-    choices[CHOICE_CLOCK] = sf_clock[0];
-    choices[CHOICE_VMU_TIME_SYNC] = sf_vmu_time_sync[0];
-    choices[CHOICE_SERIAL_VMU] = sf_serial_vmu[0];
-    choices[CHOICE_SERIAL_VMU_MULTISLOT] = sf_serial_vmu_multislot[0];
-    choices[CHOICE_VM2_SEND_ALL] = sf_vm2_send_all[0];
-    /* Enforce mutual exclusion on load (mirrors menu_choice_left/right logic) */
-    if (choices[CHOICE_SERIAL_VMU] != SERIAL_VMU_OFF) {
-        choices[CHOICE_VM2_SEND_ALL] = VM2_SEND_OFF;
-    } else if (choices[CHOICE_VM2_SEND_ALL] != VM2_SEND_OFF) {
-        choices[CHOICE_SERIAL_VMU] = SERIAL_VMU_OFF;
-        choices[CHOICE_SERIAL_VMU_MULTISLOT] = SERIAL_VMU_MULTISLOT_OFF;
-    }
-    choices[CHOICE_BOOT_MODE] = sf_boot_mode[0];
 
     if (choices[CHOICE_THEME] != UI_SCROLL && choices[CHOICE_THEME] != UI_FOLDERS) {
         menu_choice_array[CHOICE_REGION] = region_choice_text;
@@ -516,6 +514,58 @@ menu_setup(enum draw_state* state, theme_color* _colors, int* timeout_ptr, uint3
 
     if (choices[CHOICE_REGION] >= choices_max[CHOICE_REGION]) {
         choices[CHOICE_REGION] = choices_max[CHOICE_REGION] - 1;
+    }
+}
+
+void
+menu_setup(enum draw_state* state, theme_color* _colors, int* timeout_ptr, uint32_t title_color) {
+    common_setup(state, _colors, timeout_ptr);
+    menu_title_color = title_color;
+
+    /* Start the settings window scrolled to the top */
+    settings_scroll_offset = 0;
+
+    choices[CHOICE_MUSIC] = sf_music[0];
+    choices[CHOICE_HONOR_DEFAULTS] = sf_honor_defaults[0];
+    choices[CHOICE_ASPECT] = sf_aspect[0];
+    choices[CHOICE_SORT] = sf_sort[0];
+    /* In Folders mode, clamp Sort to valid range (0-1) */
+    if (sf_ui[0] == UI_FOLDERS && choices[CHOICE_SORT] >= SORT_CHOICES_FOLDERS) {
+        choices[CHOICE_SORT] = 0; /* Default to Alphabetical */
+    }
+    choices[CHOICE_FILTER] = sf_filter[0];
+    choices[CHOICE_BEEP] = sf_beep[0];
+    choices[CHOICE_BIOS_3D] = sf_bios_3d[0];
+    choices[CHOICE_MULTIDISC] = sf_multidisc[0];
+    choices[CHOICE_MULTIDISC_GROUPING] = sf_multidisc_grouping[0];
+    choices[CHOICE_SCROLL_ART] = sf_scroll_art[0];
+    choices[CHOICE_SCROLL_INDEX] = sf_scroll_index[0];
+    choices[CHOICE_DISC_DETAILS] = sf_disc_details[0];
+    choices[CHOICE_FOLDERS_ART] = sf_folders_art[0];
+    choices[CHOICE_FOLDER_ART] = sf_folder_art[0];
+    choices[CHOICE_FOLDERS_ITEM_DETAILS] = sf_folders_item_details[0];
+    choices[CHOICE_MARQUEE_SPEED] = sf_marquee_speed[0];
+    choices[CHOICE_CLOCK] = sf_clock[0];
+    choices[CHOICE_VMU_TIME_SYNC] = sf_vmu_time_sync[0];
+    choices[CHOICE_SERIAL_VMU] = sf_serial_vmu[0];
+    choices[CHOICE_SERIAL_VMU_MULTISLOT] = sf_serial_vmu_multislot[0];
+    choices[CHOICE_VM2_SEND_ALL] = sf_vm2_send_all[0];
+    /* Enforce mutual exclusion on load (mirrors menu_choice_left/right logic) */
+    if (choices[CHOICE_SERIAL_VMU] != SERIAL_VMU_OFF) {
+        choices[CHOICE_VM2_SEND_ALL] = VM2_SEND_OFF;
+    } else if (choices[CHOICE_VM2_SEND_ALL] != VM2_SEND_OFF) {
+        choices[CHOICE_SERIAL_VMU] = SERIAL_VMU_OFF;
+        choices[CHOICE_SERIAL_VMU_MULTISLOT] = SERIAL_VMU_MULTISLOT_OFF;
+    }
+    choices[CHOICE_BOOT_MODE] = sf_boot_mode[0];
+
+    settings_sync_theme_row_from_settings();
+
+    /* The multidisc popup shares the cursor variable and can leave it on a
+     * row that is hidden here, where left/right would silently edit an
+     * unseen setting. Snap anything stale back to the top. */
+    if (current_choice < CHOICE_START || current_choice > CHOICE_CREDITS || !settings_option_visible(current_choice)) {
+        current_choice = CHOICE_START;
     }
 }
 
@@ -577,12 +627,15 @@ menu_accept(void) {
 
         /* Apply only (no save). Apply settings and reload UI */
         /* update Global Settings */
+        int honor_was = sf_honor_defaults[0];
         sf_ui[0] = choices[CHOICE_THEME];
         sf_region[0] = choices[CHOICE_REGION];
+        sf_music[0] = choices[CHOICE_MUSIC];
+        sf_honor_defaults[0] = choices[CHOICE_HONOR_DEFAULTS];
         sf_aspect[0] = choices[CHOICE_ASPECT];
         sf_sort[0] = choices[CHOICE_SORT];
         sf_filter[0] = choices[CHOICE_FILTER];
-        sf_beep[0] = choices[CHOICE_BEEP]; /* Hidden from UI */
+        sf_beep[0] = choices[CHOICE_BEEP];
         sf_bios_3d[0] = choices[CHOICE_BIOS_3D];
         sf_multidisc[0] = choices[CHOICE_MULTIDISC];
         sf_multidisc_grouping[0] = choices[CHOICE_MULTIDISC_GROUPING];
@@ -590,6 +643,7 @@ menu_accept(void) {
         sf_scroll_index[0] = choices[CHOICE_SCROLL_INDEX];
         sf_disc_details[0] = choices[CHOICE_DISC_DETAILS];
         sf_folders_art[0] = choices[CHOICE_FOLDERS_ART];
+        sf_folder_art[0] = choices[CHOICE_FOLDER_ART];
         sf_folders_item_details[0] = choices[CHOICE_FOLDERS_ITEM_DETAILS];
         sf_marquee_speed[0] = choices[CHOICE_MARQUEE_SPEED];
         sf_clock[0] = choices[CHOICE_CLOCK];
@@ -626,6 +680,18 @@ menu_accept(void) {
             sf_custom_theme[0] = THEME_OFF;
         }
 
+        /* React to the Honor Menu Defaults toggle right away. Off brings
+         * back the savefile's style and theme, On re-forces the disc's. */
+        if (boot_defaults_available() && honor_was != choices[CHOICE_HONOR_DEFAULTS]) {
+            if (choices[CHOICE_HONOR_DEFAULTS] == HONOR_DEFAULTS_OFF) {
+                boot_defaults_restore();
+            } else {
+                boot_defaults_apply();
+            }
+            /* the style/theme rows still show the old values, resync them */
+            settings_sync_theme_row_from_settings();
+        }
+
         /* If not filtering, then plain sort */
         if (!choices[CHOICE_FILTER]) {
             switch ((CFG_SORT)choices[CHOICE_SORT]) {
@@ -650,94 +716,117 @@ menu_accept(void) {
     }
 }
 
+/* Decides if a settings row applies to the active UI mode and device state.
+ * Shared by navigation and the Scroll/Folders draw path so they always agree
+ * on which rows exist. */
+static int
+settings_option_visible(int option) {
+    switch (option) {
+        case CHOICE_MUSIC:
+            /* Only when the disc actually carries a music track */
+            return bgm_available();
+        case CHOICE_HONOR_DEFAULTS:
+            /* Only when the disc actually configures boot defaults */
+            return boot_defaults_available();
+        case CHOICE_ASPECT:
+            /* Aspect only applies to LineDesc and Grid3 */
+            return sf_ui[0] != UI_SCROLL && sf_ui[0] != UI_FOLDERS;
+        case CHOICE_FILTER:
+            /* No genre filter in Folders mode */
+            return sf_ui[0] != UI_FOLDERS;
+        case CHOICE_MULTIDISC_GROUPING:
+            /* Grouping only matters in Folders mode with Multi-Disc set to Compact */
+            return sf_ui[0] == UI_FOLDERS && choices[CHOICE_MULTIDISC] != MULTIDISC_SHOW;
+        case CHOICE_SCROLL_ART:
+        case CHOICE_SCROLL_INDEX:
+        case CHOICE_DISC_DETAILS: return sf_ui[0] == UI_SCROLL;
+        case CHOICE_FOLDERS_ART:
+        case CHOICE_FOLDER_ART:
+        case CHOICE_FOLDERS_ITEM_DETAILS:
+        case CHOICE_CLOCK: return sf_ui[0] == UI_FOLDERS;
+        case CHOICE_MARQUEE_SPEED: return sf_ui[0] == UI_SCROLL || sf_ui[0] == UI_FOLDERS;
+        case CHOICE_SERIAL_VMU:
+            /* Needs an SD card and no active VMU Game ID with a VM2 present */
+            return savefile_sd_available() && !(choices[CHOICE_VM2_SEND_ALL] != VM2_SEND_OFF && vm2_device_count > 0);
+        case CHOICE_SERIAL_VMU_MULTISLOT:
+            /* Same conditions as Serial VMU plus Serial VMU actually enabled */
+            return choices[CHOICE_SERIAL_VMU] != SERIAL_VMU_OFF && savefile_sd_available()
+                   && !(choices[CHOICE_VM2_SEND_ALL] != VM2_SEND_OFF && vm2_device_count > 0);
+        case CHOICE_VM2_SEND_ALL:
+            /* Needs a VM2 family device present and Serial VMU turned off */
+            return vm2_device_count > 0 && choices[CHOICE_SERIAL_VMU] == SERIAL_VMU_OFF;
+        default: return 1;
+    }
+}
+
+/* Fills list with the ids of all settings rows visible right now, in display
+ * order. Returns the row count. list must hold MENU_OPTIONS entries. */
+static int
+settings_visible_list(int* list) {
+    int count = 0;
+    for (int i = 0; i < MENU_OPTIONS; i++) {
+        if (settings_option_visible(i)) {
+            list[count++] = i;
+        }
+    }
+    return count;
+}
+
+/* Clamps the scroll window against the current row set and keeps the cursor
+ * inside it. The row set can change while the menu is open as devices come
+ * and go. Returns the highest valid offset. */
+static int
+settings_update_scroll(const int* list, int count, int window) {
+    const int max_scroll = count - window;
+    if (settings_scroll_offset > max_scroll) {
+        settings_scroll_offset = max_scroll;
+    }
+    if (settings_scroll_offset < 0) {
+        settings_scroll_offset = 0;
+    }
+    int cursor_row = -1;
+    for (int i = 0; i < count; i++) {
+        if (list[i] == current_choice) {
+            cursor_row = i;
+            break;
+        }
+    }
+    if (cursor_row >= 0) {
+        if (cursor_row < settings_scroll_offset) {
+            settings_scroll_offset = cursor_row;
+        } else if (cursor_row >= settings_scroll_offset + window) {
+            settings_scroll_offset = cursor_row - window + 1;
+        }
+    } else if (current_choice == CHOICE_SAVE || current_choice == CHOICE_CREDITS) {
+        /* Cursor is on the footer row. Show the end of the list so the
+         * footer reads as the step right after the last option. */
+        settings_scroll_offset = max_scroll;
+    }
+    return max_scroll;
+}
+
 static void
 menu_choice_prev(void) {
     if (*input_timeout_ptr > 0) {
         return;
     }
-    current_choice--;
-    /* Wrap around if we go below start */
-    if (current_choice < CHOICE_START) {
-        current_choice = CHOICE_END;
-    }
-    /* Keep skipping until we land on a valid option */
     int attempts = 0;
-    while (attempts < CHOICE_END - CHOICE_START + 1) {
-        int skip = 0;
-        /* Skip SCROLL_ART option in non-Scroll modes */
-        if (current_choice == CHOICE_SCROLL_ART && sf_ui[0] != UI_SCROLL) {
-            skip = 1;
-        }
-        /* Skip SCROLL_INDEX option in non-Scroll modes */
-        if (current_choice == CHOICE_SCROLL_INDEX && sf_ui[0] != UI_SCROLL) {
-            skip = 1;
-        }
-        /* Skip DISC_DETAILS option in non-Scroll modes */
-        if (current_choice == CHOICE_DISC_DETAILS && sf_ui[0] != UI_SCROLL) {
-            skip = 1;
-        }
-        /* Skip MULTIDISC_GROUPING option in non-Folders modes or when Multi-Disc is "Show All" */
-        if (current_choice == CHOICE_MULTIDISC_GROUPING
-            && (sf_ui[0] != UI_FOLDERS || choices[CHOICE_MULTIDISC] == MULTIDISC_SHOW)) {
-            skip = 1;
-        }
-        /* Skip FOLDERS_ART option in non-Folders modes */
-        if (current_choice == CHOICE_FOLDERS_ART && sf_ui[0] != UI_FOLDERS) {
-            skip = 1;
-        }
-        /* Skip FOLDERS_ITEM_DETAILS option in non-Folders modes */
-        if (current_choice == CHOICE_FOLDERS_ITEM_DETAILS && sf_ui[0] != UI_FOLDERS) {
-            skip = 1;
-        }
-        /* Skip MARQUEE_SPEED option in non-Scroll/Folders modes */
-        if (current_choice == CHOICE_MARQUEE_SPEED && sf_ui[0] != UI_SCROLL && sf_ui[0] != UI_FOLDERS) {
-            skip = 1;
-        }
-        /* Skip CLOCK option in non-Folders modes */
-        if (current_choice == CHOICE_CLOCK && sf_ui[0] != UI_FOLDERS) {
-            skip = 1;
-        }
-        /* Skip SERIAL_VMU when no SD card, or VMU Game ID active with VM2 present */
-        if (current_choice == CHOICE_SERIAL_VMU
-            && (!savefile_sd_available() || (choices[CHOICE_VM2_SEND_ALL] != VM2_SEND_OFF && vm2_device_count > 0))) {
-            skip = 1;
-        }
-        /* Skip SERIAL_VMU_MULTISLOT when Serial VMU off, no SD, or VMU Game ID active with VM2 present */
-        if (current_choice == CHOICE_SERIAL_VMU_MULTISLOT
-            && (choices[CHOICE_SERIAL_VMU] == SERIAL_VMU_OFF || !savefile_sd_available()
-                || (choices[CHOICE_VM2_SEND_ALL] != VM2_SEND_OFF && vm2_device_count > 0))) {
-            skip = 1;
-        }
-        /* Skip VM2_SEND_ALL option when no VM2 devices detected or Serial VMU is active */
-        if (current_choice == CHOICE_VM2_SEND_ALL
-            && (vm2_device_count == 0 || choices[CHOICE_SERIAL_VMU] != SERIAL_VMU_OFF)) {
-            skip = 1;
-        }
-        /* Skip Aspect in Scroll mode (not used) */
-        if (current_choice == CHOICE_ASPECT && sf_ui[0] == UI_SCROLL) {
-            skip = 1;
-        }
-        /* Skip Aspect/Filter in Folders mode */
-        if (sf_ui[0] == UI_FOLDERS && (current_choice == CHOICE_ASPECT || current_choice == CHOICE_FILTER)) {
-            skip = 1;
-        }
-        /* Skip BEEP option (disabled/commented out) */
-        if (current_choice == CHOICE_BEEP) {
-            skip = 1;
-        }
-        /* Skip CREDITS in up/down navigation (reached via left/right from Save/Apply) */
-        if (current_choice == CHOICE_CREDITS) {
-            skip = 1;
-        }
-        if (!skip) {
-            break; /* Found a valid option */
-        }
+    do {
         current_choice--;
+        /* Wrap around if we go below start */
         if (current_choice < CHOICE_START) {
             current_choice = CHOICE_END;
         }
+        /* The Save/Apply row is always a valid stop. Credits is skipped in
+         * up/down navigation (reached via left/right from Save/Apply). */
+        if (current_choice == CHOICE_SAVE) {
+            break;
+        }
+        if (current_choice != CHOICE_CREDITS && settings_option_visible(current_choice)) {
+            break;
+        }
         attempts++;
-    }
+    } while (attempts < CHOICE_END - CHOICE_START + 1);
     *input_timeout_ptr = INPUT_TIMEOUT;
 }
 
@@ -746,89 +835,23 @@ menu_choice_next(void) {
     if (*input_timeout_ptr > 0) {
         return;
     }
-    current_choice++;
-    /* Wrap around if we go past end */
-    if (current_choice > CHOICE_END) {
-        current_choice = CHOICE_START;
-    }
-    /* Keep skipping until we land on a valid option */
     int attempts = 0;
-    while (attempts < CHOICE_END - CHOICE_START + 1) {
-        int skip = 0;
-        /* Skip SCROLL_ART option in non-Scroll modes */
-        if (current_choice == CHOICE_SCROLL_ART && sf_ui[0] != UI_SCROLL) {
-            skip = 1;
-        }
-        /* Skip SCROLL_INDEX option in non-Scroll modes */
-        if (current_choice == CHOICE_SCROLL_INDEX && sf_ui[0] != UI_SCROLL) {
-            skip = 1;
-        }
-        /* Skip DISC_DETAILS option in non-Scroll modes */
-        if (current_choice == CHOICE_DISC_DETAILS && sf_ui[0] != UI_SCROLL) {
-            skip = 1;
-        }
-        /* Skip MULTIDISC_GROUPING option in non-Folders modes or when Multi-Disc is "Show All" */
-        if (current_choice == CHOICE_MULTIDISC_GROUPING
-            && (sf_ui[0] != UI_FOLDERS || choices[CHOICE_MULTIDISC] == MULTIDISC_SHOW)) {
-            skip = 1;
-        }
-        /* Skip FOLDERS_ART option in non-Folders modes */
-        if (current_choice == CHOICE_FOLDERS_ART && sf_ui[0] != UI_FOLDERS) {
-            skip = 1;
-        }
-        /* Skip FOLDERS_ITEM_DETAILS option in non-Folders modes */
-        if (current_choice == CHOICE_FOLDERS_ITEM_DETAILS && sf_ui[0] != UI_FOLDERS) {
-            skip = 1;
-        }
-        /* Skip MARQUEE_SPEED option in non-Scroll/Folders modes */
-        if (current_choice == CHOICE_MARQUEE_SPEED && sf_ui[0] != UI_SCROLL && sf_ui[0] != UI_FOLDERS) {
-            skip = 1;
-        }
-        /* Skip CLOCK option in non-Folders modes */
-        if (current_choice == CHOICE_CLOCK && sf_ui[0] != UI_FOLDERS) {
-            skip = 1;
-        }
-        /* Skip SERIAL_VMU when no SD card, or VMU Game ID active with VM2 present */
-        if (current_choice == CHOICE_SERIAL_VMU
-            && (!savefile_sd_available() || (choices[CHOICE_VM2_SEND_ALL] != VM2_SEND_OFF && vm2_device_count > 0))) {
-            skip = 1;
-        }
-        /* Skip SERIAL_VMU_MULTISLOT when Serial VMU off, no SD, or VMU Game ID active with VM2 present */
-        if (current_choice == CHOICE_SERIAL_VMU_MULTISLOT
-            && (choices[CHOICE_SERIAL_VMU] == SERIAL_VMU_OFF || !savefile_sd_available()
-                || (choices[CHOICE_VM2_SEND_ALL] != VM2_SEND_OFF && vm2_device_count > 0))) {
-            skip = 1;
-        }
-        /* Skip VM2_SEND_ALL option when no VM2 devices detected or Serial VMU is active */
-        if (current_choice == CHOICE_VM2_SEND_ALL
-            && (vm2_device_count == 0 || choices[CHOICE_SERIAL_VMU] != SERIAL_VMU_OFF)) {
-            skip = 1;
-        }
-        /* Skip Aspect in Scroll mode (not used) */
-        if (current_choice == CHOICE_ASPECT && sf_ui[0] == UI_SCROLL) {
-            skip = 1;
-        }
-        /* Skip Aspect/Filter in Folders mode */
-        if (sf_ui[0] == UI_FOLDERS && (current_choice == CHOICE_ASPECT || current_choice == CHOICE_FILTER)) {
-            skip = 1;
-        }
-        /* Skip BEEP option (disabled/commented out) */
-        if (current_choice == CHOICE_BEEP) {
-            skip = 1;
-        }
-        /* Skip CREDITS in up/down navigation (reached via left/right from Save/Apply) */
-        if (current_choice == CHOICE_CREDITS) {
-            skip = 1;
-        }
-        if (!skip) {
-            break; /* Found a valid option */
-        }
+    do {
         current_choice++;
+        /* Wrap around if we go past end */
         if (current_choice > CHOICE_END) {
             current_choice = CHOICE_START;
         }
+        /* The Save/Apply row is always a valid stop. Credits is skipped in
+         * up/down navigation (reached via left/right from Save/Apply). */
+        if (current_choice == CHOICE_SAVE) {
+            break;
+        }
+        if (current_choice != CHOICE_CREDITS && settings_option_visible(current_choice)) {
+            break;
+        }
         attempts++;
-    }
+    } while (attempts < CHOICE_END - CHOICE_START + 1);
     *input_timeout_ptr = INPUT_TIMEOUT;
 }
 
@@ -1259,116 +1282,58 @@ draw_menu_tr(void) {
     if (sf_ui[0] == UI_SCROLL || sf_ui[0] == UI_FOLDERS) {
         /* Menu size and placement */
         const int line_height = 24;
-        const int width = 320;
-        /* Calculate visible options for height.
-         * Extra rows after options: Save/Apply/Credits, spacing, combined version = 3 rows
-         * The +3 in the height formula accounts for these rows */
-        int visible_options = MENU_OPTIONS - 1; /* Hide BEEP */
-        if (sf_ui[0] == UI_SCROLL) {
-            visible_options -= 4; /* Hide Aspect, FOLDERS_ART, FOLDERS_ITEM_DETAILS, CLOCK, MULTIDISC_GROUPING (5 items,
-                                     -1 for padding) */
-        } else if (sf_ui[0] == UI_FOLDERS) {
-            visible_options -=
-                4; /* Hide Aspect, Filter, SCROLL_ART, SCROLL_INDEX, DISC_DETAILS (5 items, -1 for padding) */
-            /* Dynamically hide MULTIDISC_GROUPING when Multi-Disc is "Show All" */
-            if (choices[CHOICE_MULTIDISC] == MULTIDISC_SHOW) {
-                visible_options -= 1;
-            }
-        }
-        /* Dynamically hide VM2_SEND_ALL when no VM2 devices detected or Serial VMU is active */
-        if (vm2_device_count == 0 || choices[CHOICE_SERIAL_VMU] != SERIAL_VMU_OFF) {
-            visible_options -= 1;
-        }
-        /* Dynamically hide SERIAL_VMU when no SD card, or VMU Game ID active with VM2 present */
-        if (!savefile_sd_available() || (choices[CHOICE_VM2_SEND_ALL] != VM2_SEND_OFF && vm2_device_count > 0)) {
-            visible_options -= 1;
-        }
-        /* Dynamically hide SERIAL_VMU_MULTISLOT when Serial VMU off, no SD, or VMU Game ID active with VM2 present */
-        if (choices[CHOICE_SERIAL_VMU] == SERIAL_VMU_OFF || !savefile_sd_available()
-            || (choices[CHOICE_VM2_SEND_ALL] != VM2_SEND_OFF && vm2_device_count > 0)) {
-            visible_options -= 1;
-        }
-        const int height = (visible_options + 3) * line_height + 4;
+        const int width = 336;
+        const int list_pad = 8; /* Breathing room above and below the list */
+
+        /* Gather the rows to show for this mode and device state */
+        int visible_list[MENU_OPTIONS];
+        const int visible_count = settings_visible_list(visible_list);
+        const int window_rows = visible_count < SETTINGS_WINDOW_ROWS ? visible_count : SETTINGS_WINDOW_ROWS;
+        const int max_scroll = settings_update_scroll(visible_list, visible_count, window_rows);
+
+        /* Fixed height window. Header strip, option rows, then the
+         * Save/Apply/Credits row and version line anchored at the bottom */
+        const int footer_height = 74;
+        const int height = 20 + list_pad + (window_rows * line_height) + list_pad + footer_height;
         const int x = (640 / 2) - (width / 2);
         const int y = (480 / 2) - (height / 2);
         const int x_item = x + 8; /* 8px left margin */
+        const int list_top = y + 20 + list_pad;
+        const int list_bottom = list_top + (window_rows * line_height);
 
         char line_buf[70];
 
         /* Draw a popup in the middle of the screen */
         draw_popup_menu(x, y, width, height);
 
+        /* Scrollbar along the right edge, only when the list does not fit */
+        if (visible_count > window_rows) {
+            const int track_x = x + width - 12;
+            const int track_w = 6;
+            const int track_h = window_rows * line_height;
+            int thumb_h = (track_h * window_rows) / visible_count;
+            if (thumb_h < 16) {
+                thumb_h = 16;
+            }
+            /* Keep 1px of track visible on all sides of the thumb */
+            const int thumb_y = list_top + 1 + ((track_h - 2 - thumb_h) * settings_scroll_offset) / max_scroll;
+            draw_draw_quad(track_x, list_top, track_w, track_h, menu_bkg_border_color);
+            draw_draw_quad(track_x + 1, thumb_y, track_w - 2, thumb_h, highlight_color);
+        }
+
+        /* Separator above the version readout, joining the side borders.
+         * Sits 20px below the Save row text so the gaps around the version
+         * line mirror the padding down to the bottom border. */
+        draw_draw_quad(x, list_bottom + list_pad + 40, width, 2, menu_bkg_border_color);
+
         /* overlay our text on top with options */
-        int cur_y = y + 2;
         font_bmp_begin_draw();
         font_bmp_set_color(menu_title_color);
+        font_bmp_draw_main(x + (width / 2) - (8 * 8 / 2), y + 2, "Settings");
 
-        font_bmp_draw_main(width - (8 * 8 / 2), cur_y, "Settings");
-
-        cur_y += 2;
-        for (int i = 0; i < MENU_CHOICES; i++) {
-            /* Skip SCROLL_ART option in non-Scroll modes */
-            if (i == CHOICE_SCROLL_ART && sf_ui[0] != UI_SCROLL) {
-                continue;
-            }
-            /* Skip SCROLL_INDEX option in non-Scroll modes */
-            if (i == CHOICE_SCROLL_INDEX && sf_ui[0] != UI_SCROLL) {
-                continue;
-            }
-            /* Skip DISC_DETAILS option in non-Scroll modes */
-            if (i == CHOICE_DISC_DETAILS && sf_ui[0] != UI_SCROLL) {
-                continue;
-            }
-            /* Skip MULTIDISC_GROUPING option in non-Folders modes or when Multi-Disc is "Show All" */
-            if (i == CHOICE_MULTIDISC_GROUPING
-                && (sf_ui[0] != UI_FOLDERS || choices[CHOICE_MULTIDISC] == MULTIDISC_SHOW)) {
-                continue;
-            }
-            /* Skip FOLDERS_ART option in non-Folders modes */
-            if (i == CHOICE_FOLDERS_ART && sf_ui[0] != UI_FOLDERS) {
-                continue;
-            }
-            /* Skip FOLDERS_ITEM_DETAILS option in non-Folders modes */
-            if (i == CHOICE_FOLDERS_ITEM_DETAILS && sf_ui[0] != UI_FOLDERS) {
-                continue;
-            }
-            /* Skip MARQUEE_SPEED option in non-Scroll/Folders modes */
-            if (i == CHOICE_MARQUEE_SPEED && sf_ui[0] != UI_SCROLL && sf_ui[0] != UI_FOLDERS) {
-                continue;
-            }
-            /* Skip CLOCK option in non-Folders modes */
-            if (i == CHOICE_CLOCK && sf_ui[0] != UI_FOLDERS) {
-                continue;
-            }
-            /* Skip VM2_SEND_ALL option when no VM2 devices detected or Serial VMU is active */
-            if (i == CHOICE_VM2_SEND_ALL && (vm2_device_count == 0 || choices[CHOICE_SERIAL_VMU] != SERIAL_VMU_OFF)) {
-                continue;
-            }
-            /* Skip SERIAL_VMU when no SD card, or VMU Game ID active with VM2 present */
-            if (i == CHOICE_SERIAL_VMU
-                && (!savefile_sd_available()
-                    || (choices[CHOICE_VM2_SEND_ALL] != VM2_SEND_OFF && vm2_device_count > 0))) {
-                continue;
-            }
-            /* Skip SERIAL_VMU_MULTISLOT when Serial VMU off, no SD, or VMU Game ID active with VM2 present */
-            if (i == CHOICE_SERIAL_VMU_MULTISLOT
-                && (choices[CHOICE_SERIAL_VMU] == SERIAL_VMU_OFF || !savefile_sd_available()
-                    || (choices[CHOICE_VM2_SEND_ALL] != VM2_SEND_OFF && vm2_device_count > 0))) {
-                continue;
-            }
-            /* Skip Aspect in Scroll mode (not used) */
-            if (i == CHOICE_ASPECT && sf_ui[0] == UI_SCROLL) {
-                continue;
-            }
-            /* Skip Aspect/Filter in Folders mode */
-            if (sf_ui[0] == UI_FOLDERS && (i == CHOICE_ASPECT || i == CHOICE_FILTER)) {
-                continue;
-            }
-            /* Skip BEEP option (disabled/commented out) */
-            if (i == CHOICE_BEEP) {
-                continue;
-            }
-            cur_y += line_height;
+        for (int row = 0; row < window_rows; row++) {
+            const int i = visible_list[settings_scroll_offset + row];
+            const int row_y = list_top + (row * line_height) + 4;
             if (i == current_choice) {
                 font_bmp_set_color(highlight_color);
             } else {
@@ -1384,16 +1349,16 @@ draw_menu_tr(void) {
             } else {
                 string_outer_concat(line_buf, menu_choice_text[i], menu_choice_array[i][(int)choices[i]], 38);
             }
-            font_bmp_draw_main(x_item, cur_y, line_buf);
+            font_bmp_draw_main(x_item, row_y, line_buf);
         }
 
-        /* Draw Save/Apply/Credits on one line */
+        /* Draw Save/Apply/Credits on one line, anchored under the list */
         uint32_t save_color =
             ((current_choice == CHOICE_SAVE) && (choices[CHOICE_SAVE] == 0) ? highlight_color : text_color);
         uint32_t apply_color =
             ((current_choice == CHOICE_SAVE) && (choices[CHOICE_SAVE] == 1) ? highlight_color : text_color);
         uint32_t credits_color = (current_choice == CHOICE_CREDITS ? highlight_color : text_color);
-        cur_y += line_height;
+        int cur_y = list_bottom + list_pad + 4;
         /* Save at left, Apply in middle, Credits at right. Equal 24px spacing */
         /* Save/Load(72px) + gap(24px) + Apply(40px) + gap(24px) + Credits(56px) = 216px total */
         font_bmp_set_color(save_color);
@@ -1402,9 +1367,6 @@ draw_menu_tr(void) {
         font_bmp_draw_main(640 / 2 - 12, cur_y, save_choice_text[1]);
         font_bmp_set_color(credits_color);
         font_bmp_draw_main(640 / 2 + 52, cur_y, credits_text[0]);
-
-        /* Add empty line for spacing */
-        cur_y += line_height;
 
         /* Draw GDEMU + openMenu version on one line (non-selectable) */
         uint8_t version_buffer[8] = {0};
@@ -1417,142 +1379,92 @@ draw_menu_tr(void) {
             snprintf(combined_str, sizeof(combined_str), "GDEMU N/A - openMenu %s", OPENMENU_BUILD_VERSION);
         }
         font_bmp_set_color(text_color);
-        cur_y += line_height;
+        cur_y += 46;
         /* Center based on actual string length (8 pixels per character) */
         int str_pixel_width = strlen(combined_str) * 8;
         font_bmp_draw_main(640 / 2 - (str_pixel_width / 2), cur_y, combined_str);
 
     } else {
-        /* Menu size and placement (many options not shown in LineDesc/Grid3) */
+        /* Menu size and placement */
         const int line_height = 26;
-        const int width = 400;
-        /* Exclude: BEEP, SCROLL_ART, SCROLL_INDEX, DISC_DETAILS, FOLDERS_ART, FOLDERS_ITEM_DETAILS, MARQUEE_SPEED,
-         * CLOCK, MULTIDISC_GROUPING (9 items, -1 for padding) */
-        int visible_options = MENU_OPTIONS - 8;
-        /* Dynamically hide VM2_SEND_ALL when no VM2 devices detected or Serial VMU is active */
-        if (vm2_device_count == 0 || choices[CHOICE_SERIAL_VMU] != SERIAL_VMU_OFF) {
-            visible_options -= 1;
-        }
-        /* Dynamically hide SERIAL_VMU when no SD card, or VMU Game ID active with VM2 present */
-        if (!savefile_sd_available() || (choices[CHOICE_VM2_SEND_ALL] != VM2_SEND_OFF && vm2_device_count > 0)) {
-            visible_options -= 1;
-        }
-        /* Dynamically hide SERIAL_VMU_MULTISLOT when Serial VMU off, no SD, or VMU Game ID active with VM2 present */
-        if (choices[CHOICE_SERIAL_VMU] == SERIAL_VMU_OFF || !savefile_sd_available()
-            || (choices[CHOICE_VM2_SEND_ALL] != VM2_SEND_OFF && vm2_device_count > 0)) {
-            visible_options -= 1;
-        }
-        const int height =
-            (visible_options + 3) * line_height - line_height / 4
-            + line_height / 2; /* Add space for combined version string and extra spacing before buttons */
+        const int width = 416;
+        const int list_pad = 8; /* Breathing room above and below the list */
+        const int title_height = 28;
+
+        /* Gather the rows to show for this mode and device state */
+        int visible_list[MENU_OPTIONS];
+        const int visible_count = settings_visible_list(visible_list);
+        const int window_rows = visible_count < SETTINGS_WINDOW_ROWS ? visible_count : SETTINGS_WINDOW_ROWS;
+        const int max_scroll = settings_update_scroll(visible_list, visible_count, window_rows);
+
+        /* Fixed height window. Title row, option rows, then the
+         * Save/Apply/Credits row and version line anchored at the bottom */
+        const int footer_height = 82;
+        const int height = title_height + list_pad + (window_rows * line_height) + list_pad + footer_height;
         const int x = (640 / 2) - (width / 2);
-        const int y = (480 / 2) - (height / 2); /* Vertically centered */
+        const int y = (480 / 2) - (height / 2);
         const int x_item = x + 4;
-        const int x_choice = 344 + 24 + 20 + 25; /* magic :( */
+        const int x_value = x + width - 20; /* Right edge of the value column, clear of the scrollbar */
+        const int list_top = y + title_height + list_pad;
+        const int list_bottom = list_top + (window_rows * line_height);
 
         /* Draw a popup in the middle of the screen */
         draw_popup_menu(x, y, width, height);
 
+        /* Scrollbar along the right edge, only when the list does not fit */
+        if (visible_count > window_rows) {
+            const int track_x = x + width - 12;
+            const int track_w = 6;
+            const int track_h = window_rows * line_height;
+            int thumb_h = (track_h * window_rows) / visible_count;
+            if (thumb_h < 16) {
+                thumb_h = 16;
+            }
+            /* Keep 1px of track visible on all sides of the thumb */
+            const int thumb_y = list_top + 1 + ((track_h - 2 - thumb_h) * settings_scroll_offset) / max_scroll;
+            draw_draw_quad(track_x, list_top, track_w, track_h, menu_bkg_border_color);
+            draw_draw_quad(track_x + 1, thumb_y, track_w - 2, thumb_h, highlight_color);
+        }
+
+        /* Separator above the version readout, joining the side borders.
+         * Sits 20px below the Save row text so the gaps around the version
+         * line mirror the padding down to the bottom border. */
+        draw_draw_quad(x, list_bottom + list_pad + 44, width, 2, menu_bkg_border_color);
+
         /* overlay our text on top with options */
-        int cur_y = y + 2;
         font_bmf_begin_draw();
         font_bmf_set_height(24.0f);
+        font_bmf_draw(x_item, y + 2, text_color, "Settings");
 
-        font_bmf_draw(x_item, cur_y, text_color, "Settings");
-
-        cur_y += line_height / 4;
-        for (int i = 0; i < MENU_CHOICES; i++) {
-            /* Skip SCROLL_ART option in non-Scroll modes */
-            if (i == CHOICE_SCROLL_ART && sf_ui[0] != UI_SCROLL) {
-                continue;
-            }
-            /* Skip SCROLL_INDEX option in non-Scroll modes */
-            if (i == CHOICE_SCROLL_INDEX && sf_ui[0] != UI_SCROLL) {
-                continue;
-            }
-            /* Skip DISC_DETAILS option in non-Scroll modes */
-            if (i == CHOICE_DISC_DETAILS && sf_ui[0] != UI_SCROLL) {
-                continue;
-            }
-            /* Skip FOLDERS_ART option in non-Folders modes */
-            if (i == CHOICE_FOLDERS_ART && sf_ui[0] != UI_FOLDERS) {
-                continue;
-            }
-            /* Skip FOLDERS_ITEM_DETAILS option in non-Folders modes */
-            if (i == CHOICE_FOLDERS_ITEM_DETAILS && sf_ui[0] != UI_FOLDERS) {
-                continue;
-            }
-            /* Skip MARQUEE_SPEED option in non-Scroll/Folders modes */
-            if (i == CHOICE_MARQUEE_SPEED && sf_ui[0] != UI_SCROLL && sf_ui[0] != UI_FOLDERS) {
-                continue;
-            }
-            /* Skip CLOCK option in non-Folders modes */
-            if (i == CHOICE_CLOCK && sf_ui[0] != UI_FOLDERS) {
-                continue;
-            }
-            /* Skip VM2_SEND_ALL option when no VM2 devices detected or Serial VMU is active */
-            if (i == CHOICE_VM2_SEND_ALL && (vm2_device_count == 0 || choices[CHOICE_SERIAL_VMU] != SERIAL_VMU_OFF)) {
-                continue;
-            }
-            /* Skip SERIAL_VMU when no SD card, or VMU Game ID active with VM2 present */
-            if (i == CHOICE_SERIAL_VMU
-                && (!savefile_sd_available()
-                    || (choices[CHOICE_VM2_SEND_ALL] != VM2_SEND_OFF && vm2_device_count > 0))) {
-                continue;
-            }
-            /* Skip SERIAL_VMU_MULTISLOT when Serial VMU off, no SD, or VMU Game ID active with VM2 present */
-            if (i == CHOICE_SERIAL_VMU_MULTISLOT
-                && (choices[CHOICE_SERIAL_VMU] == SERIAL_VMU_OFF || !savefile_sd_available()
-                    || (choices[CHOICE_VM2_SEND_ALL] != VM2_SEND_OFF && vm2_device_count > 0))) {
-                continue;
-            }
-            /* Skip MULTIDISC_GROUPING option in non-Folders modes or when Multi-Disc is "Show All" */
-            if (i == CHOICE_MULTIDISC_GROUPING
-                && (sf_ui[0] != UI_FOLDERS || choices[CHOICE_MULTIDISC] == MULTIDISC_SHOW)) {
-                continue;
-            }
-            /* Skip Aspect/Sort/Filter in Folders mode */
-            if (sf_ui[0] == UI_FOLDERS && (i == CHOICE_ASPECT || i == CHOICE_SORT || i == CHOICE_FILTER)) {
-                continue;
-            }
-            /* Skip BEEP option (disabled/commented out) */
-            if (i == CHOICE_BEEP) {
-                continue;
-            }
-            cur_y += line_height;
+        for (int row = 0; row < window_rows; row++) {
+            const int i = visible_list[settings_scroll_offset + row];
+            const int row_y = list_top + (row * line_height);
             uint32_t temp_color = text_color;
             if (i == current_choice) {
                 temp_color = highlight_color;
             }
-            font_bmf_draw(x_item, cur_y, temp_color,
+            font_bmf_draw(x_item, row_y, temp_color,
                           i == CHOICE_SERIAL_VMU_MULTISLOT ? "Serial VMU Slots" : menu_choice_text[i]);
 
             if (i == CHOICE_REGION && (choices[i] >= REGION_CHOICES)) {
-                font_bmf_draw_centered(x_choice, cur_y, temp_color,
-                                       custom_theme_text[(int)choices[i] - REGION_CHOICES]);
+                font_bmf_draw_right(x_value, row_y, temp_color, custom_theme_text[(int)choices[i] - REGION_CHOICES]);
             } else {
-                font_bmf_draw_centered(x_choice, cur_y, temp_color, menu_choice_array[i][(int)choices[i]]);
+                font_bmf_draw_right(x_value, row_y, temp_color, menu_choice_array[i][(int)choices[i]]);
             }
         }
 
-        /* Extra spacing before buttons, same as spacing after buttons to version strings */
-        cur_y += line_height + line_height / 2;
-
-        /* Draw Save/Apply/Credits on one line using smaller font */
-        /* Each button centered in its own 1/3 column of the window */
+        /* Draw Save/Apply/Credits on one line using smaller font, anchored
+         * under the list. Each button centered in its own 1/3 column */
         uint32_t save_color =
             ((current_choice == CHOICE_SAVE) && (choices[CHOICE_SAVE] == 0) ? highlight_color : text_color);
         uint32_t apply_color =
             ((current_choice == CHOICE_SAVE) && (choices[CHOICE_SAVE] == 1) ? highlight_color : text_color);
         uint32_t credits_color = ((current_choice == CHOICE_CREDITS) ? highlight_color : text_color);
+        int cur_y = list_bottom + list_pad + 4;
         font_bmf_set_height(20.0f);
         font_bmf_draw_centered(x + width / 6, cur_y, save_color, save_choice_text[0]);
         font_bmf_draw_centered(x + width / 2, cur_y, apply_color, save_choice_text[1]);
         font_bmf_draw_centered(x + width * 5 / 6, cur_y, credits_color, credits_text[0]);
-        font_bmf_set_height_default();
-
-        /* Add empty line for spacing */
-        cur_y += line_height;
 
         /* Draw GDEMU + openMenu version on one line (non-selectable, smaller font) */
         uint8_t version_buffer[8] = {0};
@@ -1564,8 +1476,7 @@ draw_menu_tr(void) {
         } else {
             snprintf(combined_str, sizeof(combined_str), "GDEMU  N/A  -  openMenu  %s", OPENMENU_BUILD_VERSION);
         }
-        cur_y += line_height / 2;
-        font_bmf_set_height(20.0f);
+        cur_y += 50;
         font_bmf_draw_centered(640 / 2, cur_y, text_color, combined_str);
 
         font_bmf_set_height_default();
@@ -2530,8 +2441,11 @@ saveload_init_state(void) {
 /* Apply current menu choices to sf_* settings variables */
 static void
 saveload_apply_choices_to_settings(void) {
+    int honor_was = sf_honor_defaults[0];
     sf_ui[0] = choices[CHOICE_THEME];
     sf_region[0] = choices[CHOICE_REGION];
+    sf_music[0] = choices[CHOICE_MUSIC];
+    sf_honor_defaults[0] = choices[CHOICE_HONOR_DEFAULTS];
     sf_aspect[0] = choices[CHOICE_ASPECT];
     sf_sort[0] = choices[CHOICE_SORT];
     sf_filter[0] = choices[CHOICE_FILTER];
@@ -2543,6 +2457,7 @@ saveload_apply_choices_to_settings(void) {
     sf_scroll_index[0] = choices[CHOICE_SCROLL_INDEX];
     sf_disc_details[0] = choices[CHOICE_DISC_DETAILS];
     sf_folders_art[0] = choices[CHOICE_FOLDERS_ART];
+    sf_folder_art[0] = choices[CHOICE_FOLDER_ART];
     sf_folders_item_details[0] = choices[CHOICE_FOLDERS_ITEM_DETAILS];
     sf_marquee_speed[0] = choices[CHOICE_MARQUEE_SPEED];
     sf_clock[0] = choices[CHOICE_CLOCK];
@@ -2563,6 +2478,19 @@ saveload_apply_choices_to_settings(void) {
         sf_custom_theme_num[0] = sf_region[0] - 1;
     } else {
         sf_custom_theme[0] = THEME_OFF;
+    }
+
+    /* React to the Honor Menu Defaults toggle before anything gets saved,
+     * so turning it off never writes the forced style/theme to a device.
+     * The row resync also keeps a retried or second save in this window
+     * from copying the stale forced values back in. */
+    if (boot_defaults_available() && honor_was != choices[CHOICE_HONOR_DEFAULTS]) {
+        if (choices[CHOICE_HONOR_DEFAULTS] == HONOR_DEFAULTS_OFF) {
+            boot_defaults_restore();
+        } else {
+            boot_defaults_apply();
+        }
+        settings_sync_theme_row_from_settings();
     }
 }
 
@@ -2719,6 +2647,17 @@ saveload_do_load(void) {
             }
         }
         saveload_scan_devices();
+    }
+
+    /* If the loaded save wants menu defaults honored, re-force them just
+     * like a normal boot would. Keep this after the VMU work above. */
+    if (result == 0) {
+        if (boot_defaults_available() && sf_honor_defaults[0] == HONOR_DEFAULTS_ON) {
+            boot_defaults_apply();
+        }
+        settings_sync_theme_row_from_settings();
+        choices[CHOICE_MUSIC] = sf_music[0];
+        choices[CHOICE_HONOR_DEFAULTS] = sf_honor_defaults[0];
     }
 }
 

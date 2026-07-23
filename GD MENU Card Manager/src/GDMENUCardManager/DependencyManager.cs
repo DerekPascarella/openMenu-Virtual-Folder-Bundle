@@ -33,6 +33,12 @@ namespace GDMENUCardManager
             return new ValueTask<bool>(MessageBox.Show(getMainWindow(), text, caption, MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes);
         }
 
+        public ValueTask ShowWarningDialog(string caption, string text)
+        {
+            MessageBox.Show(getMainWindow(), text, caption, MessageBoxButton.OK, MessageBoxImage.Warning);
+            return new ValueTask();
+        }
+
         public ValueTask<bool> ShowLockedFilesDialog(Dictionary<string, string> lockedFiles)
         {
             var dialog = new LockedFilesDialog(lockedFiles) { Owner = getMainWindow() };

@@ -1,0 +1,81 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="420" d:DesignHeight="400"
+        x:Class="GDMENUCardManager.FolderArtEditorWindow"
+        Title="{Binding WindowTitle}" Width="420" SizeToContent="Height" CanResize="False" CanMinimize="False"
+        WindowStartupLocation="CenterOwner">
+  <Grid Margin="10">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <!-- Folder path -->
+    <TextBlock Grid.Row="0" Text="{Binding FolderDisplay}" FontWeight="Bold" Foreground="Black"
+               HorizontalAlignment="Center" Margin="0,0,0,10"/>
+
+    <!-- Image Preview with Navigation Arrows -->
+    <Grid Grid.Row="1">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="Auto"/>
+        <ColumnDefinition Width="1*"/>
+        <ColumnDefinition Width="Auto"/>
+      </Grid.ColumnDefinitions>
+
+      <Button Grid.Column="0" Click="NavigatePrev_Click"
+              IsEnabled="{Binding CanNavigatePrev}"
+              IsVisible="{Binding CanNavigate}"
+              ToolTip.Tip="Show previous folder's artwork"
+              VerticalAlignment="Center" Width="30" Height="40" Padding="0">
+        <Path Data="M 10,0 L 0,8 L 10,16" Stroke="Black" StrokeThickness="2"
+              HorizontalAlignment="Center" VerticalAlignment="Center"/>
+      </Button>
+
+      <Border Grid.Column="1" BorderBrush="Gray" BorderThickness="1"
+              Width="260" Height="260" HorizontalAlignment="Center" VerticalAlignment="Center">
+        <Grid>
+          <TextBlock Text="No artwork assigned" HorizontalAlignment="Center" VerticalAlignment="Center"
+                     IsVisible="{Binding !HasPreviewImage}"/>
+          <Image Source="{Binding PreviewImage}" Stretch="Uniform"
+                 IsVisible="{Binding HasPreviewImage}"/>
+        </Grid>
+      </Border>
+
+      <Button Grid.Column="2" Click="NavigateNext_Click"
+              IsEnabled="{Binding CanNavigateNext}"
+              IsVisible="{Binding CanNavigate}"
+              ToolTip.Tip="Show next folder's artwork"
+              VerticalAlignment="Center" Width="30" Height="40" Padding="0">
+        <Path Data="M 0,0 L 10,8 L 0,16" Stroke="Black" StrokeThickness="2"
+              HorizontalAlignment="Center" VerticalAlignment="Center"/>
+      </Button>
+    </Grid>
+
+    <!-- Info Label -->
+    <TextBlock Grid.Row="2" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap" Margin="0,10,0,0" Foreground="Black"
+               IsVisible="{Binding !IsReadOnly}"
+               Text="Artwork changes aren't written to DAT files until clicking Save Changes in the main window."/>
+
+    <!-- Buttons -->
+    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+      <Button Content="Browse for Image" Click="BrowseImage_Click" Margin="0,0,10,0" Padding="15,8"
+              IsVisible="{Binding !IsReadOnly}"
+              ToolTip.Tip="Choose a PNG, JPG, or BMP file to use as artwork for this folder (avoid images with transparency)"/>
+      <Button Content="Delete Entry" Click="DeleteEntry_Click" Margin="0,0,10,0" Padding="15,8"
+              IsVisible="{Binding !IsReadOnly}"
+              IsEnabled="{Binding CanDelete}"
+              ToolTip.Tip="Remove this folder's artwork from FOLDRART.DAT"/>
+      <Button Content="Save" Click="Apply_Click" Padding="15,8"
+              IsVisible="{Binding !IsReadOnly}"
+              IsEnabled="{Binding HasUnsavedChanges}"
+              ToolTip.Tip="Stage artwork changes for this folder (DAT files aren't written until you click Save Changes in the main window)"/>
+      <Button Content="Close" Click="Close_Click" Padding="15,8"
+              IsVisible="{Binding IsReadOnly}"
+              ToolTip.Tip="Close this artwork preview"/>
+    </StackPanel>
+  </Grid>
+</Window>

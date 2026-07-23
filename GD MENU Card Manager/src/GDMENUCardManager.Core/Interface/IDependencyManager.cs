@@ -11,6 +11,11 @@ namespace GDMENUCardManager.Core.Interface
         public ValueTask<bool> ShowYesNoDialog(string caption, string text);
 
         /// <summary>
+        /// Shows a warning dialog with an OK button.
+        /// </summary>
+        public ValueTask ShowWarningDialog(string caption, string text);
+
+        /// <summary>
         /// Shows a dialog displaying locked files/folders that cannot be accessed.
         /// Returns true if user wants to retry, false to cancel the operation.
         /// </summary>

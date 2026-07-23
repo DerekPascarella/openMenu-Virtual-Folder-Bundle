@@ -76,6 +76,10 @@ namespace GDMENUCardManager.Core
 
                 if (!string.IsNullOrEmpty(itemImageFile))
                 {
+                    if (Path.GetExtension(itemImageFile).Equals(".gdi", StringComparison.OrdinalIgnoreCase) &&
+                        await LegacyRedumpGdiDetector.IsLegacyRedumpGdiInArchiveAsync(compressedFile, filesInsideArchive))
+                        throw new UnsupportedDiscFormatException(LegacyRedumpGdiDetector.ShortMessage);
+
                     item.ImageFiles.Add(Path.GetFileName(compressedFile));
 
                     var itemName = Path.GetFileNameWithoutExtension(compressedFile);
@@ -102,6 +106,11 @@ namespace GDMENUCardManager.Core
 
             if (itemImageFile == null)
                 throw new Exception("Cant't read data from file");
+
+            if (item.FileFormat == FileFormat.Uncompressed &&
+                Path.GetExtension(itemImageFile).Equals(".gdi", StringComparison.OrdinalIgnoreCase) &&
+                LegacyRedumpGdiDetector.IsLegacyRedumpGdi(itemImageFile))
+                throw new UnsupportedDiscFormatException(LegacyRedumpGdiDetector.ShortMessage);
 
             // Special handling for CUE/BIN format (only for uncompressed files)
             // Compressed CUE/BIN will be handled during extraction in Manager.cs
@@ -493,7 +502,8 @@ namespace GDMENUCardManager.Core
             {
                 CRC = GetString(ipbin.dreamcast_crc),
                 Disc = disc,
-                Region = GetString(ipbin.region_codes),
+                // area symbols are positional ("J E" means Japan+Europe), drop the space placeholders
+                Region = GetString(ipbin.region_codes).Replace(" ", string.Empty),
                 Vga = ipbin.peripherals[5] == 49,
                 ProductNumber = GetString(ipbin.product_no),
                 Version = version,

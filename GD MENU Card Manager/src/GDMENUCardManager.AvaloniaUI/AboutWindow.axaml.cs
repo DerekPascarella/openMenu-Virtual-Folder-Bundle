@@ -1,10 +1,10 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
-using MessageBox.Avalonia;
-using MessageBox.Avalonia.Enums;
-using MessageBox.Avalonia.Models;
+using MsBox.Avalonia;
+using MsBox.Avalonia.Enums;
+using MsBox.Avalonia.Models;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -153,16 +153,16 @@ namespace GDMENUCardManager
                 }
                 else
                 {
-                    var msgBox = MessageBoxManager.GetMessageBoxStandardWindow("Information",
-                        "You are running the latest version.", MessageBox.Avalonia.Enums.ButtonEnum.Ok, MessageBox.Avalonia.Enums.Icon.Info);
-                    await msgBox.ShowDialog(this);
+                    var msgBox = MessageBoxManager.GetMessageBoxStandard("Information",
+                        "You are running the latest version.", MsBox.Avalonia.Enums.ButtonEnum.Ok, MsBox.Avalonia.Enums.Icon.Info);
+                    await msgBox.ShowWindowDialogAsync(this);
                 }
             }
             catch
             {
-                var msgBox = MessageBoxManager.GetMessageBoxStandardWindow("Information",
-                    "Could not check for updates. Please check your internet connection.", MessageBox.Avalonia.Enums.ButtonEnum.Ok, MessageBox.Avalonia.Enums.Icon.Warning);
-                await msgBox.ShowDialog(this);
+                var msgBox = MessageBoxManager.GetMessageBoxStandard("Information",
+                    "Could not check for updates. Please check your internet connection.", MsBox.Avalonia.Enums.ButtonEnum.Ok, MsBox.Avalonia.Enums.Icon.Warning);
+                await msgBox.ShowWindowDialogAsync(this);
             }
             finally
             {

@@ -93,6 +93,13 @@ namespace GDMENUCardManager.Core
         // When true, checks for locked files/folders before save
         public bool EnableLockCheck = true;
 
+        // set during save when patching changes a flag after the list text was built
+        private bool savePatchChangedFlags;
+        private readonly List<string> savePatchFailures = new List<string>();
+
+        // items patched to a manually edited region this save, the blanket region-free pass must not override them
+        private readonly HashSet<GdItem> saveManualRegionItems = new HashSet<GdItem>();
+
 
         public ObservableCollection<GdItem> ItemList { get; } = new ObservableCollection<GdItem>();
 
@@ -101,6 +108,7 @@ namespace GDMENUCardManager.Core
         public BoxDatManager BoxDat { get; private set; }
         public IconDatManager IconDat { get; private set; }
         public MetaDatManager MetaDat { get; private set; }
+        public FolderArtDatManager FolderArtDat { get; private set; }
 
         public UndoManager UndoManager { get; } = new UndoManager();
 
@@ -119,6 +127,16 @@ namespace GDMENUCardManager.Core
                 ? Path.Combine(MacOsDataMigration.GetUserMenuDataDir(), "META.DAT")
                 : Path.Combine(currentAppPath, "tools", "openMenu", "menu_data", "META.DAT");
 
+        public string GetFolderArtDatPath() =>
+            RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
+                ? Path.Combine(MacOsDataMigration.GetUserMenuDataDir(), "FOLDRART.DAT")
+                : Path.Combine(currentAppPath, "tools", "openMenu", "menu_data", "FOLDRART.DAT");
+
+        public string GetFolderArtMapPath() =>
+            RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
+                ? Path.Combine(MacOsDataMigration.GetUserMenuDataDir(), "FOLDRART.MAP")
+                : Path.Combine(currentAppPath, "tools", "openMenu", "menu_data", "FOLDRART.MAP");
+
         public string GetMenuDataPath() =>
             RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
                 ? MacOsDataMigration.GetUserMenuDataDir()
@@ -128,6 +146,18 @@ namespace GDMENUCardManager.Core
             RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
                 ? MacOsDataMigration.GetUserDatBackupsDir()
                 : Path.Combine(currentAppPath, "dat_backups");
+
+        public string GetDefaultsIniPath() =>
+            Path.Combine(GetMenuDataPath(), MenuOptions.MenuOptionsManager.DefaultsIniFileName);
+
+        public string GetBgmPath() =>
+            Path.Combine(GetMenuDataPath(), MenuOptions.MenuOptionsManager.BgmFileName);
+
+        // themes always ship inside the app, even on macOS where user data lives in Application Support
+        public MenuOptions.MenuOptionsManager CreateMenuOptionsManager() =>
+            new MenuOptions.MenuOptionsManager(
+                GetMenuDataPath(),
+                Path.Combine(currentAppPath, "tools", "openMenu", "menu_data", "theme"));
 
         public void InitializeBoxDat()
         {
@@ -146,10 +176,21 @@ namespace GDMENUCardManager.Core
                 MetaDat = new MetaDatManager();
             }
 
+            if (FolderArtDat == null)
+            {
+                FolderArtDat = new FolderArtDatManager();
+            }
+
             var boxDatPath = GetBoxDatPath();
             if (File.Exists(boxDatPath))
             {
                 BoxDat.Load(boxDatPath);
+            }
+
+            var folderArtDatPath = GetFolderArtDatPath();
+            if (File.Exists(folderArtDatPath))
+            {
+                FolderArtDat.Load(folderArtDatPath, GetFolderArtMapPath());
             }
 
             var iconDatPath = GetIconDatPath();
@@ -202,6 +243,67 @@ namespace GDMENUCardManager.Core
             var backupFolder = GetDatBackupFolder();
 
             return IconDat.BackupAndSave(iconDatPath, backupFolder, proceedWithoutBackupOnFailure);
+        }
+
+        public (bool success, string errorMessage) SaveFolderArtDat(bool proceedWithoutBackupOnFailure = false)
+        {
+            if (FolderArtDat == null)
+                return (false, "FolderArtDatManager not initialized");
+
+            return FolderArtDat.BackupAndSave(GetFolderArtDatPath(), GetFolderArtMapPath(),
+                GetDatBackupFolder(), proceedWithoutBackupOnFailure);
+        }
+
+        // every folder path plus its ancestor prefixes, ordered depth first so each
+        // folder's children follow it (the artwork list needs that ordering)
+        public List<string> GetAllFolderArtPaths()
+        {
+            var paths = new HashSet<string>(StringComparer.Ordinal);
+
+            foreach (var item in ItemList)
+            {
+                void addWithAncestors(string path)
+                {
+                    if (string.IsNullOrWhiteSpace(path))
+                        return;
+
+                    var segments = path.Split('\\');
+                    var current = string.Empty;
+                    foreach (var segment in segments)
+                    {
+                        current = current.Length == 0 ? segment : current + "\\" + segment;
+                        paths.Add(current);
+                    }
+                }
+
+                addWithAncestors(item.Folder);
+
+                if (item.AlternativeFolders != null)
+                    foreach (var alt in item.AlternativeFolders)
+                        addWithAncestors(alt);
+            }
+
+            var ordered = new List<string>(paths.Count);
+
+            void emitChildren(string parent)
+            {
+                var prefix = parent == null ? string.Empty : parent + "\\";
+
+                var children = paths
+                    .Where(p => p.StartsWith(prefix, StringComparison.Ordinal)
+                        && p.Length > prefix.Length
+                        && p.IndexOf('\\', prefix.Length) < 0)
+                    .OrderBy(p => p, StringComparer.OrdinalIgnoreCase);
+
+                foreach (var child in children)
+                {
+                    ordered.Add(child);
+                    emitChildren(child);
+                }
+            }
+
+            emitChildren(null);
+            return ordered;
         }
 
         // Refreshes HasArtwork for all items sharing the same artwork serial (via Table 2 translation)
@@ -283,6 +385,18 @@ namespace GDMENUCardManager.Core
                     File.Copy(metaDatPath, Path.Combine(backupFolder, $"META_{timestamp}.DAT"));
                 }
 
+                var folderArtDatPath = GetFolderArtDatPath();
+                if (File.Exists(folderArtDatPath))
+                {
+                    File.Copy(folderArtDatPath, Path.Combine(backupFolder, $"FOLDRART_{timestamp}.DAT"));
+                }
+
+                var folderArtMapPath = GetFolderArtMapPath();
+                if (File.Exists(folderArtMapPath))
+                {
+                    File.Copy(folderArtMapPath, Path.Combine(backupFolder, $"FOLDRART_{timestamp}.MAP"));
+                }
+
                 return (true, string.Empty);
             }
             catch (Exception ex)
@@ -357,10 +471,17 @@ namespace GDMENUCardManager.Core
                 IconDatManager.CreateEmptyFile(GetIconDatPath());
                 MetaDatManager.CreateEmptyFile(GetMetaDatPath());
 
+                // No empty-file state for folder art, just delete the files
+                if (File.Exists(GetFolderArtDatPath()))
+                    File.Delete(GetFolderArtDatPath());
+                if (File.Exists(GetFolderArtMapPath()))
+                    File.Delete(GetFolderArtMapPath());
+
                 // Reinitialize the managers
                 BoxDat = new BoxDatManager();
                 IconDat = new IconDatManager();
                 MetaDat = new MetaDatManager();
+                FolderArtDat = new FolderArtDatManager();
 
                 // Link BoxDatManager to GdItem
                 GdItem.BoxDatManagerInstance = BoxDat;
@@ -423,6 +544,10 @@ namespace GDMENUCardManager.Core
                             if (boxData == null || iconData == null || metaData == null)
                                 return (false, notFoundError);
 
+                            // Cards built before the folder art feature won't have these
+                            var folderArtData = ExtractFileFromIso(iso, "/FOLDRART.DAT");
+                            var folderArtMap = ExtractFileFromIso(iso, "/FOLDRART.MAP");
+
                             var backupResult = BackupAllDats();
                             if (!backupResult.success)
                                 return backupResult;
@@ -431,12 +556,33 @@ namespace GDMENUCardManager.Core
                             File.WriteAllBytes(GetIconDatPath(), iconData);
                             File.WriteAllBytes(GetMetaDatPath(), metaData);
 
+                            // Mirror the card's folder art state, present or not
+                            if (folderArtData != null)
+                            {
+                                File.WriteAllBytes(GetFolderArtDatPath(), folderArtData);
+                                if (folderArtMap != null)
+                                    File.WriteAllBytes(GetFolderArtMapPath(), folderArtMap);
+                                else if (File.Exists(GetFolderArtMapPath()))
+                                    File.Delete(GetFolderArtMapPath());
+                            }
+                            else
+                            {
+                                if (File.Exists(GetFolderArtDatPath()))
+                                    File.Delete(GetFolderArtDatPath());
+                                if (File.Exists(GetFolderArtMapPath()))
+                                    File.Delete(GetFolderArtMapPath());
+                            }
+
                             BoxDat = new BoxDatManager();
                             BoxDat.Load(GetBoxDatPath());
                             IconDat = new IconDatManager();
                             IconDat.Load(GetIconDatPath());
                             MetaDat = new MetaDatManager();
                             MetaDat.Load(GetMetaDatPath());
+
+                            FolderArtDat = new FolderArtDatManager();
+                            if (File.Exists(GetFolderArtDatPath()))
+                                FolderArtDat.Load(GetFolderArtDatPath(), GetFolderArtMapPath());
 
                             GdItem.BoxDatManagerInstance = BoxDat;
 
@@ -645,6 +791,9 @@ namespace GDMENUCardManager.Core
                 int total = uniquePairs.Count;
                 int current = 0;
 
+                var folderArtKeys = FolderArtDat?.GetAllKeys() ?? new List<string>();
+                total += folderArtKeys.Count;
+
                 foreach (var kvp in uniquePairs)
                 {
                     var (title, serial) = kvp.Key;
@@ -660,6 +809,27 @@ namespace GDMENUCardManager.Core
                         string outputPath = Path.Combine(outputFolderPath, fileName);
 
                         // Convert PVR to PNG and save
+                        if (PvrEncoder.SavePvrAsPng(pvrData, outputPath))
+                        {
+                            exported++;
+                        }
+                    }
+
+                    current++;
+                    progress?.Invoke((double)current / Math.Max(1, total));
+                }
+
+                // Folder art is named "Folder-Path [key].png" with dashes replacing backslashes
+                foreach (var key in folderArtKeys)
+                {
+                    var pvrData = FolderArtDat.GetPvrDataForKey(key);
+                    if (pvrData != null)
+                    {
+                        var folderPath = FolderArtDat.GetPathForKey(key) ?? "Unknown Folder";
+                        string sanitizedPath = SanitizeFileName(folderPath.Replace('\\', '-'));
+                        string fileName = $"{sanitizedPath} [{key}].png";
+                        string outputPath = Path.Combine(outputFolderPath, fileName);
+
                         if (PvrEncoder.SavePvrAsPng(pvrData, outputPath))
                         {
                             exported++;
@@ -829,7 +999,7 @@ namespace GDMENUCardManager.Core
         {
             var lockedFiles = new Dictionary<string, string>();
 
-            var datPaths = new[] { GetBoxDatPath(), GetIconDatPath(), GetMetaDatPath() };
+            var datPaths = new[] { GetBoxDatPath(), GetIconDatPath(), GetMetaDatPath(), GetFolderArtDatPath(), GetFolderArtMapPath() };
 
             foreach (var path in datPaths)
             {
@@ -1095,7 +1265,10 @@ namespace GDMENUCardManager.Core
 
             var regionPath = Path.Combine(item.FullFolderPath, Constants.RegionTextFile);
             if (File.Exists(regionPath))
-                item.Ip.Region = (await Helper.ReadAllTextAsync(regionPath))?.Trim() ?? string.Empty;
+            {
+                item.Ip.Region = (await Helper.ReadAllTextAsync(regionPath))?.Trim().Replace(" ", string.Empty) ?? string.Empty;
+                item.ImageRegion = GdItem.NormalizeRegion(item.Ip.Region);
+            }
 
             // Notify UI that Ip-derived values have changed
             item.NotifyIpChanged();
@@ -1298,7 +1471,7 @@ namespace GDMENUCardManager.Core
             if (regionFile != null)
             {
                 itemRegion = await Helper.ReadAllTextAsync(regionFile);
-                itemRegion = itemRegion?.Trim() ?? string.Empty;
+                itemRegion = itemRegion?.Trim().Replace(" ", string.Empty) ?? string.Empty;
             }
 
             string itemImageFile = null;
@@ -1691,6 +1864,10 @@ namespace GDMENUCardManager.Core
 
                 containsCompressedFile = ItemList.Any(x => x.FileFormat == FileFormat.SevenZip);
 
+                savePatchChangedFlags = false;
+                savePatchFailures.Clear();
+                saveManualRegionItems.Clear();
+
                 StringBuilder sb = new StringBuilder();
                 StringBuilder sb_open = new StringBuilder();
 
@@ -1797,8 +1974,9 @@ namespace GDMENUCardManager.Core
                 {
                     bool hasBoxChanges = BoxDat?.HasUnsavedChanges == true;
                     bool hasIconChanges = IconDat?.HasUnsavedChanges == true;
+                    bool hasFolderArtChanges = FolderArtDat?.HasUnsavedChanges == true;
 
-                    if (hasBoxChanges || hasIconChanges)
+                    if (hasBoxChanges || hasIconChanges || hasFolderArtChanges)
                     {
                         // If DAT files aren't writable and user cancels, skip DAT update
                         // but continue with save anyway
@@ -1811,10 +1989,18 @@ namespace GDMENUCardManager.Core
 
                             try
                             {
-                                var (success, errorMessage) = SaveBothDats(true); // Proceed without backup prompt
-                                if (!success)
+                                if (hasBoxChanges || hasIconChanges)
                                 {
-                                    // non-fatal, continue
+                                    var (success, errorMessage) = SaveBothDats(true); // Proceed without backup prompt
+                                    if (!success)
+                                    {
+                                        // non-fatal, continue
+                                    }
+                                }
+
+                                if (hasFolderArtChanges)
+                                {
+                                    SaveFolderArtDat(true); // non-fatal as well
                                 }
                             }
                             finally
@@ -1882,11 +2068,14 @@ namespace GDMENUCardManager.Core
                     await ShrinkExistingItemsAsync(tempDirectory);
                 }
 
-                // Patch existing items if option is enabled
-                if (EnableRegionPatchExisting || EnableVgaPatchExisting)
+                // Patch existing items if option is enabled or region cells were edited
+                if (EnableRegionPatchExisting || EnableVgaPatchExisting || ItemList.Any(x => x.PendingRegionChange != null))
                 {
                     await PatchExistingItemsAsync();
                 }
+
+                // region edits the patch pass didn't reach get reverted so the card stays consistent
+                RevertSkippedRegionEdits();
 
                 //finally rename disc images, write name text file (skip menu if it's at index 0)
                 foreach (var item in ItemList.Skip(menuCurrentlyAtIndexZero ? 1 : 0))
@@ -1997,7 +2186,7 @@ namespace GDMENUCardManager.Core
                     //}
                 }
 
-                if (containsCompressedFile)
+                if (containsCompressedFile || savePatchChangedFlags)
                 {
                     //build the menu again
 
@@ -2012,7 +2201,7 @@ namespace GDMENUCardManager.Core
                     foreach (var item in orderedList)
                     {
                         FillListText(sb, item.Ip, item.Name, item.ProductNumber, item.SdNumber);
-                        FillListText(sb_open, item.Ip, item.Name, item.ProductNumber, item.SdNumber, true, item.Folder, item.GetDiscTypeFileValue());
+                        FillListText(sb_open, item.Ip, item.Name, item.ProductNumber, item.SdNumber, true, item.Folder, item.GetDiscTypeFileValue(), item.AlternativeFolders);
                     }
 
                     //generate iso and save in temp
@@ -2157,6 +2346,13 @@ namespace GDMENUCardManager.Core
                     workbook.SaveAs(discListXlsxPath);
                 }
 
+                if (savePatchFailures.Count > 0)
+                {
+                    await Helper.DependencyManager.ShowWarningDialog("Information",
+                        "The following disc images could not be region patched, so their region values were reverted:\n\n"
+                        + string.Join(Environment.NewLine, savePatchFailures));
+                }
+
                 return true;
             }
             catch (IOException ioEx) when (Helper.IsDiskFullException(ioEx))
@@ -2245,10 +2441,10 @@ namespace GDMENUCardManager.Core
                 var menuGdiSrc = Path.Combine(currentAppPath, "tools", "openMenu", "menu_gdi");
                 var menuLowSrc = Path.Combine(currentAppPath, "tools", "openMenu", "menu_low_data");
 
-                // On macOS, BOX/ICON/META.DAT live in Application Support, not the bundle.
+                // On macOS, user data files live in Application Support, not the bundle.
                 // Exclude them from the bulk bundle copy so they don't overwrite user data.
                 var excludeFromBundle = RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
-                    ? new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "BOX.DAT", "ICON.DAT", "META.DAT" }
+                    ? new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "BOX.DAT", "ICON.DAT", "META.DAT", "FOLDRART.DAT", "FOLDRART.MAP", "DEFAULTS.INI", "BGM.ADP" }
                     : null;
                 await Helper.CopyDirectoryAsync(menuDataSrc, dataPath, excludeFromBundle);
 
@@ -2259,6 +2455,16 @@ namespace GDMENUCardManager.Core
                     File.Copy(GetIconDatPath(), Path.Combine(dataPath, "ICON.DAT"), overwrite: true);
                 if (File.Exists(GetMetaDatPath()))
                     File.Copy(GetMetaDatPath(), Path.Combine(dataPath, "META.DAT"), overwrite: true);
+                if (File.Exists(GetFolderArtDatPath()))
+                {
+                    File.Copy(GetFolderArtDatPath(), Path.Combine(dataPath, "FOLDRART.DAT"), overwrite: true);
+                    if (File.Exists(GetFolderArtMapPath()))
+                        File.Copy(GetFolderArtMapPath(), Path.Combine(dataPath, "FOLDRART.MAP"), overwrite: true);
+                }
+                if (File.Exists(GetDefaultsIniPath()))
+                    File.Copy(GetDefaultsIniPath(), Path.Combine(dataPath, "DEFAULTS.INI"), overwrite: true);
+                if (File.Exists(GetBgmPath()))
+                    File.Copy(GetBgmPath(), Path.Combine(dataPath, "BGM.ADP"), overwrite: true);
 
                 await Helper.CopyDirectoryAsync(menuGdiSrc, cdiPath);
                 /* Copy to low density */
@@ -2450,7 +2656,7 @@ namespace GDMENUCardManager.Core
             }
 
             // Apply region/VGA patches to newly copied items
-            if (item.Work == WorkMode.New && (EnableRegionPatch || EnableVgaPatch))
+            if (item.Work == WorkMode.New && (EnableRegionPatch || EnableVgaPatch || item.PendingRegionChange != null))
             {
                 // Skip menu items
                 if (item.Ip?.Name != "GDMENU" && item.Ip?.Name != "openMenu" && item.DiscType == "Game")
@@ -3330,6 +3536,49 @@ namespace GDMENUCardManager.Core
             return folderCounts;
         }
 
+        // Moves folder artwork entries along with renamed folders. Uses the same
+        // exact match plus prefix rewrite rules as ApplyFolderMappings so art always
+        // lands on the path the games ended up with. Returns the rekeys performed
+        // so the caller can record them for undo.
+        public List<(string OldPath, string NewPath)> RekeyFolderArtForMappings(Dictionary<string, string> mappings)
+        {
+            var rekeyed = new List<(string OldPath, string NewPath)>();
+
+            if (FolderArtDat == null || mappings == null || mappings.Count == 0)
+                return rekeyed;
+
+            foreach (var key in FolderArtDat.GetAllKeys())
+            {
+                var oldPath = FolderArtDat.GetPathForKey(key);
+                if (string.IsNullOrEmpty(oldPath))
+                    continue;
+
+                string newPath = null;
+
+                if (mappings.TryGetValue(oldPath, out var direct))
+                {
+                    newPath = direct;
+                }
+                else
+                {
+                    foreach (var mapping in mappings)
+                    {
+                        if (oldPath.StartsWith(mapping.Key + "\\", StringComparison.Ordinal))
+                        {
+                            newPath = mapping.Value + oldPath.Substring(mapping.Key.Length);
+                            break;
+                        }
+                    }
+                }
+
+                if (newPath != null && newPath != oldPath)
+                    rekeyed.Add((oldPath, newPath));
+            }
+
+            FolderArtDat.ApplyRekeys(rekeyed);
+            return rekeyed;
+        }
+
         /// <returns>Tuple of (items updated, alt folder conflicts removed).</returns>
         public (int updatedCount, int conflictsRemoved) ApplyFolderMappings(Dictionary<string, string> mappings)
         {
@@ -3629,9 +3878,10 @@ namespace GDMENUCardManager.Core
             item.Length = ByteSizeLib.ByteSize.FromBytes(item.ImageFiles.Sum(x => new FileInfo(Path.Combine(item.FullFolderPath, x)).Length));
         }
 
-        public async Task<List<string>> AddGames(string[] files)
+        public async Task<(List<string> Invalid, List<string> UnsupportedRedumpGdi)> AddGames(string[] files)
         {
             var invalid = new List<string>();
+            var unsupportedRedumpGdi = new List<string>();
             var addedItems = new List<(GdItem Item, int Index)>();
 
             if (files != null)
@@ -3644,6 +3894,10 @@ namespace GDMENUCardManager.Core
                         int index = ItemList.Count;
                         ItemList.Add(gdItem);
                         addedItems.Add((gdItem, index));
+                    }
+                    catch (UnsupportedDiscFormatException)
+                    {
+                        unsupportedRedumpGdi.Add(Path.GetFileName(item));
                     }
                     catch
                     {
@@ -3660,7 +3914,7 @@ namespace GDMENUCardManager.Core
                 UndoManager.RecordChange(undoOp);
             }
 
-            return invalid;
+            return (invalid, unsupportedRedumpGdi);
         }
 
         public bool SearchInItem(GdItem item, string text)
@@ -3682,7 +3936,13 @@ namespace GDMENUCardManager.Core
 
         private async Task<PatchResult> PatchItemAsync(GdItem item, bool patchRegion, bool patchVga)
         {
-            if (!patchRegion && !patchVga)
+            // manual region edits win over the blanket region-free option
+            var pendingRegion = item.PendingRegionChange;
+            var targetRegion = pendingRegion;
+            if (targetRegion == null && patchRegion && !saveManualRegionItems.Contains(item))
+                targetRegion = "JUE";
+
+            if (targetRegion == null && !patchVga)
                 return new PatchResult { Success = true };
 
             if (item.DiscType != "Game")
@@ -3691,22 +3951,42 @@ namespace GDMENUCardManager.Core
             var imagePath = Path.Combine(item.FullFolderPath, item.ImageFile);
 
             if (!RegionPatcher.CanPatch(imagePath))
+            {
+                if (pendingRegion != null)
+                    RevertPendingRegion(item, "Format not supported for patching");
                 return new PatchResult { Success = true, Details = { "Format not supported for patching" } };
+            }
 
-            var result = await RegionPatcher.PatchImageAsync(imagePath, patchRegion, patchVga);
+            var result = await RegionPatcher.PatchImageAsync(imagePath, targetRegion, patchVga);
+
+            // region edit didn't take effect, put the old value back
+            if (pendingRegion != null && (!result.Success || result.IpBinHeaderCount == 0))
+            {
+                RevertPendingRegion(item, result.Success ? "No IP.BIN header found in image" : (result.ErrorMessage ?? "Patch failed"));
+                return result;
+            }
 
             // Update in-memory Ip and cached region.txt to reflect the patched disc
-            if (result.Success && patchRegion && result.RegionPatchCount > 0 && item.Ip != null)
+            if (result.Success && targetRegion != null && result.IpBinHeaderCount > 0 && item.Ip != null)
             {
-                item.Ip.Region = "JUE";
-                item.Ip.Vga = patchVga ? true : item.Ip.Vga;
+                if (GdItem.NormalizeRegion(item.Ip.Region) != targetRegion)
+                    savePatchChangedFlags = true;
+
+                item.Region = targetRegion;
+                item.ImageRegion = targetRegion;
+
+                if (pendingRegion != null)
+                    saveManualRegionItems.Add(item);
 
                 var regionPath = Path.Combine(item.FullFolderPath, Constants.RegionTextFile);
-                await Helper.WriteTextFileAsync(regionPath, "JUE");
+                await Helper.WriteTextFileAsync(regionPath, targetRegion);
             }
 
             if (result.Success && patchVga && result.VgaPatchCount > 0 && item.Ip != null)
             {
+                if (!item.Ip.Vga)
+                    savePatchChangedFlags = true;
+
                 item.Ip.Vga = true;
 
                 var vgaPath = Path.Combine(item.FullFolderPath, Constants.VgaTextFile);
@@ -3714,6 +3994,21 @@ namespace GDMENUCardManager.Core
             }
 
             return result;
+        }
+
+        // restore the region from the image and keep the reason for the warning shown after save
+        private void RevertPendingRegion(GdItem item, string reason)
+        {
+            item.Region = item.ImageRegion;
+            savePatchFailures.Add($"{item.Name}: {reason}");
+            savePatchChangedFlags = true;
+        }
+
+        // catches edits the patch pass skipped, like a cancelled progress window or a disc type change
+        private void RevertSkippedRegionEdits()
+        {
+            foreach (var item in ItemList.Where(x => x.PendingRegionChange != null).ToList())
+                RevertPendingRegion(item, item.DiscType != "Game" ? "Disc type is not Game" : "Patching was cancelled");
         }
 
         private async Task ShrinkExistingItemsAsync(string tempDirectory)
@@ -3868,7 +4163,8 @@ namespace GDMENUCardManager.Core
                 x.Ip?.Name != "GDMENU" &&
                 x.Ip?.Name != "openMenu" &&
                 x.FileFormat == FileFormat.Uncompressed &&
-                x.DiscType == "Game").ToList();
+                x.DiscType == "Game" &&
+                (EnableRegionPatchExisting || EnableVgaPatchExisting || x.PendingRegionChange != null)).ToList();
 
             if (itemsToPatch.Count == 0)
                 return;

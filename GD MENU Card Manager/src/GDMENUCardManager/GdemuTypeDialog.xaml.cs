@@ -20,16 +20,9 @@ namespace GDMENUCardManager
             base.OnClosing(e);
         }
 
-        private void AuthenticButton_Click(object sender, RoutedEventArgs e)
+        private void OkButton_Click(object sender, RoutedEventArgs e)
         {
-            IsAuthentic = true;
-            _answered = true;
-            DialogResult = true;
-        }
-
-        private void CloneButton_Click(object sender, RoutedEventArgs e)
-        {
-            IsAuthentic = false;
+            IsAuthentic = AuthenticRadio.IsChecked == true;
             _answered = true;
             DialogResult = true;
         }

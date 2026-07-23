@@ -16,7 +16,6 @@ namespace GDMENUCardManager
         private string _importSourcePath;
         private string _exportTargetPath;
 
-        private const int MaxPathDisplayLength = 50;
 
         public DatToolsWindow()
         {
@@ -31,22 +30,6 @@ namespace GDMENUCardManager
             _reloadCallback = reloadCallback;
 
             this.KeyUp += (s, e) => { if (e.Key == System.Windows.Input.Key.Escape) Close(); };
-        }
-
-        /// <summary>
-        /// Truncate a path for display, adding "..." if too long.
-        /// </summary>
-        private string TruncatePath(string path)
-        {
-            if (string.IsNullOrEmpty(path))
-                return "[no folder selected]";
-
-            if (path.Length <= MaxPathDisplayLength)
-                return path;
-
-            // Show beginning and end with ... in middle
-            int halfLength = (MaxPathDisplayLength - 3) / 2;
-            return path.Substring(0, halfLength) + "..." + path.Substring(path.Length - halfLength);
         }
 
         #region Import Tab
@@ -73,8 +56,7 @@ namespace GDMENUCardManager
                     }
 
                     _importSourcePath = result;
-                    TextImportSourcePath.Text = TruncatePath(result);
-                    TextImportSourcePath.Foreground = Brushes.Black;
+                    TextImportSourcePath.Text = result;
                     ButtonBeginImport.IsEnabled = true;
                 }
             }
@@ -170,8 +152,7 @@ namespace GDMENUCardManager
                 if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
                 {
                     _exportTargetPath = dialog.SelectedPath;
-                    TextExportTargetPath.Text = TruncatePath(dialog.SelectedPath);
-                    TextExportTargetPath.Foreground = Brushes.Black;
+                    TextExportTargetPath.Text = dialog.SelectedPath;
                     ButtonBeginExport.IsEnabled = true;
                 }
             }

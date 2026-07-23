@@ -626,6 +626,12 @@ font_bmf_draw_centered(int x1, int y1, uint32_t color, const char* str) {
 }
 
 void
+font_bmf_draw_right(int x1, int y1, uint32_t color, const char* str) {
+    int temp = (int)_font_bmf_calculate_length(str);
+    _font_bmf_draw_string(x1 - temp, y1, color, str);
+}
+
+void
 font_bmf_draw_centered_auto_size(int x1, int y1, uint32_t color, const char* str, int width) {
     float save_scale = current_scale;
     float temp = _font_bmf_calculate_length(str);

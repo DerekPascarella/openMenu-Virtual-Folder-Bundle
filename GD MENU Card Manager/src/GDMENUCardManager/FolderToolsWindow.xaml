@@ -1,0 +1,177 @@
+<Window x:Class="GDMENUCardManager.FolderToolsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:conv="clr-namespace:GDMENUCardManager.Converter"
+        mc:Ignorable="d"
+        Title="Folder Tools" Width="520" Height="620" MinWidth="480" MinHeight="450"
+        WindowStartupLocation="CenterOwner" KeyDown="Window_KeyDown">
+    <Window.Resources>
+        <conv:ArtworkButtonLabelConverter x:Key="ArtworkButtonLabel"/>
+        <conv:BoolToVisibleOrCollapsedConverter x:Key="BoolToVisibleOrCollapsed"/>
+    </Window.Resources>
+    <Grid Margin="10">
+        <TabControl>
+            <!-- Folder Artwork Tab -->
+            <TabItem Header="Folder Artwork">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="1*"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" TextWrapping="Wrap" Margin="0,0,0,15">
+                        <Run FontWeight="Bold" Text="Assign artwork to folders shown in openMenu's Folders view mode"/><LineBreak/><LineBreak/><Run Text="Artwork changes aren't written to DAT files until clicking "/><Run FontWeight="Bold" Text="Save Changes"/><Run Text=" in the main window."/>
+                    </TextBlock>
+
+                    <Border Grid.Row="1" BorderBrush="#CCCCCC" BorderThickness="1">
+                        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding Folders}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="6,3">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="1*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <DockPanel Margin="0,0,8,0">
+                                                <TextBlock DockPanel.Dock="Left" Text="{Binding Display}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                <Line X1="0" Y1="0" X2="1" Y2="0" Stretch="Fill" Stroke="#A8A8A8" StrokeThickness="1"
+                                                      StrokeDashArray="1,3" VerticalAlignment="Center" Margin="6,2,0,0"/>
+                                            </DockPanel>
+                                            <Button Grid.Column="1" MinWidth="70" Padding="5,2" Click="AssignManage_Click" CommandParameter="{Binding}"
+                                                    Content="{Binding HasArt, Converter={StaticResource ArtworkButtonLabel}}">
+                                                <Button.Style>
+                                                    <Style TargetType="Button">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding HasArt}" Value="False">
+                                                                <Setter Property="FontWeight" Value="Bold"/>
+                                                                <Setter Property="ToolTip" Value="Assign artwork"/>
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding HasArt}" Value="True">
+                                                                <Setter Property="ToolTip" Value="Edit currently assigned artwork"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
+                                            </Button>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Border>
+
+                    <TextBlock Grid.Row="2" FontWeight="Bold" Margin="0,12,0,5"
+                               Visibility="{Binding HasOrphans, Converter={StaticResource BoolToVisibleOrCollapsed}}"
+                               Text="Unassigned artwork (folders that no longer exist)"/>
+
+                    <Border Grid.Row="3" BorderBrush="#CCCCCC" BorderThickness="1" MaxHeight="140"
+                            Visibility="{Binding HasOrphans, Converter={StaticResource BoolToVisibleOrCollapsed}}">
+                        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding Orphans}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="6,3">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="1*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            <DockPanel Margin="0,0,8,0">
+                                                <TextBlock DockPanel.Dock="Left" Text="{Binding Display}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+                                                <Line X1="0" Y1="0" X2="1" Y2="0" Stretch="Fill" Stroke="#A8A8A8" StrokeThickness="1"
+                                                      StrokeDashArray="1,3" VerticalAlignment="Center" Margin="6,2,0,0"/>
+                                            </DockPanel>
+                                            <Button Grid.Column="1" Padding="5,2" Margin="0,0,5,0" Content="View" Click="OrphanView_Click" CommandParameter="{Binding}"
+                                                    ToolTip="View the stored artwork"/>
+                                            <Button Grid.Column="2" Padding="5,2" Margin="0,0,5,0" Content="Re-assign..." Click="OrphanReassign_Click" CommandParameter="{Binding}"
+                                                    ToolTip="Move this artwork onto a current folder"/>
+                                            <Button Grid.Column="3" Padding="5,2" Content="Delete" Click="OrphanDelete_Click" CommandParameter="{Binding}"
+                                                    ToolTip="Remove this artwork from FOLDRART.DAT"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <!-- Batch Folder Move/Rename Tab -->
+            <TabItem Header="Batch Folder Move/Rename" IsEnabled="{Binding CanBatchRename}">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Margin="0,0,0,10" TextWrapping="Wrap">
+                        <Run FontWeight="Bold" Text="Perform batch folder move and rename operations"/><LineBreak/><LineBreak/><Run Text="Double-click to rename folders. Drag folders to reparent them. Changes apply when you click "/><Run FontWeight="Bold" Text="Apply Changes"/><Run Text="."/>
+                    </TextBlock>
+
+                    <Border Grid.Row="1" BorderBrush="#CCCCCC" BorderThickness="1">
+                        <TreeView x:Name="FolderTreeView"
+                                  ItemsSource="{Binding RootNodes}"
+                                  AllowDrop="True"
+                                  PreviewMouseLeftButtonDown="TreeView_PreviewMouseLeftButtonDown"
+                                  MouseMove="TreeView_MouseMove"
+                                  DragEnter="TreeView_DragEnter"
+                                  DragOver="TreeView_DragOver"
+                                  DragLeave="TreeView_DragLeave"
+                                  Drop="TreeView_Drop">
+                            <TreeView.ItemContainerStyle>
+                                <Style TargetType="TreeViewItem">
+                                    <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}"/>
+                                    <EventSetter Event="MouseDoubleClick" Handler="TreeViewItem_MouseDoubleClick"/>
+                                </Style>
+                            </TreeView.ItemContainerStyle>
+                            <TreeView.ItemTemplate>
+                                <HierarchicalDataTemplate ItemsSource="{Binding Children}">
+                                    <Border x:Name="ItemBorder"
+                                            Background="Transparent"
+                                            Padding="2"
+                                            CornerRadius="2">
+                                        <Grid>
+                                            <TextBlock Text="{Binding DisplayName}"
+                                                       Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibleOrCollapsed}, ConverterParameter=Inverse}"/>
+                                            <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"
+                                                     Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibleOrCollapsed}}"
+                                                     LostFocus="EditTextBox_LostFocus"
+                                                     KeyDown="EditTextBox_KeyDown"
+                                                     Loaded="EditTextBox_Loaded"/>
+                                        </Grid>
+                                    </Border>
+                                    <HierarchicalDataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding IsDropTarget}" Value="True">
+                                            <Setter TargetName="ItemBorder" Property="Background" Value="#ADD8E6"/>
+                                            <Setter TargetName="ItemBorder" Property="BorderBrush" Value="#4682B4"/>
+                                            <Setter TargetName="ItemBorder" Property="BorderThickness" Value="1"/>
+                                        </DataTrigger>
+                                    </HierarchicalDataTemplate.Triggers>
+                                </HierarchicalDataTemplate>
+                            </TreeView.ItemTemplate>
+                        </TreeView>
+                    </Border>
+
+                    <Grid Grid.Row="2" Margin="0,10,0,0">
+                        <Button HorizontalAlignment="Left" Content="Undo Last Change" Padding="15,8"
+                                Click="UndoButton_Click" IsEnabled="{Binding CanUndo}"
+                                ToolTip="Revert the most recent rename or move"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button Content="Apply Changes" Padding="15,8" Margin="0,0,10,0" Click="ApplyButton_Click" IsDefault="True"
+                                    ToolTip="Apply all folder renames and moves"/>
+                            <Button Content="Cancel" Width="80" Padding="15,8" Click="CancelButton_Click"
+                                    ToolTip="Discard all pending folder changes and close"/>
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+            </TabItem>
+        </TabControl>
+    </Grid>
+</Window>

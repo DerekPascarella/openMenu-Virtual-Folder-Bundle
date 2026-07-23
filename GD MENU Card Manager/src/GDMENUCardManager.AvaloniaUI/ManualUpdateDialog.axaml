@@ -5,7 +5,7 @@
         mc:Ignorable="d" d:DesignWidth="450" d:DesignHeight="220"
         x:Class="GDMENUCardManager.ManualUpdateDialog"
         Title="Manual Update Required" SizeToContent="Height" Width="450"
-        CanResize="False"
+        CanResize="False" CanMinimize="False"
         WindowStartupLocation="CenterOwner">
   <Grid Margin="20">
     <Grid.RowDefinitions>
@@ -22,13 +22,16 @@
       <Button x:Name="ReleasesLinkButton" Content="https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/releases"
               Click="ReleasesLink_Click" Margin="0 0 0 0"
               Background="Transparent" BorderBrush="Transparent" Foreground="Blue"
-              Padding="0" Cursor="Hand" HorizontalAlignment="Left"/>
+              Padding="0" Cursor="Hand" HorizontalAlignment="Left"
+              ToolTip.Tip="Open the releases page in your web browser"/>
     </StackPanel>
 
     <!-- Buttons -->
     <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 15 0 0">
-      <Button Content="Skip This Version" Click="SkipButton_Click" Width="120" Height="28" Margin="0 0 10 0"/>
-      <Button Content="OK" Click="OkButton_Click" Width="90" Height="28" IsDefault="True"/>
+      <Button Content="Skip This Version" Click="SkipButton_Click" Width="120" Padding="15,8" Margin="0 0 10 0"
+              ToolTip.Tip="Ignore this version and don't ask again until the next release"/>
+      <Button Content="OK" Click="OkButton_Click" Width="90" Padding="15,8" IsDefault="True"
+              ToolTip.Tip="Close this notice"/>
     </StackPanel>
   </Grid>
 </Window>

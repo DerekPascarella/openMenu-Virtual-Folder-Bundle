@@ -53,7 +53,7 @@ namespace GDMENUCardManager
 
             var listControl = this.FindControl<ItemsControl>("TranslationList");
             if (listControl != null)
-                listControl.Items = _items;
+                listControl.ItemsSource = _items;
         }
 
         private void InitializeComponent()

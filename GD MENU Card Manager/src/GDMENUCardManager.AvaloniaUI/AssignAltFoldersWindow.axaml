@@ -6,7 +6,7 @@
         x:Class="GDMENUCardManager.AssignAltFoldersWindow"
         Title="Assign Additional Folder Paths"
         SizeToContent="Height" Width="420" MinHeight="160" MaxHeight="420"
-        CanResize="False" WindowStartupLocation="CenterOwner">
+        CanResize="False" CanMinimize="False" WindowStartupLocation="CenterOwner">
   <StackPanel Margin="15">
     <TextBlock x:Name="HeaderLabel" Margin="0 0 0 15" FontWeight="Bold"/>
 
@@ -18,7 +18,8 @@
                        Text="{Binding Label}"/>
             <DockPanel>
               <Button DockPanel.Dock="Right" Content="X" Width="26" Height="26"
-                      Margin="5 0 0 0" Click="RemoveButton_Click"/>
+                      Margin="5 0 0 0" Click="RemoveButton_Click"
+                      ToolTip.Tip="Remove this folder path"/>
               <TextBox Text="{Binding FolderPath, Mode=TwoWay}"
                        MaxLength="256" Watermark="e.g., Games\Action\US"
                        LostFocus="FolderPath_LostFocus"/>
@@ -29,11 +30,14 @@
     </ItemsControl>
 
     <Button x:Name="AddButton" Content="+ Add Folder Path" Click="AddButton_Click"
-            HorizontalAlignment="Left" Margin="0 0 0 0" Padding="15,8"/>
+            HorizontalAlignment="Left" Margin="0 0 0 0" Padding="15,8"
+            ToolTip.Tip="Add another folder path for this game"/>
 
     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 20 0 0">
-      <Button Content="OK" Click="OkButton_Click" IsDefault="True" Width="80" Padding="15,8" Margin="0 0 10 0"/>
-      <Button Content="Cancel" Click="CancelButton_Click" IsCancel="True" Width="80" Padding="15,8"/>
+      <Button Content="OK" Click="OkButton_Click" IsDefault="True" Width="80" Padding="15,8" Margin="0 0 10 0"
+              ToolTip.Tip="Save the additional folder paths for this game"/>
+      <Button Content="Cancel" Click="CancelButton_Click" IsCancel="True" Width="80" Padding="15,8"
+              ToolTip.Tip="Close without saving changes"/>
     </StackPanel>
   </StackPanel>
 </Window>

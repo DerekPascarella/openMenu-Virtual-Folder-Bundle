@@ -1,9 +1,10 @@
+using Avalonia.Platform.Storage;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
-using MessageBox.Avalonia;
-using MessageBox.Avalonia.Models;
+using MsBox.Avalonia;
+using MsBox.Avalonia.Models;
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -20,14 +21,13 @@ namespace GDMENUCardManager
         private string _importSourcePath;
         private string _exportTargetPath;
 
-        private const int MaxPathDisplayLength = 50;
 
         // UI controls
         private TextBlock TextImportInstructions;
         private TextBlock TextClearInstructions;
         private TextBlock TextOverwriteInstructions;
-        private TextBlock TextImportSourcePath;
-        private TextBlock TextExportTargetPath;
+        private TextBox TextImportSourcePath;
+        private TextBox TextExportTargetPath;
         private Button ButtonBeginImport;
         private Button ButtonBeginExport;
         private RadioButton RadioImportMissing;
@@ -49,8 +49,8 @@ namespace GDMENUCardManager
             TextImportInstructions = this.FindControl<TextBlock>("TextImportInstructions");
             TextClearInstructions = this.FindControl<TextBlock>("TextClearInstructions");
             TextOverwriteInstructions = this.FindControl<TextBlock>("TextOverwriteInstructions");
-            TextImportSourcePath = this.FindControl<TextBlock>("TextImportSourcePath");
-            TextExportTargetPath = this.FindControl<TextBlock>("TextExportTargetPath");
+            TextImportSourcePath = this.FindControl<TextBox>("TextImportSourcePath");
+            TextExportTargetPath = this.FindControl<TextBox>("TextExportTargetPath");
             ButtonBeginImport = this.FindControl<Button>("ButtonBeginImport");
             ButtonBeginExport = this.FindControl<Button>("ButtonBeginExport");
             RadioImportMissing = this.FindControl<RadioButton>("RadioImportMissing");
@@ -84,7 +84,7 @@ namespace GDMENUCardManager
 
             TextImportInstructions.Text =
                 $"Before this process is initiated, the DATs that currently reside in {datFolder} will be backed up to the {backupFolder} folder.\n\n" +
-                "Use \"Choose DAT Folder\" to select a folder containing either BOX.DAT or META.DAT (or both), as ICON.DAT will be automatically generated from BOX.DAT.\n\n" +
+                "Use \"Browse\" to select a folder containing either BOX.DAT or META.DAT (or both), as ICON.DAT will be automatically generated from BOX.DAT.\n\n" +
                 "Decide if only entries missing from the current DATs should be imported, or if all entries should be imported, overwriting anything currently existing. Then, click \"Begin Import\" to perform this operation.\n\n" +
                 "Please note that any unsaved artwork changes from this session will also be included.";
 
@@ -104,37 +104,21 @@ namespace GDMENUCardManager
             {
                 TextOverwriteInstructions.Text =
                     "The DAT files in the \"tools/openMenu/menu_data\" folder are used each time openMenu is rebuilt and saved to the GDEMU SD card.\n\n" +
-                    "However, there are several scenarios where a user may wish to immediately overwrite those with the DAT files that were used to generate their SD card's openMenu. For example, a user upgrading from a previous version of openMenu Virtual Folder Bundle will likely already have custom artwork.\n\n" +
+                    "However, there are several scenarios where a user may wish to immediately overwrite those with the DAT files that were used to generate their SD card's openMenu. For example, a macOS user who cannot use the auto-update function and is upgrading from a previous version of openMenu Virtual Folder Bundle will likely already have custom artwork.\n\n" +
                     "While such users can easily copy the DAT files from their previous version of GD MENU Card Manager's \"tools/openMenu/menu_data\" folder into the current version's \"menu_data\" folder, the tool here can perform this automatically using the SD card itself as the source.";
             }
-        }
-
-        /// <summary>
-        /// Truncate a path for display, adding "..." if too long.
-        /// </summary>
-        private string TruncatePath(string path)
-        {
-            if (string.IsNullOrEmpty(path))
-                return "[no folder selected]";
-
-            if (path.Length <= MaxPathDisplayLength)
-                return path;
-
-            // Show beginning and end with ... in middle
-            int halfLength = (MaxPathDisplayLength - 3) / 2;
-            return path.Substring(0, halfLength) + "..." + path.Substring(path.Length - halfLength);
         }
 
         #region Import Tab
 
         private async void ChooseImportFolder_Click(object sender, RoutedEventArgs e)
         {
-            var dialog = new OpenFolderDialog
+            var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
             {
-                Title = "Select DAT import folder"
-            };
-
-            var result = await dialog.ShowAsync(this);
+                Title = "Select DAT import folder",
+                AllowMultiple = false
+            });
+            var result = folders.Count > 0 ? folders[0].TryGetLocalPath() : null;
             if (!string.IsNullOrEmpty(result))
             {
                 // Validate the folder contains at least one DAT file
@@ -148,8 +132,7 @@ namespace GDMENUCardManager
                 }
 
                 _importSourcePath = result;
-                TextImportSourcePath.Text = TruncatePath(result);
-                TextImportSourcePath.Foreground = Avalonia.Media.Brushes.Black;
+                TextImportSourcePath.Text = result;
                 ButtonBeginImport.IsEnabled = true;
             }
         }
@@ -160,11 +143,11 @@ namespace GDMENUCardManager
                 return;
 
             // Confirmation dialog
-            var confirmResult = await MessageBoxManager.GetMessageBoxCustomWindow(new MessageBox.Avalonia.DTO.MessageBoxCustomParams
+            var confirmResult = await MessageBoxManager.GetMessageBoxCustom(new MsBox.Avalonia.Dto.MessageBoxCustomParams
             {
                 ContentTitle = "Confirmation",
                 ContentMessage = "This will backup current DAT files and merge entries from the selected folder.\n\nContinue?",
-                Icon = MessageBox.Avalonia.Enums.Icon.Warning,
+                Icon = MsBox.Avalonia.Enums.Icon.Warning,
                 ShowInCenter = true,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 ButtonDefinitions = new ButtonDefinition[]
@@ -172,7 +155,7 @@ namespace GDMENUCardManager
                     new ButtonDefinition { Name = "Continue" },
                     new ButtonDefinition { Name = "Cancel" }
                 }
-            }).ShowDialog(this);
+            }).ShowWindowDialogAsync(this);
 
             if (confirmResult != "Continue")
                 return;
@@ -244,17 +227,16 @@ namespace GDMENUCardManager
 
         private async void ChooseExportFolder_Click(object sender, RoutedEventArgs e)
         {
-            var dialog = new OpenFolderDialog
+            var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
             {
-                Title = "Select PNG export folder"
-            };
-
-            var result = await dialog.ShowAsync(this);
+                Title = "Select PNG export folder",
+                AllowMultiple = false
+            });
+            var result = folders.Count > 0 ? folders[0].TryGetLocalPath() : null;
             if (!string.IsNullOrEmpty(result))
             {
                 _exportTargetPath = result;
-                TextExportTargetPath.Text = TruncatePath(result);
-                TextExportTargetPath.Foreground = Avalonia.Media.Brushes.Black;
+                TextExportTargetPath.Text = result;
                 ButtonBeginExport.IsEnabled = true;
             }
         }
@@ -313,11 +295,11 @@ namespace GDMENUCardManager
         private async void ClearDats_Click(object sender, RoutedEventArgs e)
         {
             // Confirmation dialog
-            var confirmResult = await MessageBoxManager.GetMessageBoxCustomWindow(new MessageBox.Avalonia.DTO.MessageBoxCustomParams
+            var confirmResult = await MessageBoxManager.GetMessageBoxCustom(new MsBox.Avalonia.Dto.MessageBoxCustomParams
             {
                 ContentTitle = "Confirmation",
                 ContentMessage = "This will backup current DAT files and then clear ALL artwork and metadata entries.\n\nThis action cannot be undone. Continue?",
-                Icon = MessageBox.Avalonia.Enums.Icon.Warning,
+                Icon = MsBox.Avalonia.Enums.Icon.Warning,
                 ShowInCenter = true,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 ButtonDefinitions = new ButtonDefinition[]
@@ -325,7 +307,7 @@ namespace GDMENUCardManager
                     new ButtonDefinition { Name = "Clear All" },
                     new ButtonDefinition { Name = "Cancel" }
                 }
-            }).ShowDialog(this);
+            }).ShowWindowDialogAsync(this);
 
             if (confirmResult != "Clear All")
                 return;
@@ -382,11 +364,11 @@ namespace GDMENUCardManager
         private async void OverwriteDats_Click(object sender, RoutedEventArgs e)
         {
             // Confirmation dialog
-            var confirmResult = await MessageBoxManager.GetMessageBoxCustomWindow(new MessageBox.Avalonia.DTO.MessageBoxCustomParams
+            var confirmResult = await MessageBoxManager.GetMessageBoxCustom(new MsBox.Avalonia.Dto.MessageBoxCustomParams
             {
                 ContentTitle = "Confirmation",
                 ContentMessage = "This will backup current DAT files and overwrite them with those from the SD card's openMenu disc image.\n\nContinue?",
-                Icon = MessageBox.Avalonia.Enums.Icon.Warning,
+                Icon = MsBox.Avalonia.Enums.Icon.Warning,
                 ShowInCenter = true,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 ButtonDefinitions = new ButtonDefinition[]
@@ -394,7 +376,7 @@ namespace GDMENUCardManager
                     new ButtonDefinition { Name = "Continue" },
                     new ButtonDefinition { Name = "Cancel" }
                 }
-            }).ShowDialog(this);
+            }).ShowWindowDialogAsync(this);
 
             if (confirmResult != "Continue")
                 return;
@@ -449,16 +431,16 @@ namespace GDMENUCardManager
 
         private async Task ShowError(string message)
         {
-            await MessageBoxManager.GetMessageBoxStandardWindow("Error", message,
-                MessageBox.Avalonia.Enums.ButtonEnum.Ok, MessageBox.Avalonia.Enums.Icon.Error)
-                .ShowDialog(this);
+            await MessageBoxManager.GetMessageBoxStandard("Error", message,
+                MsBox.Avalonia.Enums.ButtonEnum.Ok, MsBox.Avalonia.Enums.Icon.Error)
+                .ShowWindowDialogAsync(this);
         }
 
         private async Task ShowInfo(string message)
         {
-            await MessageBoxManager.GetMessageBoxStandardWindow("Information", message,
-                MessageBox.Avalonia.Enums.ButtonEnum.Ok, MessageBox.Avalonia.Enums.Icon.Info)
-                .ShowDialog(this);
+            await MessageBoxManager.GetMessageBoxStandard("Information", message,
+                MsBox.Avalonia.Enums.ButtonEnum.Ok, MsBox.Avalonia.Enums.Icon.Info)
+                .ShowWindowDialogAsync(this);
         }
 
         /// <summary>

@@ -89,6 +89,7 @@ savefile_defaults() {
     sf_scroll_art[0] = SCROLL_ART_ON;
     sf_scroll_index[0] = SCROLL_INDEX_ON;
     sf_folders_art[0] = FOLDERS_ART_ON;
+    sf_folder_art[0] = FOLDER_ART_ON;
     sf_marquee_speed[0] = MARQUEE_SPEED_MEDIUM;
     sf_disc_details[0] = DISC_DETAILS_SHOW;
     sf_folders_item_details[0] = FOLDERS_ITEM_DETAILS_ON;
@@ -98,6 +99,8 @@ savefile_defaults() {
     sf_vmu_time_sync[0] = VMU_TIME_SYNC_OFF;
     sf_serial_vmu[0] = SERIAL_VMU_OFF;
     sf_serial_vmu_multislot[0] = SERIAL_VMU_MULTISLOT_OFF;
+    sf_music[0] = MUSIC_ON;
+    sf_honor_defaults[0] = HONOR_DEFAULTS_ON;
 }
 
 // THIS IS USED BY THE CRAYON SAVEFILE DESERIALISER WHEN LOADING A SAVE FROM AN OLDER VERSION
@@ -154,6 +157,15 @@ update_savefile(void** loaded_variables, crayon_savefile_version_t loaded_versio
     }
     if (loaded_version < SFV_EXIT_BIOS) {
         sf_bios_3d[0] = BIOS_3D_STANDARD;
+    }
+    if (loaded_version < SFV_FOLDER_ART) {
+        sf_folder_art[0] = FOLDER_ART_ON;
+    }
+    if (loaded_version < SFV_MUSIC) {
+        sf_music[0] = MUSIC_ON;
+    }
+    if (loaded_version < SFV_HONOR_DEFAULTS) {
+        sf_honor_defaults[0] = HONOR_DEFAULTS_ON;
     }
     return 0;
 }
@@ -233,6 +245,11 @@ setup_savefile_internal(crayon_savefile_details_t* details, bool skip_vmu_lcd) {
                                  VAR_STILL_PRESENT);
     crayon_savefile_add_variable(details, &sf_serial_vmu_multislot, sf_serial_vmu_multislot_type,
                                  sf_serial_vmu_multislot_length, SFV_SERIAL_VMU_MULTISLOT, VAR_STILL_PRESENT);
+    crayon_savefile_add_variable(details, &sf_folder_art, sf_folder_art_type, sf_folder_art_length, SFV_FOLDER_ART,
+                                 VAR_STILL_PRESENT);
+    crayon_savefile_add_variable(details, &sf_music, sf_music_type, sf_music_length, SFV_MUSIC, VAR_STILL_PRESENT);
+    crayon_savefile_add_variable(details, &sf_honor_defaults, sf_honor_defaults_type, sf_honor_defaults_length,
+                                 SFV_HONOR_DEFAULTS, VAR_STILL_PRESENT);
 
     if (crayon_savefile_solidify(details)) {
         return 1;

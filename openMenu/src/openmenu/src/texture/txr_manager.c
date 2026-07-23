@@ -43,6 +43,9 @@ typedef struct dat_system {
 static dat_system icon_system;
 static dat_system box_system;
 
+/* Folder artwork entries, box format, shares the large pool and cache */
+static struct dat_file folder_dat;
+
 unsigned int
 block_pool_add_cb(const char* key, void* user) {
     /* unused here but could be good info to know */
@@ -74,11 +77,13 @@ txr_load_DATs(void) {
     DAT_init(&icon_system.primary);
     DAT_init(&box_system.addon);
     DAT_init(&box_system.primary);
+    DAT_init(&folder_dat);
 
     DAT_load_parse(&icon_system.primary, "ICON.DAT");
     DAT_load_parse(&box_system.primary, "BOX.DAT");
     DAT_load_parse(&icon_system.addon, "ICON_EX.DAT");
     DAT_load_parse(&box_system.addon, "BOX_EX.DAT");
+    DAT_load_parse(&folder_dat, "FOLDRART.DAT");
 
     return 0;
 }
@@ -175,4 +180,35 @@ txr_get_small(const char* id, struct image* img) {
 int
 txr_get_large(const char* id, struct image* img) {
     return txr_get_from_dat_set(id, img, &box_system);
+}
+
+/* Folder artwork lookup. Searches only FOLDRART.DAT but shares the large
+ * pool and cache. Keys are hashed folder paths so no serial sanitizing. */
+int
+txr_get_folder(const char* id, struct image* img) {
+    void* txr_ptr;
+    int slot_num;
+
+    uint32_t temp_offset = DAT_get_offset_by_ID(&folder_dat, id);
+    if (!temp_offset) {
+        draw_load_missing_icon(img);
+        return 0;
+    }
+    slot_num = find_in_cache(&box_system.cache, id);
+    if (slot_num == -1) {
+        add_to_cache(&box_system.cache, id, 0);
+        slot_num = find_in_cache(&box_system.cache, id);
+        txr_ptr = pool_get_slot_addr(&box_system.pool, slot_num);
+
+        /* now load the texture into vram */
+        draw_load_texture_from_DAT_to_buffer(&folder_dat, id, img, txr_ptr);
+        pool_set_slot_format(&box_system.pool, slot_num, img->width, img->height, img->format);
+    } else {
+        const slot_format* fmt = pool_get_slot_format(&box_system.pool, slot_num);
+        img->width = fmt->width;
+        img->height = fmt->height;
+        img->format = fmt->format;
+        img->texture = pool_get_slot_addr(&box_system.pool, slot_num);
+    }
+    return 0;
 }

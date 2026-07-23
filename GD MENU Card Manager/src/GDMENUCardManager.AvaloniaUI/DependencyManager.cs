@@ -1,7 +1,7 @@
-﻿using Avalonia.Controls;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
-using MessageBox.Avalonia;
-using MessageBox.Avalonia.Enums;
+using MsBox.Avalonia;
+using MsBox.Avalonia.Enums;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -32,7 +32,12 @@ namespace GDMENUCardManager
 
         public async ValueTask<bool> ShowYesNoDialog(string caption, string text)
         {
-            return await MessageBoxManager.GetMessageBoxStandardWindow(caption, text, ButtonEnum.YesNo).ShowDialog(getMainWindow()) == ButtonResult.Yes;
+            return await MessageBoxManager.GetMessageBoxStandard(caption, text, ButtonEnum.YesNo).ShowWindowDialogAsync(getMainWindow()) == ButtonResult.Yes;
+        }
+
+        public async ValueTask ShowWarningDialog(string caption, string text)
+        {
+            await MessageBoxManager.GetMessageBoxStandard(caption, text, ButtonEnum.Ok, Icon.Warning).ShowWindowDialogAsync(getMainWindow());
         }
 
         public async ValueTask<bool> ShowLockedFilesDialog(Dictionary<string, string> lockedFiles)
@@ -103,11 +108,11 @@ namespace GDMENUCardManager
 
             sb.AppendLine("\nDo you want to proceed anyway?");
 
-            var result = await MessageBoxManager.GetMessageBoxStandardWindow(
+            var result = await MessageBoxManager.GetMessageBoxStandard(
                 "Confirmation",
                 sb.ToString(),
                 ButtonEnum.YesNo,
-                Icon.Warning).ShowDialog(getMainWindow());
+                Icon.Warning).ShowWindowDialogAsync(getMainWindow());
 
             return result == ButtonResult.Yes;
         }
@@ -135,11 +140,11 @@ namespace GDMENUCardManager
             sb.AppendLine("\nPlease free up space on the SD card and try again.");
             sb.AppendLine("\nThe application will now close.");
 
-            await MessageBoxManager.GetMessageBoxStandardWindow(
+            await MessageBoxManager.GetMessageBoxStandard(
                 "Error",
                 sb.ToString(),
                 ButtonEnum.Ok,
-                Icon.Error).ShowDialog(getMainWindow());
+                Icon.Error).ShowWindowDialogAsync(getMainWindow());
 
             // Exit the application
             var lifetime = App.Current.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime;

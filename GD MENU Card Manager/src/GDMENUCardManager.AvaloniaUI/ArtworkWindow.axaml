@@ -4,7 +4,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="420" d:DesignHeight="400"
         x:Class="GDMENUCardManager.ArtworkWindow"
-        Title="{Binding WindowTitle}" Width="420" SizeToContent="Height" CanResize="False"
+        Title="{Binding WindowTitle}" Width="420" SizeToContent="Height" CanResize="False" CanMinimize="False"
         WindowStartupLocation="CenterOwner">
   <Grid Margin="10">
     <Grid.RowDefinitions>
@@ -60,7 +60,7 @@
     <!-- Buttons -->
     <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
       <Button Content="Browse for Image" Click="BrowseImage_Click" Margin="0,0,10,0" Padding="15,8"
-              ToolTip.Tip="Choose a PNG, JPG, or BMP file to use as artwork for this game"/>
+              ToolTip.Tip="Choose a PNG, JPG, or BMP file to use as artwork for this game (avoid images with transparency)"/>
       <Button Content="Delete Entry" Click="DeleteEntry_Click" Margin="0,0,10,0" Padding="15,8"
               IsEnabled="{Binding CanDelete}"
               ToolTip.Tip="Remove this game's artwork and metadata from the DATs"/>

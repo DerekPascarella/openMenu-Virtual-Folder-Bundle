@@ -1,4 +1,4 @@
-﻿<Window xmlns="https://github.com/avaloniaui"
+<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -8,13 +8,14 @@
         xmlns:local="clr-namespace:GDMENUCardManager"
         mc:Ignorable="d" d:DesignWidth="960" d:DesignHeight="550"
         x:Class="GDMENUCardManager.MainWindow"
-        Title="GD MENU Card Manager" Height="800" Width="960" MinHeight="400" MinWidth="960"
+        Title="GD MENU Card Manager" Height="800" Width="1020" MinHeight="400" MinWidth="1020"
         WindowStartupLocation="CenterScreen"
         Icon="/Assets/GDMENUCardManager.ico"
         DragDrop.AllowDrop="{Binding Path=!IsBusy, Mode=OneWay}">
   <Window.Resources>
     <ResourceDictionary>
       <conv:ByteSizeToStringConverter x:Key="ByteSizeToString"/>
+      <conv:FolderNumberConverter x:Key="FolderNumber"/>
       <conv:EnumToBoolConverter x:Key="EnumToBool"/>
       <conv:IsNotMenuItemConverter x:Key="IsNotMenuItem"/>
       <conv:IsGameDiscConverter x:Key="IsGameDisc"/>
@@ -66,11 +67,15 @@
 
     <HeaderedContentControl Grid.Row="1" Header="Settings" Margin="10" IsEnabled="{Binding !IsBusy, Mode=OneWay}">
       <Grid>
+        <!-- Star spacer columns keep the gaps between sections equal at any window width -->
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="*" MinWidth="30"/>
           <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="*" MinWidth="30"/>
           <ColumnDefinition Width="Auto"/>
-          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="*" MinWidth="30"/>
+          <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
 
         <Grid Grid.Column="0">
@@ -89,7 +94,7 @@
               </Canvas>
             </Viewbox>
           </Button>
-          <ComboBox Grid.Column="2" Width="150" Items="{Binding DriveList, Mode=OneWay}" SelectedItem="{Binding SelectedDrive}" ToolTip.Tip="{Binding Path=SelectedDrive.VolumeLabel, Mode=OneWay}"
+          <ComboBox Grid.Column="2" Width="150" ItemsSource="{Binding DriveList, Mode=OneWay}" SelectedItem="{Binding SelectedDrive}" ToolTip.Tip="{Binding Path=SelectedDrive.VolumeLabel, Mode=OneWay}"
                     IsVisible="{Binding !IsUsingCustomPath}">
             <ComboBox.ItemTemplate>
               <DataTemplate>
@@ -104,47 +109,36 @@
           </Button>
         </Grid>
 
-        <Grid Grid.Column="1" Margin="30 0 0 0">
+        <Grid Grid.Column="2">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="Auto"/>
           </Grid.ColumnDefinitions>
-
           <TextBlock Grid.Column="0" VerticalAlignment="Center">Temp. Folder</TextBlock>
-
-          <Grid Grid.Column="1" Margin="10 0 0 0">
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="Auto"/>
-              <ColumnDefinition Width="Auto"/>
-              <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-            <Button Width="30" Click="ButtonFolder_Click" ToolTip.Tip="Select temporary folder">
-              <ContentControl Content="{StaticResource ViewOpenFolder}"/>
-            </Button>
-            <TextBox Grid.Column="1" Width="200" Watermark="Inform temporary folder" VerticalContentAlignment="Center" Text="{Binding TempFolder}" IsReadOnly="True"/>
-            <Button Grid.Column="2" Width="30" Click="ButtonResetTempFolder_Click" ToolTip.Tip="Reset to system default">
-              <Viewbox Width="18" Height="18"><Canvas Width="24" Height="24"><Path Data="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z" Fill="{DynamicResource ThemeForegroundBrush}" /></Canvas></Viewbox>
-            </Button>
-          </Grid>
+          <Button Grid.Column="1" Width="30" Margin="10 0 0 0" Click="ButtonFolder_Click" ToolTip.Tip="Select temporary folder">
+            <ContentControl Content="{StaticResource ViewOpenFolder}"/>
+          </Button>
+          <TextBox Grid.Column="2" Width="150" VerticalContentAlignment="Center" Text="{Binding TempFolder}" IsReadOnly="True"/>
+          <Button Grid.Column="3" Width="30" Click="ButtonResetTempFolder_Click" ToolTip.Tip="Reset to system default">
+            <Viewbox Width="18" Height="18"><Canvas Width="24" Height="24"><Path Data="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z" Fill="{DynamicResource ThemeForegroundBrush}" /></Canvas></Viewbox>
+          </Button>
         </Grid>
 
-        <Grid Grid.Column="2" Margin="30 0 0 0">
+        <Grid Grid.Column="4">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="Auto"/>
           </Grid.ColumnDefinitions>
           <TextBlock Grid.Column="0" VerticalAlignment="Center">Menu Type</TextBlock>
-          <Grid Grid.Column="1" Margin="10 0 0 0">
-            <Grid.RowDefinitions>
-              <RowDefinition/>
-              <RowDefinition/>
-            </Grid.RowDefinitions>
-            <RadioButton Grid.Row="0" GroupName="MenuKind" IsThreeState="False" IsChecked="{Binding MenuKindSelected, Mode=TwoWay, Converter={StaticResource EnumToBool}, ConverterParameter={x:Static core:MenuKind.gdMenu}}" ToolTip.Tip="Use gdMenu">gdMenu</RadioButton>
-            <RadioButton Grid.Row="1" GroupName="MenuKind" IsThreeState="False" IsChecked="{Binding MenuKindSelected, Mode=TwoWay, Converter={StaticResource EnumToBool}, ConverterParameter={x:Static core:MenuKind.openMenu}}" ToolTip.Tip="Use openMenu">openMenu</RadioButton>
-          </Grid>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="10 0 0 0" VerticalAlignment="Center">
+            <RadioButton GroupName="MenuKind" IsThreeState="False" IsChecked="{Binding MenuKindSelected, Mode=TwoWay, Converter={StaticResource EnumToBool}, ConverterParameter={x:Static core:MenuKind.gdMenu}}" ToolTip.Tip="Use gdMenu">gdMenu</RadioButton>
+            <RadioButton Margin="10 0 0 0" GroupName="MenuKind" IsThreeState="False" IsChecked="{Binding MenuKindSelected, Mode=TwoWay, Converter={StaticResource EnumToBool}, ConverterParameter={x:Static core:MenuKind.openMenu}}" ToolTip.Tip="Use openMenu">openMenu</RadioButton>
+          </StackPanel>
         </Grid>
 
-        <Button Grid.Column="3" Width="30" Margin="30 0 0 0" HorizontalAlignment="Right" ToolTip.Tip="About" Click="ButtonAbout_Click">
+        <Button Grid.Column="6" Width="30" ToolTip.Tip="About" Click="ButtonAbout_Click">
           <Viewbox Width="18" Height="18">
             <Canvas Width="24" Height="24">
               <Path Data="M11,9H13V7H11M12,20C7.59,20 4,16.41 4,12C4,7.59 7.59,4 12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M11,17H13V11H11V17Z" Fill="{DynamicResource ThemeForegroundBrush}" />
@@ -179,11 +173,17 @@
               <Viewbox Width="18" Height="18"><Canvas Width="24" Height="24"><Path Data="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z" Fill="{DynamicResource ThemeForegroundBrush}" /></Canvas></Viewbox>
             </Button>
           </Grid>
-          <Button DockPanel.Dock="Right" HorizontalAlignment="Right" Padding="10 5" Click="ButtonDiscImageOptions_Click" ToolTip.Tip="Various disc image modification options"
-                  IsEnabled="{Binding HasSdPath}">Disc Image Options</Button>
-          <Button DockPanel.Dock="Right" HorizontalAlignment="Right" Padding="10 5" Margin="0 0 10 0" Click="ButtonDatTools_Click"
+          <Button DockPanel.Dock="Right" HorizontalAlignment="Right" Padding="10 5" Margin="10 0 0 0" Click="ButtonFolderTools_Click"
+                  IsVisible="{Binding MenuKindSelected, Converter={StaticResource IsOpenMenuMode}}" ToolTip.Tip="Folder artwork and batch folder move/rename tools"
+                  IsEnabled="{Binding HasSdPath}">Folder Tools</Button>
+          <Button DockPanel.Dock="Right" HorizontalAlignment="Right" Padding="10 5" Margin="10 0 0 0" Click="ButtonDatTools_Click"
                   IsVisible="{Binding MenuKindSelected, Converter={StaticResource IsOpenMenuMode}}" ToolTip.Tip="Various DAT file maintenance tasks"
                   IsEnabled="{Binding HasSdPath}">DAT Tools</Button>
+          <Button DockPanel.Dock="Right" HorizontalAlignment="Right" Padding="10 5" Margin="10 0 0 0" Click="ButtonMenuOptions_Click"
+                  IsVisible="{Binding MenuKindSelected, Converter={StaticResource IsOpenMenuMode}}"
+                  ToolTip.Tip="Default boot style/theme and background music for the openMenu disc">Menu Options</Button>
+          <Button DockPanel.Dock="Right" HorizontalAlignment="Right" Padding="10 5" Click="ButtonDiscImageOptions_Click" ToolTip.Tip="Various disc image modification options"
+                  IsEnabled="{Binding HasSdPath}">Disc Image Options</Button>
           <Button x:Name="ButtonSort" DockPanel.Dock="Right" HorizontalAlignment="Right" Padding="10 5" Margin="0 0 10 0" Click="ButtonSort_Click" ToolTip.Tip="Sort list by folder path + title">
             <Button.IsEnabled>
               <MultiBinding Converter="{StaticResource BoolAndConverter}">
@@ -193,8 +193,9 @@
             </Button.IsEnabled>
             Sort List</Button>
         </DockPanel>
-        
-        <DataGrid Name="dg1" Items="{Binding Manager.ItemList, Mode=OneTime}" IsEnabled="{Binding Path=!IsBusy, Mode=OneWay}" AutoGenerateColumns="False" CanUserResizeColumns="False" CanUserSortColumns="False" CanUserReorderColumns="False" KeyDown="GridOnKeyDown" BeginningEdit="DataGrid_BeginningEdit" CellEditEnding="DataGrid_CellEditEnding" SelectionChanged="DataGrid_SelectionChanged" RowBackground="{DynamicResource ThemeBackgroundBrush}" AlternatingRowBackground="{DynamicResource ThemeBackgroundBrush}" GridLinesVisibility="All" BorderBrush="Black" BorderThickness="1" HorizontalGridLinesBrush="LightGray" VerticalGridLinesBrush="LightGray">
+
+        <Grid>
+        <DataGrid Name="dg1" ItemsSource="{Binding Manager.ItemList, Mode=OneTime}" IsEnabled="{Binding Path=!IsBusy, Mode=OneWay}" AutoGenerateColumns="False" CanUserResizeColumns="True" CanUserSortColumns="False" CanUserReorderColumns="False" KeyDown="GridOnKeyDown" BeginningEdit="DataGrid_BeginningEdit" CellEditEnding="DataGrid_CellEditEnding" SelectionChanged="DataGrid_SelectionChanged" RowBackground="{DynamicResource ThemeBackgroundBrush}" GridLinesVisibility="All" BorderBrush="Black" BorderThickness="1" HorizontalGridLinesBrush="LightGray" VerticalGridLinesBrush="LightGray">
           <DataGrid.Styles>
             <Style Selector="DataGridRow">
               <Setter Property="ContextMenu" Value="{DynamicResource rowmenu}"/>
@@ -247,7 +248,7 @@
               </DataGridTemplateColumn.CellTemplate>
             </DataGridTemplateColumn>
             <DataGridTextColumn Header="Location" Width="60" IsReadOnly="True" Binding="{Binding Location, Mode=OneWay}"/>
-            <DataGridTextColumn Width="45" IsReadOnly="True" Binding="{Binding SdNumber, Mode=OneWay}">
+            <DataGridTextColumn Width="45" IsReadOnly="True" Binding="{Binding SdNumber, Mode=OneWay, Converter={StaticResource FolderNumber}}">
               <DataGridTextColumn.Header>
                 <TextBlock Text="SD #" ToolTip.Tip="Current item folder on SD card"/>
               </DataGridTextColumn.Header>
@@ -289,14 +290,14 @@
                 </DataTemplate>
               </DataGridTemplateColumn.CellEditingTemplate>
             </DataGridTemplateColumn>
-            <DataGridTemplateColumn Header="Art" Width="60" IsVisible="False">
+            <DataGridTemplateColumn Header="Artwork" Width="60" IsVisible="False">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate>
                   <Button Click="ButtonArtwork_Click" CommandParameter="{Binding}"
                           Content="{Binding HasArtwork, Converter={StaticResource ArtworkButtonLabel}}"
                           FontWeight="{Binding HasArtwork, Converter={StaticResource ArtworkButtonFontWeight}}"
                           ToolTip.Tip="{Binding HasArtwork, Converter={StaticResource ArtworkButtonLabel}, ConverterParameter=tooltip}"
-                          Padding="5,2" MinWidth="55" HorizontalAlignment="Center">
+                          Padding="5,2" MinWidth="55" HorizontalAlignment="Stretch">
                     <Button.IsEnabled>
                       <MultiBinding Converter="{StaticResource BoolAndConverter}">
                         <Binding Path="CanManageArtwork"/>
@@ -319,6 +320,18 @@
                 </DataTemplate>
               </DataGridTemplateColumn.CellEditingTemplate>
             </DataGridTemplateColumn>
+            <DataGridTemplateColumn Header="Region" Width="60">
+              <DataGridTemplateColumn.CellTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding Region, Mode=OneWay}" VerticalAlignment="Center"/>
+                </DataTemplate>
+              </DataGridTemplateColumn.CellTemplate>
+              <DataGridTemplateColumn.CellEditingTemplate>
+                <DataTemplate>
+                  <TextBox Text="{Binding Region, Mode=TwoWay}" Foreground="Black"/>
+                </DataTemplate>
+              </DataGridTemplateColumn.CellEditingTemplate>
+            </DataGridTemplateColumn>
             <DataGridTemplateColumn Header="Type" Width="80" IsVisible="False">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate>
@@ -327,12 +340,14 @@
               </DataGridTemplateColumn.CellTemplate>
               <DataGridTemplateColumn.CellEditingTemplate>
                 <DataTemplate>
-                  <ComboBox Items="{x:Static local:MainWindow.DiscTypes}" SelectedItem="{Binding DiscType, Mode=TwoWay}" Foreground="Black" Background="White"/>
+                  <ComboBox ItemsSource="{x:Static local:MainWindow.DiscTypes}" SelectedItem="{Binding DiscType, Mode=TwoWay}" Foreground="Black" Background="White"/>
                 </DataTemplate>
               </DataGridTemplateColumn.CellEditingTemplate>
             </DataGridTemplateColumn>
           </DataGrid.Columns>
         </DataGrid>
+        <Border x:Name="DropLine" Height="2" Background="{DynamicResource ThemeAccentBrush}" HorizontalAlignment="Stretch" VerticalAlignment="Top" IsHitTestVisible="False" IsVisible="False"/>
+        </Grid>
       </DockPanel>
     </HeaderedContentControl>
 

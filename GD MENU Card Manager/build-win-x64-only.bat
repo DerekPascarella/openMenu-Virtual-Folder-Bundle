@@ -43,6 +43,8 @@ echo Copying additional files...
 
 REM Copy tools directory from Core project
 xcopy /E /I /Y src\GDMENUCardManager.Core\tools "%OUTPUT_DIR%\tools\"
+REM never ship user-generated menu options files
+del /Q "%OUTPUT_DIR%\tools\openMenu\menu_data\DEFAULTS.INI" "%OUTPUT_DIR%\tools\openMenu\menu_data\BGM.ADP" 2>nul
 
 REM Copy redump2cdi tool for CUE/BIN conversion
 copy /Y redump2cdi\windows-x86_64-msvc\redump2cdi.exe "%OUTPUT_DIR%\tools\"

@@ -22,7 +22,7 @@
                 <DataGridTemplateColumn Width="Auto" Header="Shrink">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
-                            <CheckBox IsChecked="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center" CommandParameter="{Binding Path=., Mode=OneTime}"/>
+                            <CheckBox IsChecked="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" HorizontalAlignment="Center" CommandParameter="{Binding Path=., Mode=OneTime}" ToolTip="Include this game in the shrink operation"/>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>

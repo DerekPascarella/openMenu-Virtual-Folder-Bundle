@@ -20,7 +20,8 @@
                         <DockPanel>
                             <Button DockPanel.Dock="Right" Content="X" Width="26" Height="26"
                                     Margin="5 0 0 0" Click="RemoveButton_Click"
-                                    VerticalAlignment="Center"/>
+                                    VerticalAlignment="Center"
+                                    ToolTip="Remove this folder path"/>
                             <ComboBox ItemsSource="{Binding DataContext.KnownFolders, RelativeSource={RelativeSource AncestorType=Window}}"
                                       Text="{Binding FolderPath, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
                                       IsEditable="True" MaxDropDownHeight="200"
@@ -33,11 +34,14 @@
 
         <Button Content="+ Add Folder Path" Click="AddButton_Click"
                 HorizontalAlignment="Left" Margin="0 0 0 0" Padding="15,8"
-                IsEnabled="{Binding CanAddMore}"/>
+                IsEnabled="{Binding CanAddMore}"
+                ToolTip="Add another folder path for this game"/>
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 20 0 0">
-            <Button Content="OK" Click="OkButton_Click" IsDefault="True" Width="80" Padding="15,8" Margin="0 0 10 0"/>
-            <Button Content="Cancel" Click="CancelButton_Click" IsCancel="True" Width="80" Padding="15,8"/>
+            <Button Content="OK" Click="OkButton_Click" IsDefault="True" Width="80" Padding="15,8" Margin="0 0 10 0"
+                    ToolTip="Save the additional folder paths for this game"/>
+            <Button Content="Cancel" Click="CancelButton_Click" IsCancel="True" Width="80" Padding="15,8"
+                    ToolTip="Close without saving changes"/>
         </StackPanel>
     </StackPanel>
 </Window>

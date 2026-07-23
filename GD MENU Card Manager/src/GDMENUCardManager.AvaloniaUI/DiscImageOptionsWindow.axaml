@@ -5,7 +5,7 @@
         mc:Ignorable="d" d:DesignWidth="320" d:DesignHeight="330"
         x:Class="GDMENUCardManager.DiscImageOptionsWindow"
         Title="Disc Image Options" Width="320" SizeToContent="Height"
-        WindowStartupLocation="CenterOwner" CanResize="False">
+        WindowStartupLocation="CenterOwner" CanResize="False" CanMinimize="False">
     <Grid Margin="15">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -23,10 +23,12 @@
                 <StackPanel Margin="8">
                     <TextBlock Text="Force VGA flag after &quot;Exit to BIOS&quot; from openMenu" TextWrapping="Wrap"
                                Foreground="Gray" FontSize="11" Margin="0 0 0 10"/>
-                    <CheckBox x:Name="ChkEnableVgaPatch" IsChecked="{Binding EnableVgaPatch}">
+                    <CheckBox x:Name="ChkEnableVgaPatch" IsChecked="{Binding EnableVgaPatch}"
+                              ToolTip.Tip="Apply the VGA patch to games as they're added to the list">
                         <TextBlock Text="Apply to newly added games"/>
                     </CheckBox>
-                    <CheckBox IsChecked="{Binding EnableVgaPatchExisting}" Margin="0 5 0 0">
+                    <CheckBox IsChecked="{Binding EnableVgaPatchExisting}" Margin="0 5 0 0"
+                              ToolTip.Tip="Apply the VGA patch to games already on the SD card">
                         <TextBlock Text="Apply to existing games"/>
                     </CheckBox>
                 </StackPanel>
@@ -40,22 +42,22 @@
                 <StackPanel Margin="8">
                     <TextBlock Text="Boot out-of-region games after &quot;Exit to BIOS&quot; from openMenu" TextWrapping="Wrap"
                                Foreground="Gray" FontSize="11" Margin="0 0 0 10"/>
-                    <CheckBox x:Name="ChkEnableRegionPatch" IsChecked="{Binding EnableRegionPatch}">
+                    <CheckBox x:Name="ChkEnableRegionPatch" IsChecked="{Binding EnableRegionPatch}"
+                              ToolTip.Tip="Apply the region-free patch to games as they're added to the list">
                         <TextBlock Text="Apply to newly added games"/>
                     </CheckBox>
-                    <CheckBox IsChecked="{Binding EnableRegionPatchExisting}" Margin="0 5 0 0">
+                    <CheckBox IsChecked="{Binding EnableRegionPatchExisting}" Margin="0 5 0 0"
+                              ToolTip.Tip="Apply the region-free patch to games already on the SD card">
                         <TextBlock Text="Apply to existing games"/>
                     </CheckBox>
                 </StackPanel>
             </HeaderedContentControl>
         </StackPanel>
 
-        <!-- Save/Cancel Buttons -->
+        <!-- Save Button -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 5 0 0">
-            <Button Content="Save" Width="80" Padding="15,8" Margin="0 0 10 0" Click="SaveButton_Click"
+            <Button Content="Save" Width="80" Padding="15,8" Click="SaveButton_Click"
                     ToolTip.Tip="Save VGA and Region-Free patch preferences"/>
-            <Button Content="Cancel" Width="80" Padding="15,8" Click="CancelButton_Click"
-                    ToolTip.Tip="Discard changes and close"/>
         </StackPanel>
     </Grid>
 </Window>

@@ -8,7 +8,7 @@
         xmlns:core="clr-namespace:GDMENUCardManager.Core;assembly=GDMENUCardManager.Core"
         xmlns:dd="urn:gong-wpf-dragdrop"
         mc:Ignorable="d"
-        Title="GD MENU Card Manager" Height="800" Width="960" MinHeight="400" MinWidth="960"
+        Title="GD MENU Card Manager" Height="800" Width="1020" MinHeight="400" MinWidth="1020"
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <ResourceDictionary>
@@ -77,11 +77,15 @@
 
         <GroupBox Grid.Row="1" Header="Settings" Margin="10" IsEnabled="{Binding IsBusy, Mode=OneWay, Converter={StaticResource BoolToInverseBool}}">
             <Grid>
+                <!-- Star spacer columns keep the gaps between sections equal at any window width -->
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*" MinWidth="30"/>
                     <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*" MinWidth="30"/>
                     <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*" MinWidth="30"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
                 <Grid Grid.Column="0">
@@ -111,47 +115,30 @@
                     </Button>
                 </Grid>
 
-                <Grid Grid.Column="1" Margin="30 0 0 0">
+                <Grid Grid.Column="2">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-
                     <Label Grid.Column="0" VerticalAlignment="Center">Temp. Folder</Label>
-
-                    <Grid Grid.Column="1" Margin="10 0 0 0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <Button Width="30" Click="ButtonFolder_Click" ToolTip="Select temporary folder">
-                            <ContentControl Content="{StaticResource ViewOpenFolder}" />
-                        </Button>
-                        <TextBox Grid.Column="1" Width="200" VerticalContentAlignment="Center" Text="{Binding TempFolder, Mode=TwoWay}" IsReadOnly="True"/>
-                        <Button Grid.Column="2" Width="30" Click="ButtonResetTempFolder_Click" ToolTip="Reset to system default">
-                            <ContentControl Content="{StaticResource ViewRefresh}" />
-                        </Button>
-                    </Grid>
+                    <Button Grid.Column="1" Width="30" Margin="10 0 0 0" Click="ButtonFolder_Click" ToolTip="Select temporary folder">
+                        <ContentControl Content="{StaticResource ViewOpenFolder}" />
+                    </Button>
+                    <TextBox Grid.Column="2" Width="150" VerticalContentAlignment="Center" Text="{Binding TempFolder, Mode=TwoWay}" IsReadOnly="True"/>
+                    <Button Grid.Column="3" Width="30" Click="ButtonResetTempFolder_Click" ToolTip="Reset to system default">
+                        <ContentControl Content="{StaticResource ViewRefresh}" />
+                    </Button>
                 </Grid>
 
-                <Grid Grid.Column="2" Margin="30 0 0 0">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <Label Grid.Column="0" VerticalAlignment="Center">Menu Type</Label>
-                    <Grid Grid.Column="1" Margin="10 0 0 0">
-                        <Grid.RowDefinitions>
-                            <RowDefinition/>
-                            <RowDefinition/>
-                        </Grid.RowDefinitions>
-                        <RadioButton Grid.Row="0" IsChecked="{Binding MenuKindSelected, Mode=TwoWay, Converter={StaticResource EnumToBool}, ConverterParameter={x:Static core:MenuKind.gdMenu}}" ToolTip="Use gdMenu">gdMenu</RadioButton>
-                        <RadioButton Grid.Row="1" IsChecked="{Binding MenuKindSelected, Mode=TwoWay, Converter={StaticResource EnumToBool}, ConverterParameter={x:Static core:MenuKind.openMenu}}" ToolTip="Use openMenu">openMenu</RadioButton>
-                    </Grid>
-                </Grid>
+                <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock VerticalAlignment="Center" Margin="0 1 0 0">Menu Type</TextBlock>
+                    <RadioButton VerticalAlignment="Center" Margin="10 0 0 0" Padding="4 0 0 0" IsChecked="{Binding MenuKindSelected, Mode=TwoWay, Converter={StaticResource EnumToBool}, ConverterParameter={x:Static core:MenuKind.gdMenu}}" ToolTip="Use gdMenu">gdMenu</RadioButton>
+                    <RadioButton VerticalAlignment="Center" Margin="10 0 0 0" Padding="4 0 0 0" IsChecked="{Binding MenuKindSelected, Mode=TwoWay, Converter={StaticResource EnumToBool}, ConverterParameter={x:Static core:MenuKind.openMenu}}" ToolTip="Use openMenu">openMenu</RadioButton>
+                </StackPanel>
 
-                <Button Grid.Column="3" Width="30" Margin="30 0 0 0" HorizontalAlignment="Right" ToolTip="About" Click="ButtonAbout_Click">
+                <Button Grid.Column="6" Width="30" ToolTip="About" Click="ButtonAbout_Click">
                     <Viewbox Width="18" Height="18">
                         <Canvas Width="24" Height="24">
                             <Path Data="M11,9H13V7H11M12,20C7.59,20 4,16.41 4,12C4,7.59 7.59,4 12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M11,17H13V11H11V17Z" Fill="Black" />
@@ -190,20 +177,17 @@
                             <ContentControl Content="{StaticResource ViewRefresh}" />
                         </Button>
                     </Grid>
-                    <Button DockPanel.Dock="Right" HorizontalAlignment="Right" Padding="10 5" Margin="10 0 0 0" Click="ButtonBatchFolderRename_Click"
-                            Visibility="{Binding MenuKindSelected, Converter={StaticResource IsOpenMenuMode}}" ToolTip="Easily rearrange and rename virtual folders">
-                        <Button.IsEnabled>
-                            <MultiBinding Converter="{StaticResource BoolAndConverter}">
-                                <Binding Path="HasSdPath" Mode="OneWay"/>
-                                <Binding Path="IsNotFilterActive" Mode="OneWay"/>
-                            </MultiBinding>
-                        </Button.IsEnabled>
-                        Batch Folder Move and Rename</Button>
-                    <Button DockPanel.Dock="Right" HorizontalAlignment="Right" Padding="10 5" Click="ButtonDiscImageOptions_Click" ToolTip="Various disc image modification options"
-                            IsEnabled="{Binding HasSdPath, Mode=OneWay}">Disc Image Options</Button>
-                    <Button DockPanel.Dock="Right" HorizontalAlignment="Right" Padding="10 5" Margin="0 0 10 0" Click="ButtonDatTools_Click"
+                    <Button DockPanel.Dock="Right" HorizontalAlignment="Right" Padding="10 5" Margin="10 0 0 0" Click="ButtonFolderTools_Click"
+                            Visibility="{Binding MenuKindSelected, Converter={StaticResource IsOpenMenuMode}}" ToolTip="Folder artwork and batch folder move/rename tools"
+                            IsEnabled="{Binding HasSdPath, Mode=OneWay}">Folder Tools</Button>
+                    <Button DockPanel.Dock="Right" HorizontalAlignment="Right" Padding="10 5" Margin="10 0 0 0" Click="ButtonDatTools_Click"
                             Visibility="{Binding MenuKindSelected, Converter={StaticResource IsOpenMenuMode}}" ToolTip="Various DAT file maintenance tasks"
                             IsEnabled="{Binding HasSdPath, Mode=OneWay}">DAT Tools</Button>
+                    <Button DockPanel.Dock="Right" HorizontalAlignment="Right" Padding="10 5" Margin="10 0 0 0" Click="ButtonMenuOptions_Click"
+                            Visibility="{Binding MenuKindSelected, Converter={StaticResource IsOpenMenuMode}}"
+                            ToolTip="Default boot style/theme and background music for the openMenu disc">Menu Options</Button>
+                    <Button DockPanel.Dock="Right" HorizontalAlignment="Right" Padding="10 5" Click="ButtonDiscImageOptions_Click" ToolTip="Various disc image modification options"
+                            IsEnabled="{Binding HasSdPath, Mode=OneWay}">Disc Image Options</Button>
                     <Button x:Name="ButtonSort" DockPanel.Dock="Right" HorizontalAlignment="Right" Padding="10 5" Margin="0 0 10 0" Click="ButtonSort_Click" ToolTip="Sort list by folder path + title">
                         <Button.IsEnabled>
                             <MultiBinding Converter="{StaticResource BoolAndConverter}">
@@ -293,12 +277,12 @@
                             </DataGridTemplateColumn.CellEditingTemplate>
                         </DataGridTemplateColumn>
                         <DataGridTextColumn Header="Serial" Width="75" Binding="{Binding ProductNumber, Mode=TwoWay}"/>
-                        <DataGridTemplateColumn x:Name="ArtColumn" Header="Art" Width="60" Visibility="Collapsed">
+                        <DataGridTemplateColumn x:Name="ArtColumn" Header="Artwork" Width="60" Visibility="Collapsed">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <Button Click="ButtonArtwork_Click" CommandParameter="{Binding}"
                                             Content="{Binding HasArtwork, Converter={StaticResource ArtworkButtonLabel}}"
-                                            Padding="5,2" MinWidth="55" HorizontalAlignment="Center">
+                                            Padding="5,2" MinWidth="55" HorizontalAlignment="Stretch">
                                         <Button.Style>
                                             <Style TargetType="Button">
                                                 <Setter Property="IsEnabled" Value="{Binding CanManageArtwork}"/>
@@ -321,6 +305,7 @@
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
                         <DataGridTextColumn x:Name="DiscColumn" Header="Disc" Width="45" IsReadOnly="True" Binding="{Binding Disc, Mode=TwoWay}"/>
+                        <DataGridTextColumn x:Name="RegionColumn" Header="Region" Width="60" Binding="{Binding Region, Mode=TwoWay}"/>
                         <DataGridTemplateColumn x:Name="TypeColumn" Header="Type" Width="80" Visibility="Collapsed">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
@@ -349,6 +334,8 @@
                     <ColumnDefinition Width="auto"/>
                     <ColumnDefinition Width="auto"/>
                     <ColumnDefinition Width="auto"/>
+                    <ColumnDefinition Width="auto"/>
+                    <ColumnDefinition Width="auto"/>
                     <ColumnDefinition Width="1*"/>
                     <ColumnDefinition Width="auto"/>
                     <ColumnDefinition Width="auto"/>
@@ -359,15 +346,29 @@
 
                 <Button Grid.Column="0" Width="50" Margin="10 0" ToolTip="Add game(s)" Click="ButtonAddGames_Click" Content="{StaticResource ViewAdd}" IsEnabled="{Binding IsNotFilterActive, Mode=OneWay}"/>
                 <Button Grid.Column="1" Width="50" Margin="0 0 10 0" ToolTip="Remove selected game(s)" Click="ButtonRemoveGame_Click" Content="{StaticResource ViewRemove}"/>
-                <CheckBox Grid.Column="2" x:Name="cbLockCheck" VerticalAlignment="Center" Margin="10 0" IsChecked="{Binding EnableLockCheck, Mode=TwoWay}" ToolTip="Check for locked files/folders before saving">File/Folder Lock Check</CheckBox>
-                <Button Grid.Column="3" Margin="10 0" Padding="0 10" Click="ButtonSaveChanges_Click" FontWeight="Bold" ToolTip="Save changes to SD card" IsEnabled="{Binding IsNotFilterActive, Mode=OneWay}">Save Changes</Button>
-                <Button Grid.Column="4" Margin="0 0 5 0" Padding="10 10" Click="ButtonUndo_Click" ToolTip="Undo last change"
+                <Button Grid.Column="2" Width="50" Margin="10 0" ToolTip="Move selected game(s) up" Click="ButtonMoveUp_Click" IsEnabled="{Binding IsNotFilterActive, Mode=OneWay}">
+                    <Viewbox Width="24" Height="24">
+                        <Canvas Width="24" Height="24">
+                            <Path Fill="Black" Data="M12,7L17,12H14V16H10V12H7L12,7M12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22M12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20Z" />
+                        </Canvas>
+                    </Viewbox>
+                </Button>
+                <Button Grid.Column="3" Width="50" Margin="0 0 10 0" ToolTip="Move selected game(s) down" Click="ButtonMoveDown_Click" IsEnabled="{Binding IsNotFilterActive, Mode=OneWay}">
+                    <Viewbox Width="24" Height="24">
+                        <Canvas Width="24" Height="24">
+                            <Path Fill="Black" Data="M12,17L7,12H10V8H14V12H17L12,17M12,2A10,10 0 0,1 22,12A10,10 0 0,1 12,22A10,10 0 0,1 2,12A10,10 0 0,1 12,2M12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20A8,8 0 0,0 20,12A8,8 0 0,0 12,4Z" />
+                        </Canvas>
+                    </Viewbox>
+                </Button>
+                <CheckBox Grid.Column="4" x:Name="cbLockCheck" VerticalAlignment="Center" Margin="10 0" IsChecked="{Binding EnableLockCheck, Mode=TwoWay}" ToolTip="Check for locked files/folders before saving">File/Folder Lock Check</CheckBox>
+                <Button Grid.Column="5" Margin="10 0" Padding="0 10" Click="ButtonSaveChanges_Click" FontWeight="Bold" ToolTip="Save changes to SD card" IsEnabled="{Binding IsNotFilterActive, Mode=OneWay}">Save Changes</Button>
+                <Button Grid.Column="6" Margin="0 0 5 0" Padding="10 10" Click="ButtonUndo_Click" ToolTip="Undo last change"
                         IsEnabled="{Binding Manager.UndoManager.CanUndo, Mode=OneWay}">Undo</Button>
-                <Button Grid.Column="5" Margin="5 0 10 0" Padding="10 10" Click="ButtonRedo_Click" ToolTip="Redo last change"
+                <Button Grid.Column="7" Margin="5 0 10 0" Padding="10 10" Click="ButtonRedo_Click" ToolTip="Redo last change"
                         IsEnabled="{Binding Manager.UndoManager.CanRedo, Mode=OneWay}">Redo</Button>
-                <Button Grid.Column="6" Margin="10 0" Padding="10 10" ToolTip="Load info from files that are already on sd card" Click="ButtonPreload_Click" Visibility="Collapsed">Preload</Button>
-                <Button Grid.Column="7" Margin="10 0" Padding="10 10" Click="ButtonSort_Click" Visibility="Collapsed">Sort List</Button>
-                <Button Grid.Column="8" Margin="10 0" Padding="10 10" Click="ButtonBatchRename_Click" Visibility="Collapsed">Batch Rename</Button>
+                <Button Grid.Column="8" Margin="10 0" Padding="10 10" ToolTip="Load info from files that are already on sd card" Click="ButtonPreload_Click" Visibility="Collapsed">Preload</Button>
+                <Button Grid.Column="9" Margin="10 0" Padding="10 10" Click="ButtonSort_Click" Visibility="Collapsed">Sort List</Button>
+                <Button Grid.Column="10" Margin="10 0" Padding="10 10" Click="ButtonBatchRename_Click" Visibility="Collapsed">Batch Rename</Button>
             </Grid>
         </Grid>
 

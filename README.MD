@@ -12,6 +12,8 @@ For those unfamiliar with the branching history of openMenu, it's important to n
 
 To accommodate the new openMenu, a modified version of [GD MENU Card Manager](https://github.com/sonik-br/GDMENUCardManager) has also been developed and included in this bundle.
 
+---
+
 ## Table of Contents
 
 - [Current Version](#current-version)
@@ -25,6 +27,7 @@ To accommodate the new openMenu, a modified version of [GD MENU Card Manager](ht
 - [GD MENU Card Manager Usage](#gd-menu-card-manager-usage)
   - [Managing Artwork](#managing-artwork)
     - [Artwork Assignment](#artwork-assignment)
+    - [Folder Artwork Assignment](#folder-artwork-assignment)
     - [DAT Tools](#dat-tools)
     - [Restoring DAT Files From Backup](#restoring-dat-files-from-backup)
     - [Restoring a New User's Personal DAT Files](#restoring-a-new-users-personal-dat-files)
@@ -37,7 +40,7 @@ To accommodate the new openMenu, a modified version of [GD MENU Card Manager](ht
     - [Reordering Games](#reordering-games)
     - [Editing Game Information](#editing-game-information)
     - [Virtual Folders (openMenu Only)](#virtual-folders-openmenu-only)
-      - [Batch Folder Move and Rename (Windows Only)](#batch-folder-move-and-rename-windows-only)
+      - [Batch Folder Move/Rename](#batch-folder-moverename)
       - [Batch Folder Assignment](#batch-folder-assignment)
       - [Assigning Additional Folder Paths](#assigning-additional-folder-paths)
     - [Multi-Disc Games](#multi-disc-games)
@@ -48,6 +51,9 @@ To accommodate the new openMenu, a modified version of [GD MENU Card Manager](ht
     - [Saving Changes](#saving-changes)
     - [Keyboard Shortcuts](#keyboard-shortcuts)
   - [Disc Image Options](#disc-image-options)
+  - [Menu Options](#menu-options)
+    - [Default Style and Theme](#default-style-and-theme)
+    - [Background Music](#background-music)
   - [Application Settings](#application-settings)
     - [SD Drive](#sd-drive)
     - [Temporary Folder](#temporary-folder)
@@ -88,20 +94,41 @@ To accommodate the new openMenu, a modified version of [GD MENU Card Manager](ht
   - [GD MENU Card Manager](#gd-menu-card-manager)
   - [Third-Party Components](#third-party-components)
 
+---
+
 ## Current Version
 
-The latest version of **openMenu Virtual Folder Bundle** is [1.5.5-ateam](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/releases/tag/1.5.5-ateam).
+The latest version of **openMenu Virtual Folder Bundle** is [1.6.0-ateam](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/releases/tag/1.6.0-ateam).
+
+---
 
 ## Roadmap Ideas
 
+- Extend **Menu Options** to set more default settings beyond view style and theme.
 - New metadata format with optional openMenu popup window when a disc image is selected, showing screenshots, description, and more.
-- Support artwork assignment for openMenu folders.
 - Keep track of a recently played list in openMenu.
 - See [Dreamcast Now](https://dreamcast.online/now/) information directly from openMenu (DreamPi or BBA required).
-- Add drag-and-drop support to Linux version of GD MENU Card Manager.
 - Implement a housekeeping function in GD MENU Card Manager to help users easily identify gaps or issues with their disc image collection (e.g., duplicate serials, missing artwork, missing discs in multi-disc sets).
+- Arbitrary disc queueing in openMenu (i.e., ability to define a playlist of disc images that can be cycled through using the in-game reset button combination).
+
+---
 
 ## Changelog
+- **Version 1.6.0-ateam (2026-07-23)**
+  - **openMenu**
+    - The settings menu is now scrollable in all view modes (see [Issue 168](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/168)).
+    - The "VMU Beep on Save" setting has been restored (see [Issue 169](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/169)).
+    - Custom folder artwork can now be displayed (see [Issue 172](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/172)).
+    - Custom background music can now be played and a default style and theme can be honored (see [Issue 174](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/174)).
+  - **GD MENU Card Manager**
+    - Custom folder artwork can now be assigned (see [Issue 172](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/172)).
+    - Editable "Region" column added in Card Manager for per-disc region patching (see [Issue 171](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/171)).
+    - Card Manager now rejects Redump's old, short-lived GDI format with a clear message (see [Issue 170](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/170)).
+    - Batch Folder Move/Rename function added to Linux and macOS builds (see [Issue 173](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/173)).
+    - Card Manager can set a default style and theme for openMenu to use on launch, as well as custom background music (see [Issue 174](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/174)).
+    - Small cosmetic clean-ups (see [Issue 175](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/175)).
+    - Drag-and-drop added to Linux version of Card Manager, and macOS drag-and-drop functionality enhanced (see [Issue 176](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/176)).
+    - Up/down buttons added to Windows version of Card Manager (see [Issue 177](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/177)).
 - **Version 1.5.5-ateam (2026-05-27)**
   - **openMenu**
     - CodeBreaker cheat database upgraded to version 2.8 (see [Issue 167](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/167)).
@@ -275,6 +302,8 @@ The latest version of **openMenu Virtual Folder Bundle** is [1.5.5-ateam](https:
 - **Version 1.0-ateam (2026-01-07)**
   - Initial release (see the [Changes to openMenu and GD MENU Card Manager](#changes-to-openmenu-and-gd-menu-card-manager) section).
 
+---
+
 ## Credits
 
 - **Programming**
@@ -308,6 +337,8 @@ The latest version of **openMenu Virtual Folder Bundle** is [1.5.5-ateam](https:
   - darc for [Redump2CDI](https://dreamcast.wiki/Redump2CDI), used for Redump CD-ROM CUE/BIN to CDI conversion
   - All of the wonderful people in the Dreamcast scene
 
+---
+
 ## Changes to openMenu and GD MENU Card Manager
 
 Many components of both openMenu and GD MENU Card Manager have been drastically overhauled for this version. See below for a list of changes.
@@ -330,7 +361,7 @@ Below represents all the changes brought with the initial release of **openMenu 
 - VMU configuration save file is no longer written on every openMenu startup, now only when saving settings or during save file migration.
 - Non-game discs are mounted by GDEMU instantly, returning user to BIOS for things like playing audio CDs.
 - Game ID is not sent to VM2/VMUPro/USB4MAPLE when a non-game disc is launched (e.g., an audio CD).
-- VMU beep setting disabled (feature is not implemented yet).
+- VMU beep setting disabled (later restored as the "VMU Beep on Save" setting).
 - Credits updated to include additions from this author.
 
 ### Changes Since GD MENU Card Manager v2.0.1
@@ -345,6 +376,8 @@ Below represents all the changes brought with the initial release of **openMenu 
 - Disc numbers can now be customized by the user (e.g., `1/3`, `2/4`).
 - Maximum length for Game IDs is now ten (instead of 9), but is customizable by changing the `ProductIdMaxLength` key inside `GDMENUCardManager.dll.config`.
 - Latest version of [CodeBreaker cheats database](https://www.dreamcast-talk.com/forum/viewtopic.php?t=17078) included by default.
+
+---
 
 ## Upgrading
 
@@ -364,11 +397,13 @@ Regardless of scenario, users follow these steps:
 4. Launch GD MENU Card Manager.
 5. Ensure "openMenu" is selected in the top right radio button, then click **Save Changes**.
 
+---
+
 ## GD MENU Card Manager Usage
 
 ### Managing Artwork
 
-GD MENU Card Manager provides a streamlined artwork management system for adding cover art to games and other disc images. Artwork is stored in DAT files (e.g., Folders mode uses `BOX.DAT` for full-size cover art) located in the `tools\openMenu\menu_data` folder (`~/Library/Application-Support/GDMENUCardManager/menu_data` on macOS).
+GD MENU Card Manager provides a streamlined artwork management system for adding cover art to games and other disc images, as well as to virtual folders themselves. Artwork is stored in DAT files (e.g., Folders mode uses `BOX.DAT` for full-size cover art and `FOLDRART.DAT` for folder artwork) located in the `tools\openMenu\menu_data` folder (`~/Library/Application-Support/GDMENUCardManager/menu_data` on macOS).
 
 #### Artwork Assignment
 
@@ -378,6 +413,7 @@ To assign artwork to a game:
    - The button is labeled **Assign** if no artwork is presently tied to the Serial ID, and **Manage** if there is.
 2. The Artwork window displays the game's Serial ID and current artwork (if any).
 3. Click **Browse for Image** to select an image file (supported formats: PNG, JPG, JPEG, GIF, WebP, BMP, TIFF, TGA).
+   - Avoid images with transparency (e.g., PNGs with transparent backgrounds).
 4. The application automatically generates two PVR textures:
    - 256x256 pixels for `BOX.DAT` (full-size artwork shown in openMenu)
    - 128x128 pixels for `ICON.DAT` (thumbnail preview used in Grid mode)
@@ -391,13 +427,34 @@ To assign artwork to a game:
 - If a mismatch is detected between `BOX.DAT` and `ICON.DAT` (mismatched entry counts), the user will be prompted to auto-fix the issue.
 - All DAT modifications are backed up automatically to the `dat_backups` folder before changes are made.
 
+#### Folder Artwork Assignment
+
+Artwork can also be assigned to virtual folders, which openMenu displays when the cursor hovers over a folder in Folders view mode (see the [Folders Mode Settings](#folders-mode-settings) section for the "Folder Artwork" setting).
+
+To assign artwork to a folder:
+
+1. Click the **Folder Tools** button at the top right of the **Games List** table (available in openMenu mode) and open the **Folder Artwork** tab.
+2. The folder list shows every folder and subfolder currently in use, with subfolders indented beneath their parent.
+3. Click the **Assign** or **Manage** button in the row of the folder to edit.
+   - The button is labeled **Assign** if no artwork is presently tied to the folder, and **Manage** if there is.
+4. The editing window works identically to the game artwork window: click **Browse for Image**, preview, then click **Save**. Left/right arrows navigate between folders.
+   - Avoid images with transparency (e.g., PNGs with transparent backgrounds).
+5. To remove artwork, click **Delete Entry**.
+
+Folder artwork is stored in `FOLDRART.DAT`, with a companion `FOLDRART.MAP` file that keeps track of which folder each entry belongs to. Both files live alongside the other DATs in the `tools\openMenu\menu_data` folder (`~/Library/Application-Support/GDMENUCardManager/menu_data` on macOS).
+
+**Important Notes:**
+- Like game artwork, folder artwork changes are held in memory until the user clicks **Save Changes** in the main window.
+- Folder artwork automatically follows folders renamed or moved with the **Batch Folder Move/Rename** function.
+- If a folder is emptied out of existence through individual game edits, its artwork is kept and appears in an "Unassigned artwork" section beneath the folder list, where it can be viewed, re-assigned to a current folder, or deleted. Re-creating a folder with the exact same name automatically re-attaches its artwork.
+
 #### DAT Tools
 
-The **DAT Tools** button opens a window providing three functions for managing artwork data:
+The **DAT Tools** button opens a window providing four functions for managing artwork data:
 
 **Import DAT Entries**
 - Merge artwork entries from another installation's DAT files into the current setup.
-- Select a folder containing `BOX.DAT` and/or `META.DAT` files.
+- Click **Browse** to select a folder containing `BOX.DAT` and/or `META.DAT` files.
 - Choose import mode:
   - **Import only missing entries**: Only adds artwork for serials not already in current DAT files.
   - **Import all entries (overwrite existing)**: Replaces all matching entries with the imported versions.
@@ -406,17 +463,18 @@ The **DAT Tools** button opens a window providing three functions for managing a
 
 **Export Artwork to PNGs**
 - Export all artwork from currently assigned artwork to PNG image files.
-- Files are named using the format: `Title [Serial].png`
+- Click **Browse** to select an output folder.
+- Files are named using the format: `Title [Serial].png` for game artwork and `Folder-Path [Folder ID].png` for folder artwork.
 - Useful for backing up artwork or sharing with others.
 
 **Clear All DAT Entries**
-- Removes all entries from `BOX.DAT`, `ICON.DAT`, and `META.DAT`.
+- Removes all entries from `BOX.DAT`, `ICON.DAT`, and `META.DAT`, as well as all folder artwork (`FOLDRART.DAT` and `FOLDRART.MAP`).
 - Creates fresh, empty DAT files.
 - Original files are backed up before clearing.
 - **Warning**: This action cannot be undone except by restoring from the backup.
 
 **Overwrite DATs with SD Card**
-- Overwrite application's local DAT files with `BOX.DAT`, `ICON.DAT`, and `META.DAT` from the SD card's current openMenu build in the `01` folder.
+- Overwrite application's local DAT files with `BOX.DAT`, `ICON.DAT`, and `META.DAT` from the SD card's current openMenu build in the `01` folder, along with `FOLDRART.DAT` and `FOLDRART.MAP` when present.
 - Original files are backed up before being replaced.
 
 #### Restoring DAT Files From Backup
@@ -425,7 +483,7 @@ Automatic backups are saved to the `dat_backups` folder with timestamps (located
 
 1. Navigate to the `dat_backups` folder in the GD MENU Card Manager application directory (`~/Library/Application-Support/GDMENUCardManager/dat_backups` on macOS).
 2. Find the backup folder with the desired timestamp.
-3. Copy the `BOX.DAT`, `ICON.DAT`, and `META.DAT` files from the backup, removing the timestamp from the file name.
+3. Copy the `BOX.DAT`, `ICON.DAT`, and `META.DAT` files (plus `FOLDRART.DAT` and `FOLDRART.MAP`, if folder artwork was in use) from the backup, removing the timestamp from the file name.
 4. Paste them into `tools\openMenu\menu_data` (`~/Library/Application-Support/GDMENUCardManager/menu_data` on macOS), overwriting the current files.
 
 #### Restoring a New User's Personal DAT Files
@@ -434,7 +492,7 @@ New users of **openMenu Virtual Folder Bundle** on Windows and Linux may wish to
 
 **Restoring From Files**
 
-Navigate to the `tools\openMenu\menu_data` folder in the original GD MENU Card Manager application folder and copy `BOX.DAT`, `ICON.DAT`, and `META.DAT` to the `tools\openMenu\menu_data` folder inside the **openMenu Virtual Folder Bundle**'s GD MENU Card Manager application folder, overwriting the defaults.
+Navigate to the `tools\openMenu\menu_data` folder in the original GD MENU Card Manager application folder and copy `BOX.DAT`, `ICON.DAT`, and `META.DAT` (plus `FOLDRART.DAT` and `FOLDRART.MAP`, if folder artwork was in use) to the `tools\openMenu\menu_data` folder inside the **openMenu Virtual Folder Bundle**'s GD MENU Card Manager application folder, overwriting the defaults.
 
 macOS users may take their old DATs and copy and paste them into `~/Library/Application-Support/GDMENUCardManager/menu_data`.
 
@@ -478,6 +536,7 @@ The Games List table displays all disc images currently on the SD card. Each col
 | **Serial** | Product ID from `IP.BIN` (editable, max 12 characters). |
 | **Art** | Click the **Assign** or **Manage** button to open the artwork editing window for that game. |
 | **Disc** | Disc number for multi-disc games (editable in openMenu mode only). |
+| **Region** | Region flag from `IP.BIN`: any combination of `J` (Japan), `U` (USA), and `E` (Europe) (e.g., `JUE` or `U`). Editing this value patches the disc image itself when saving changes to an SD card (see the [Editing Game Information](#editing-game-information) section). |
 | **Type** | Disc type: `Game`, `Other`, or `PSX` (openMenu only). Note that type `Other` will exit directly to BIOS, useful for things like audio CDs. |
 
 **Note**: The first entry in the list is reserved for the menu disc image itself and cannot be edited, moved, or deleted.
@@ -487,10 +546,12 @@ The Games List table displays all disc images currently on the SD card. Each col
 Games can be added in three ways:
 
 - Click the **Add** button (plus icon) and select one or more files from the file browser.
-- Drag and drop files directly onto the application window (Windows and macOS only).
+- Drag and drop files directly onto the application window.
 - Add compressed archives (7Z, RAR, ZIP) containing supported disc images.
 
-Supported disc image formats: GDI, CDI, CCD, MDS, and CUE/BIN (Redump format).
+Supported disc image formats: GDI, CDI, CCD, MDS, CHD, and CUE/BIN (Redump format).
+
+Note that GDI disc images in Redump's old, short-lived GDI format are automatically detected and rejected with an informational message, as this format is not supported. TOSEC-style GDI and modern Redump CUE/BIN dumps of the same game are supported instead.
 
 **Automatic Redump CUE/BIN Conversion**
 
@@ -514,7 +575,7 @@ Removed games are deleted from the SD card when **Save Changes** is clicked.
 
 #### Reordering Games
 
-Use the **Move Up** and **Move Down** buttons (arrow icons) to change the order of selected games, or drag them from place to place (Windows and macOS only). The order determines how games appear in openMenu's "SD Card Order" sort mode and affects folder numbering on the SD card.
+Use the **Move Up** and **Move Down** buttons (arrow icons) to change the order of selected games, or drag them from place to place. The order determines how games appear in openMenu's "SD Card Order" sort mode and affects folder numbering on the SD card.
 
 #### Editing Game Information
 
@@ -535,6 +596,12 @@ Select multiple games by holding the Shift or Control keys, then right-click and
 
 Right-click selected games and choose **Title Case** to convert titles to Title Case formatting.
 
+**Editing Region**
+
+Double-click the **Region** cell to change a game's region flag. Any combination of `J`, `U`, and `E` is accepted (e.g., `J`, `UE`, `JUE`), with input automatically normalized (invalid characters are stripped, and an entry with nothing usable silently reverts to the previous value).
+
+Unlike other columns, the Region value lives inside the disc image itself. The edit is held in the application and applied when clicking **Save Changes**, at which point the `IP.BIN` region flag and region strings are rewritten so the change takes effect when launching from the BIOS, and the `region.txt` metadata file is updated to match. Region is editable for uncompressed `Game` type disc images, whether already on the SD card or newly added (new games are patched after being copied to the SD card, so the original source file is never modified). A manually edited region takes priority over the global **Region-Free Patch** option during the save that applies it. Note that on subsequent saves, the **Apply to existing games** option will re-patch the game to region-free like any other (see [Disc Image Options](#disc-image-options)). If a region change cannot be applied during a save, the value is reverted and a warning lists the affected games.
+
 #### Virtual Folders (openMenu Only)
 
 When using openMenu mode, the **Folder** column allows organizing games into a hierarchical folder structure:
@@ -544,9 +611,9 @@ When using openMenu mode, the **Folder** column allows organizing games into a h
 - Up to eight levels of nested subfolders are supported.
 - Maximum of 1024 virtual folders per SD card.
 
-##### Batch Folder Move and Rename (Windows Only)
+##### Batch Folder Move/Rename
 
-By clicking the **Batch Folder Move and Rename** button at the top right of the **Games List** table, users can perform bulk folder rename and move operations, affecting all associated disc images.
+By clicking the **Folder Tools** button at the top right of the **Games List** table and opening the **Batch Folder Move/Rename** tab, users can perform bulk folder rename and move operations, affecting all associated disc images. Any folder artwork assigned to renamed or moved folders automatically follows them (see the [Folder Artwork Assignment](#folder-artwork-assignment) section).
 
 ##### Batch Folder Assignment
 
@@ -605,10 +672,10 @@ Click **Sort List** to alphabetically sort all disc images. When in openMenu mod
 The **Undo** and **Redo** buttons at the bottom left of the main window allow users to quickly reverse or reapply changes to the Games List table. The system tracks up to 10 levels of history and supports all operations including:
 
 - Adding and removing games
-- Editing titles, serials, folders, disc numbers, and types
+- Editing titles, serials, folders, disc numbers, regions, and types
 - Reordering games (drag-and-drop or move up/down)
 - Batch operations (bulk rename, folder assignment)
-- Artwork changes
+- Artwork changes (both game and folder artwork)
 
 #### Saving Changes
 
@@ -639,7 +706,7 @@ Users can choose to forgo this operation by unchecking the **File/Folder Lock Ch
 When the save proceeds, it:
 - Renumbers and renames SD card folders as needed.
 - Copies pending disc images to the SD card.
-- Updates `BOX.DAT` and `ICON.DAT` if the session contained any artwork assignment changes.
+- Updates `BOX.DAT`, `ICON.DAT`, and `FOLDRART.DAT` if the session contained any artwork assignment changes.
 - Generates openMenu configuration, including a virtual folder structure where applicable.
 - Copies menu disc image files to folder `01`.
 - Generates `DISCLIST.TXT` and `DISCLIST.XLSX` containing a list of all disc titles.
@@ -680,8 +747,38 @@ The **Disc Image Options** window provides settings that affect how disc images 
 - Options:
   - **Apply to newly added games**: Patch games when they're first copied.
   - **Apply to existing games**: Patch games already on the SD card.
+- Games whose region was manually edited via the **Region** column keep their chosen region during the save that applies the edit. Note that on subsequent saves, this option will re-patch them to region-free like any other game (see [Editing Game Information](#editing-game-information)).
 
-Click **Save** to apply changes or **Cancel** to discard them.
+Click **Save** to apply changes, or simply close the window to discard them.
+
+### Menu Options
+
+The **Menu Options** button at the top right of the **Games List** table (available in openMenu mode) opens a window with two tabs, each with its own **Apply** button that saves only that tab's settings. Changes take effect the next time **Save Changes** is clicked in the main window.
+
+#### Default Style and Theme
+
+This tab forces openMenu to boot with a chosen style and theme, overriding whatever is saved on the VMU or serial SD card.
+
+1. Check **Force default style and theme on boot**.
+2. Select a style: **Folders**, **Scroll**, **Grid3**, or **LineDesc**.
+3. Select a theme from the dropdown. Only themes compatible with the selected style are listed, including custom themes.
+4. Click **Apply**.
+
+To stop forcing a default, uncheck **Force default style and theme on boot** and click **Apply** again.
+
+Alternatively, setting "Honor Menu Defaults" to "Off" in openMenu's Settings menu makes the console use its saved style and theme again without changing anything in Card Manager (see the [Settings Menu](#settings-menu) section).
+
+#### Background Music
+
+This tab adds looping background music to openMenu.
+
+1. Check **Enable background music**.
+2. Click **Browse** and select a music file (supported formats: WAV, MP3, OGG, FLAC).
+3. Click **Apply**. The track is automatically converted to a Dreamcast-native format (roughly 2.65 MB per minute of audio) and stored inside the menu disc image.
+
+To remove background music, uncheck **Enable background music** and click **Apply**.
+
+Once a music track is present, playback can be toggled on the console with the "Play BGM" setting in openMenu's Settings menu (see the [Settings Menu](#settings-menu) section).
 
 ### Application Settings
 
@@ -704,6 +801,8 @@ This is useful if a user's system drive has limited space or if a user prefers t
 Choose a **Menu Type**:
 - **gdMenu** - Traditional Scroll mode menu interface.
 - **openMenu** - Full-featured menu with virtual folder support.
+
+---
 
 ## openMenu Usage
 
@@ -899,6 +998,8 @@ The Settings menu is accessed differently depending on the current view mode:
 - **Scroll**: Press X button
 - **Folders**: Press Start button
 
+The Settings menu is scrollable in all view modes, so when the list of settings exceeds the visible window, scrolling the cursor past the edge reveals the rest.
+
 Each view mode has its own set of available settings. Below is a breakdown of each.
 
 #### Grid/LineDesc Mode Settings
@@ -907,6 +1008,8 @@ Each view mode has its own set of available settings. Below is a breakdown of ea
 |---------|---------|-------------|
 | **Style** | LineDesc, Grid3, Scroll, Folders | Changes the visual layout/view mode of openMenu. |
 | **Theme** | NTSC-U, NTSC-J, PAL, Custom... | Selects the color scheme and background artwork. Custom themes appear if present. |
+| **Play BGM** | Off, On | Plays background music added with Card Manager's **Menu Options** window (see the [Menu Options](#menu-options) section). Only shown when a music track is present. |
+| **Honor Menu Defaults** | Off, On | When a default style and theme has been set in Card Manager's **Menu Options** window, "Off" makes openMenu use the console's saved style and theme instead. Only shown when a default style and theme has been applied. |
 | **Aspect** | 4:3, 16:9 | Adjusts background artwork for standard or widescreen displays. |
 | **Exit to BIOS** | Standard, Alternate, Alternate + 3D | "Standard" uses a standard method when exiting to BIOS, whereas "Alternate" uses a custom method that removes save file copy protection in the BIOS save manager. "Alternate + 3D" does the same while also enabling the "hidden" 3D BIOS feature. If users experience a freeze when exiting to BIOS with either "Alternate" setting, it's advised they use the "Standard" setting instead. |
 | **Sort** | Alphabetical, Name, Region, Genre, SD Card Order | Determines how the game list is sorted. "SD Card Order" matches physical folder order on SD card. |
@@ -917,6 +1020,7 @@ Each view mode has its own set of available settings. Below is a breakdown of ea
 | **Serial VMU** | Off, On (A1), On (A2), On (B1), On (B2), On (C1), On (C2), On (D1), On (D2) | If serial SD card detected, use it to store per-game virtual VMUs in the specified Port and Socket. |
 | **Serial VMU Multi-Slot** | Off, On | If Serial VMU is enabled, also enable up to five per-game slots, or leave off to default to one virtual VMU per game. |
 | **Boot Mode** | Full Boot, License Only, Animation Only, Fast Boot | Controls how the game is launched. "Full Boot" displays the complete boot sequence, "License Only" shows only the SEGA license screen, "Animation Only" plays only the Dreamcast boot animation, and "Fast Boot" skips all startup screens and launches the game immediately. Some titles may not function correctly in modes other than "Full Boot". DreamConn S users are generally advised to use "Full Boot" to ensure VMU synchronization completes before the game starts, which is required for certain games' automatic load features. |
+| **VMU Beep on Save** | Off, On | Sounds the VMU's buzzer while openMenu writes its settings save file. |
 | **Save/Load** | N/A | Opens the [Save/Load Manager](#saveload-manager). |
 | **Apply** | N/A | Applies settings for current session only. |
 
@@ -926,6 +1030,8 @@ Each view mode has its own set of available settings. Below is a breakdown of ea
 |---------|---------|-------------|
 | **Style** | LineDesc, Grid3, Scroll, Folders | Changes the visual layout/view mode of openMenu. |
 | **Theme** | GDMENU, Custom... | Selects the theme. Custom themes appear if `SCROLL_X` folders exist. |
+| **Play BGM** | Off, On | Plays background music added with Card Manager's **Menu Options** window (see the [Menu Options](#menu-options) section). Only shown when a music track is present. |
+| **Honor Menu Defaults** | Off, On | When a default style and theme has been set in Card Manager's **Menu Options** window, "Off" makes openMenu use the console's saved style and theme instead. Only shown when a default style and theme has been applied. |
 | **Exit to BIOS** | Standard, Alternate, Alternate + 3D | "Standard" uses a standard method when exiting to BIOS, whereas "Alternate" uses a custom method that removes save file copy protection in the BIOS save manager. "Alternate + 3D" does the same while also enabling the "hidden" 3D BIOS feature. If users experience a freeze when exiting to BIOS with either "Alternate" setting, it's advised they use the "Standard" setting instead. |
 | **Sort** | Alphabetical, Name, Region, Genre, SD Card Order | Determines how the game list is sorted. "SD Card Order" matches physical folder order on SD card. |
 | **Filter** | All, Action, Racing, Simulation, Sports, Lightgun, Fighting, Shooter, Survival, Adventure, Platformer, RPG, Shmup, Strategy, Puzzle, Arcade, Music | Filters the game list to show only titles matching the selected genre. |
@@ -939,6 +1045,7 @@ Each view mode has its own set of available settings. Below is a breakdown of ea
 | **Serial VMU** | Off, On (A1), On (A2), On (B1), On (B2), On (C1), On (C2), On (D1), On (D2) | If serial SD card detected, use it to store per-game virtual VMUs in the specified Port and Socket. |
 | **Serial VMU Multi-Slot** | Off, On | If Serial VMU is enabled, also enable up to five per-game slots, or leave off to default to one virtual VMU per game. |
 | **Boot Mode** | Full Boot, License Only, Animation Only, Fast Boot | Controls how the game is launched. "Full Boot" displays the complete boot sequence, "License Only" shows only the SEGA license screen, "Animation Only" plays only the Dreamcast boot animation, and "Fast Boot" skips all startup screens and launches the game immediately. Some titles may not function correctly in modes other than "Full Boot". DreamConn S users are generally advised to use "Full Boot" to ensure VMU synchronization completes before the game starts, which is required for certain games' automatic load features. |
+| **VMU Beep on Save** | Off, On | Sounds the VMU's buzzer while openMenu writes its settings save file. |
 | **Save/Load** | N/A | Opens the [Save/Load Manager](#saveload-manager). |
 | **Apply** | N/A | Applies settings for current session only. |
 
@@ -948,11 +1055,14 @@ Each view mode has its own set of available settings. Below is a breakdown of ea
 |---------|---------|-------------|
 | **Style** | LineDesc, Grid3, Scroll, Folders | Changes the visual layout/view mode of openMenu. |
 | **Theme** | FoldersDefault, Custom... | Selects the theme. Custom themes appear if `FOLDERS_X` folders exist. |
+| **Play BGM** | Off, On | Plays background music added with Card Manager's **Menu Options** window (see the [Menu Options](#menu-options) section). Only shown when a music track is present. |
+| **Honor Menu Defaults** | Off, On | When a default style and theme has been set in Card Manager's **Menu Options** window, "Off" makes openMenu use the console's saved style and theme instead. Only shown when a default style and theme has been applied. |
 | **Exit to BIOS** | Standard, Alternate, Alternate + 3D | "Standard" uses a standard method when exiting to BIOS, whereas "Alternate" uses a custom method that removes save file copy protection in the BIOS save manager. "Alternate + 3D" does the same while also enabling the "hidden" 3D BIOS feature. If users experience a freeze when exiting to BIOS with either "Alternate" setting, it's advised they use the "Standard" setting instead. |
 | **Sort** | Alphabetical, SD Card Order | Determines how the game list is sorted. "SD Card Order" uses a "seen first" routine that organizes disc images, virtual folders, and subfolders based on their SD card sequence. |
 | **Multi-Disc** | Show All, Compact | "Show All" displays every disc individually. "Compact" groups multi-disc games into a single entry. |
 | **Multi-Disc Grouping** | Anywhere, Same Folder Only | Only enabled if Multi-Disc option is set to "Compact". "Anywhere" will show all associated discs on SD card when opening multi-disc launcher. "Same Folder Only" will treat discs as part of their own multi-disc (or single disc) set when organized in different folders. |
-| **Artwork** | Off, On | Toggles display of box art/cover artwork. |
+| **Game Artwork** | Off, On | Toggles display of box art/cover artwork for games. |
+| **Folder Artwork** | Off, On | Toggles display of artwork assigned to folders (see the [Folder Artwork Assignment](#folder-artwork-assignment) section) when the cursor hovers over a folder. |
 | **Item Details** | Off, On | Toggles display of the item details read-out below the artwork. |
 | **Clock** | On (12-Hour), On (24-Hour), Off | Toggles display of the BIOS clock. |
 | **Marquee Speed** | Slow, Medium, Fast | Controls how quickly long game names scroll horizontally. |
@@ -961,6 +1071,7 @@ Each view mode has its own set of available settings. Below is a breakdown of ea
 | **Serial VMU** | Off, On (A1), On (A2), On (B1), On (B2), On (C1), On (C2), On (D1), On (D2) | If serial SD card detected, use it to store per-game virtual VMUs in the specified Port and Socket. |
 | **Serial VMU Multi-Slot** | Off, On | If Serial VMU is enabled, also enable up to five per-game slots, or leave off to default to one virtual VMU per game. |
 | **Boot Mode** | Full Boot, License Only, Animation Only, Fast Boot | Controls how the game is launched. "Full Boot" displays the complete boot sequence, "License Only" shows only the SEGA license screen, "Animation Only" plays only the Dreamcast boot animation, and "Fast Boot" skips all startup screens and launches the game immediately. Some titles may not function correctly in modes other than "Full Boot". DreamConn S users are generally advised to use "Full Boot" to ensure VMU synchronization completes before the game starts, which is required for certain games' automatic load features. |
+| **VMU Beep on Save** | Off, On | Sounds the VMU's buzzer while openMenu writes its settings save file. |
 | **Save/Load** | N/A | Opens the [Save/Load Manager](#saveload-manager). |
 | **Apply** | N/A | Applies settings for current session only. |
 
@@ -1031,6 +1142,8 @@ Thanks to [Xerxes3rd](https://github.com/DerekPascarella/openMenu-Virtual-Folder
 | Q or Page Up     | Left Trigger |
 | W or Page Down   | Right Trigger |
 | Shift + A-Z/0-9  | Jump to next item starting with that character |
+
+---
 
 ## Theming
 
@@ -1191,6 +1304,8 @@ To confirm newly generated PVRs are in the correct format, navigate to **Tools �
 
 After that, open GD MENU Card Manager with GDEMU SD card inserted, then click **Save Changes**. The new theme will be accessible from the Settings menu while **Style** is set to `Folders`.
 
+---
+
 ## Legal and Licensing
 
 ### openMenu
@@ -1238,6 +1353,9 @@ Both projects include additional third-party components with their own licenses:
 - **SixLabors.ImageSharp (Six Labors Split License v1.0)** - free for use in OSI-approved open-source projects
 - **ClosedXML (MIT)**
 - **ByteSize (MIT)**
+- **NLayer (MIT)** - Copyright © Mark Heath and Andrew Ward, MP3 decoding for the background music feature
+- **NVorbis (MIT)** - Copyright © Andrew Ward, OGG Vorbis decoding for the background music feature
+- **CUETools.Codecs / CUETools.Codecs.FLAKE (LGPL v3)** - FLAC decoding for the background music feature
 - **gong-wpf-dragdrop (BSD 2-Clause)** - Windows version only
 - Various libraries in `/openMenu/external/` with their respective licenses
 

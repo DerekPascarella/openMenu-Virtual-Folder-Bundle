@@ -220,7 +220,29 @@ namespace GDMENUCardManager.Core
         public IpBin Ip
         {
             get { return _Ip; }
-            set { _Ip = value; RaisePropertyChanged(); RaisePropertyChanged(nameof(Disc)); }
+            set { _Ip = value; _ImageRegion = NormalizeRegion(value?.Region); RaisePropertyChanged(); RaisePropertyChanged(nameof(Disc)); RaisePropertyChanged(nameof(Region)); }
+        }
+
+        /// <summary>
+        /// Region currently in the disc image file, normalized to JUE order.
+        /// </summary>
+        private string _ImageRegion;
+        public string ImageRegion
+        {
+            get { return _ImageRegion; }
+            set { _ImageRegion = value; }
+        }
+
+        /// <summary>
+        /// Region the image still needs to be patched to on save, or null if it already matches.
+        /// </summary>
+        public string PendingRegionChange
+        {
+            get
+            {
+                var current = NormalizeRegion(_Ip?.Region);
+                return current == null || current == _ImageRegion ? null : current;
+            }
         }
 
         /// <summary>
@@ -237,6 +259,46 @@ namespace GDMENUCardManager.Core
                     RaisePropertyChanged();
                 }
             }
+        }
+
+        /// <summary>
+        /// Wrapper property for Ip.Region to enable proper change notification.
+        /// </summary>
+        public string Region
+        {
+            get { return _Ip?.Region; }
+            set
+            {
+                if (_Ip != null)
+                {
+                    _Ip.Region = value;
+                    RaisePropertyChanged();
+                }
+            }
+        }
+
+        /// <summary>
+        /// Returns the region string in canonical JUE order. Characters other than
+        /// J, U and E are stripped. Returns null if nothing usable remains.
+        /// </summary>
+        public static string NormalizeRegion(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+                return null;
+
+            bool j = false, u = false, e = false;
+            foreach (var c in value)
+            {
+                switch (char.ToUpperInvariant(c))
+                {
+                    case 'J': j = true; break;
+                    case 'U': u = true; break;
+                    case 'E': e = true; break;
+                }
+            }
+
+            var result = (j ? "J" : "") + (u ? "U" : "") + (e ? "E" : "");
+            return result.Length == 0 ? null : result;
         }
 
         private int _SdNumber;
@@ -380,6 +442,7 @@ namespace GDMENUCardManager.Core
         {
             RaisePropertyChanged(nameof(Ip));
             RaisePropertyChanged(nameof(Disc));
+            RaisePropertyChanged(nameof(Region));
         }
     }
 }

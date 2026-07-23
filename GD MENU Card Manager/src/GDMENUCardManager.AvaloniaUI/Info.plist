@@ -37,6 +37,8 @@
 	<string>1.0</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.utility</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>10.15</string>
 	<key>NSSupportsAutomaticGraphicsSwitching</key>
 	<true/>
 	<key>NSHighResolutionCapable</key>

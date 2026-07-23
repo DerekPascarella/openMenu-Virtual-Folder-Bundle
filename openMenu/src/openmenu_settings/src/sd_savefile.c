@@ -64,6 +64,9 @@ static sd_var_entry_t sd_variables[] = {
     {NULL, 1, SFV_VMU_TIME_SYNC},        /* sf_vmu_time_sync */
     {NULL, 1, SFV_SERIAL_VMU},           /* sf_serial_vmu */
     {NULL, 1, SFV_SERIAL_VMU_MULTISLOT}, /* sf_serial_vmu_multislot */
+    {NULL, 1, SFV_FOLDER_ART},           /* sf_folder_art */
+    {NULL, 1, SFV_MUSIC},                /* sf_music */
+    {NULL, 1, SFV_HONOR_DEFAULTS},       /* sf_honor_defaults */
 };
 #define SD_VAR_COUNT (sizeof(sd_variables) / sizeof(sd_variables[0]))
 
@@ -93,6 +96,9 @@ sd_init_var_pointers(void) {
     sd_variables[20].var_ptr = sf_vmu_time_sync;
     sd_variables[21].var_ptr = sf_serial_vmu;
     sd_variables[22].var_ptr = sf_serial_vmu_multislot;
+    sd_variables[23].var_ptr = sf_folder_art;
+    sd_variables[24].var_ptr = sf_music;
+    sd_variables[25].var_ptr = sf_honor_defaults;
 }
 
 /* Calculate total data size for current version */

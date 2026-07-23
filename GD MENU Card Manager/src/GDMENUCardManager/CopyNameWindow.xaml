@@ -25,7 +25,7 @@
             <CheckBox IsChecked="{Binding ParseTosec, Mode=TwoWay}" ToolTip="Strip TOSEC-style suffixes (e.g. region, version, dump flags) from the name">Read TOSEC naming</CheckBox>
         </GroupBox>
 
-        <Button Click="Button_Click" IsDefault="True" Margin="5" Padding="20 10"
+        <Button Click="Button_Click" IsDefault="True" Margin="5" Padding="15,8"
                 ToolTip="Apply the batch rename to the matching games">Ok</Button>
 
     </StackPanel>

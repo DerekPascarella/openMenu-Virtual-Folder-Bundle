@@ -76,11 +76,6 @@ namespace GDMENUCardManager
             Close();
         }
 
-        private void CancelButton_Click(object sender, RoutedEventArgs e)
-        {
-            _saved = false;
-            Close();
-        }
     }
 
     // Interface for the view model to allow accessing the properties

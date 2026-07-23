@@ -59,6 +59,10 @@ extern uint8_t* sf_folders_art;
 #define sf_folders_art_type   CRAYON_TYPE_UINT8
 #define sf_folders_art_length 1
 
+extern uint8_t* sf_folder_art;
+#define sf_folder_art_type   CRAYON_TYPE_UINT8
+#define sf_folder_art_length 1
+
 extern uint8_t* sf_marquee_speed;
 #define sf_marquee_speed_type   CRAYON_TYPE_UINT8
 #define sf_marquee_speed_length 1
@@ -95,6 +99,14 @@ extern uint8_t* sf_serial_vmu_multislot;
 #define sf_serial_vmu_multislot_type   CRAYON_TYPE_UINT8
 #define sf_serial_vmu_multislot_length 1
 
+extern uint8_t* sf_music;
+#define sf_music_type   CRAYON_TYPE_UINT8
+#define sf_music_length 1
+
+extern uint8_t* sf_honor_defaults;
+#define sf_honor_defaults_type   CRAYON_TYPE_UINT8
+#define sf_honor_defaults_length 1
+
 enum savefile_version {
     SFV_INITIAL = 1,
     SFV_BIOS_3D,
@@ -112,6 +124,9 @@ enum savefile_version {
     SFV_SERIAL_VMU,
     SFV_SERIAL_VMU_MULTISLOT,
     SFV_EXIT_BIOS,
+    SFV_FOLDER_ART,
+    SFV_MUSIC,
+    SFV_HONOR_DEFAULTS,
     SFV_LATEST_PLUS_ONE // DON'T REMOVE
 };
 
@@ -242,6 +257,13 @@ typedef enum CFG_FOLDERS_ART {
     FOLDERS_ART_END = FOLDERS_ART_ON
 } CFG_FOLDERS_ART;
 
+typedef enum CFG_FOLDER_ART {
+    FOLDER_ART_START = 0,
+    FOLDER_ART_OFF = FOLDER_ART_START,
+    FOLDER_ART_ON,
+    FOLDER_ART_END = FOLDER_ART_ON
+} CFG_FOLDER_ART;
+
 typedef enum CFG_MARQUEE_SPEED {
     MARQUEE_SPEED_START = 0,
     MARQUEE_SPEED_SLOW = MARQUEE_SPEED_START,
@@ -316,6 +338,15 @@ typedef enum CFG_SERIAL_VMU_MULTISLOT {
     SERIAL_VMU_MULTISLOT_ON,
     SERIAL_VMU_MULTISLOT_END = SERIAL_VMU_MULTISLOT_ON
 } CFG_SERIAL_VMU_MULTISLOT;
+
+typedef enum CFG_MUSIC { MUSIC_START = 0, MUSIC_OFF = MUSIC_START, MUSIC_ON, MUSIC_END = MUSIC_ON } CFG_MUSIC;
+
+typedef enum CFG_HONOR_DEFAULTS {
+    HONOR_DEFAULTS_START = 0,
+    HONOR_DEFAULTS_OFF = HONOR_DEFAULTS_START,
+    HONOR_DEFAULTS_ON,
+    HONOR_DEFAULTS_END = HONOR_DEFAULTS_ON
+} CFG_HONOR_DEFAULTS;
 
 typedef CFG_REGION region;
 

@@ -1,11 +1,12 @@
+using Avalonia.Platform.Storage;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Avalonia.Media;
 using Avalonia.Media.Imaging;
-using MessageBox.Avalonia;
-using MessageBox.Avalonia.Models;
+using MsBox.Avalonia;
+using MsBox.Avalonia.Models;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -165,11 +166,11 @@ namespace GDMENUCardManager
             if (!HasUnsavedChanges)
                 return true;
 
-            var result = await MessageBoxManager.GetMessageBoxCustomWindow(new MessageBox.Avalonia.DTO.MessageBoxCustomParams
+            var result = await MessageBoxManager.GetMessageBoxCustom(new MsBox.Avalonia.Dto.MessageBoxCustomParams
             {
                 ContentTitle = "Confirmation",
                 ContentMessage = "You have unsaved changes. Save before navigating?",
-                Icon = MessageBox.Avalonia.Enums.Icon.Warning,
+                Icon = MsBox.Avalonia.Enums.Icon.Warning,
                 ShowInCenter = true,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 ButtonDefinitions = new ButtonDefinition[]
@@ -178,7 +179,7 @@ namespace GDMENUCardManager
                     new ButtonDefinition { Name = "Discard" },
                     new ButtonDefinition { Name = "Cancel" }
                 }
-            }).ShowDialog(this);
+            }).ShowWindowDialogAsync(this);
 
             if (result == "Cancel")
                 return false;
@@ -255,24 +256,23 @@ namespace GDMENUCardManager
 
         private async void BrowseImage_Click(object sender, RoutedEventArgs e)
         {
-            var fileDialog = new OpenFileDialog
+            var pickedFiles = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
             {
                 Title = "Select Image",
                 AllowMultiple = false,
-                Filters = new List<FileDialogFilter>
+                FileTypeFilter = new List<FilePickerFileType>
                 {
-                    new FileDialogFilter
+                    new FilePickerFileType("Image Files")
                     {
-                        Name = "Image Files",
-                        Extensions = new List<string> { "png", "jpg", "jpeg", "gif", "webp", "bmp", "tiff", "tga" }
+                        Patterns = new List<string> { "*.png", "*.jpg", "*.jpeg", "*.gif", "*.webp", "*.bmp", "*.tiff", "*.tga" }
                     }
                 }
-            };
+            });
 
-            var result = await fileDialog.ShowAsync(this);
-            if (result != null && result.Length > 0)
+            var imagePath = pickedFiles.Count > 0 ? pickedFiles[0].TryGetLocalPath() : null;
+            if (imagePath != null)
             {
-                await LoadAndPreviewImage(result[0]);
+                await LoadAndPreviewImage(imagePath);
             }
         }
 
@@ -303,11 +303,11 @@ namespace GDMENUCardManager
 
         private async void DeleteEntry_Click(object sender, RoutedEventArgs e)
         {
-            var result = await MessageBoxManager.GetMessageBoxCustomWindow(new MessageBox.Avalonia.DTO.MessageBoxCustomParams
+            var result = await MessageBoxManager.GetMessageBoxCustom(new MsBox.Avalonia.Dto.MessageBoxCustomParams
             {
                 ContentTitle = "Confirmation",
                 ContentMessage = $"Delete artwork entry for serial '{Serial}'?",
-                Icon = MessageBox.Avalonia.Enums.Icon.Warning,
+                Icon = MsBox.Avalonia.Enums.Icon.Warning,
                 ShowInCenter = true,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 ButtonDefinitions = new ButtonDefinition[]
@@ -315,7 +315,7 @@ namespace GDMENUCardManager
                     new ButtonDefinition { Name = "Delete" },
                     new ButtonDefinition { Name = "Cancel" }
                 }
-            }).ShowDialog(this);
+            }).ShowWindowDialogAsync(this);
 
             if (result == "Delete")
             {
@@ -424,11 +424,11 @@ namespace GDMENUCardManager
             {
                 e.Cancel = true;
 
-                var result = await MessageBoxManager.GetMessageBoxCustomWindow(new MessageBox.Avalonia.DTO.MessageBoxCustomParams
+                var result = await MessageBoxManager.GetMessageBoxCustom(new MsBox.Avalonia.Dto.MessageBoxCustomParams
                 {
                     ContentTitle = "Confirmation",
                     ContentMessage = "You have unsaved changes. Discard them?",
-                    Icon = MessageBox.Avalonia.Enums.Icon.Warning,
+                    Icon = MsBox.Avalonia.Enums.Icon.Warning,
                     ShowInCenter = true,
                     WindowStartupLocation = WindowStartupLocation.CenterOwner,
                     ButtonDefinitions = new ButtonDefinition[]
@@ -436,7 +436,7 @@ namespace GDMENUCardManager
                         new ButtonDefinition { Name = "Discard" },
                         new ButtonDefinition { Name = "Cancel" }
                     }
-                }).ShowDialog(this);
+                }).ShowWindowDialogAsync(this);
 
                 if (result == "Discard")
                 {

@@ -12,23 +12,29 @@
             <TextBlock TextWrapping="Wrap" Margin="0 0 0 10" Text="Choose which of your current files to preserve during the update. Checked items will NOT be overwritten."/>
 
             <StackPanel Margin="10 5 0 0">
-                <CheckBox x:Name="ChkPreserveDats" IsChecked="True" Margin="0 4">
+                <CheckBox x:Name="ChkPreserveDats" IsChecked="True" Margin="0 4"
+                          ToolTip="Keep your current artwork and metadata DATs instead of the update's defaults, preserving your custom artwork for games and folders">
                     <TextBlock Text="Preserve customized artwork and metadata"/>
                 </CheckBox>
-                <CheckBox x:Name="ChkPreserveThemes" IsChecked="False" Margin="0 4">
+                <CheckBox x:Name="ChkPreserveThemes" IsChecked="False" Margin="0 4"
+                          ToolTip="Keep your current openMenu themes instead of the update's defaults">
                     <TextBlock Text="Preserve openMenu themes"/>
                 </CheckBox>
-                <CheckBox x:Name="ChkPreserveCheats" IsChecked="False" Margin="0 4">
+                <CheckBox x:Name="ChkPreserveCheats" IsChecked="False" Margin="0 4"
+                          ToolTip="Keep your current cheat files instead of the update's defaults">
                     <TextBlock Text="Preserve cheats"/>
                 </CheckBox>
-                <CheckBox x:Name="ChkPreserveSettings" IsChecked="True" Margin="0 4">
+                <CheckBox x:Name="ChkPreserveSettings" IsChecked="True" Margin="0 4"
+                          ToolTip="Keep your current settings (new settings from the update are still added)">
                     <TextBlock TextWrapping="Wrap" Text="Preserve settings (new settings from the update will still be added)"/>
                 </CheckBox>
             </StackPanel>
 
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 20 0 0">
-                <Button Content="Cancel" Click="CancelButton_Click" Width="90" Height="28" Margin="0 0 10 0"/>
-                <Button Content="Next" Click="NextButton_Click" Width="90" Height="28" IsDefault="True"/>
+                <Button Content="Cancel" Click="CancelButton_Click" Width="90" Padding="15,8" Margin="0 0 10 0"
+                        ToolTip="Close the wizard without updating"/>
+                <Button Content="Next" Click="NextButton_Click" Width="90" Padding="15,8" IsDefault="True"
+                        ToolTip="Continue to the download step"/>
             </StackPanel>
         </StackPanel>
 
@@ -42,8 +48,10 @@
             <TextBlock x:Name="SizeText" Foreground="Gray"/>
 
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 20 0 0">
-                <Button x:Name="CancelDownloadButton" Content="Cancel" Click="CancelDownloadButton_Click" Width="90" Height="28" Margin="0 0 10 0"/>
-                <Button x:Name="InstallButton" Content="Install Now" Click="InstallButton_Click" Width="90" Height="28" Visibility="Collapsed"/>
+                <Button x:Name="CancelDownloadButton" Content="Cancel" Click="CancelDownloadButton_Click" Width="90" Padding="15,8" Margin="0 0 10 0"
+                        ToolTip="Cancel the download"/>
+                <Button x:Name="InstallButton" Content="Install Now" Click="InstallButton_Click" Width="90" Padding="15,8" Visibility="Collapsed"
+                        ToolTip="Install the downloaded update"/>
             </StackPanel>
         </StackPanel>
     </Grid>

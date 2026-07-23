@@ -11,6 +11,8 @@ endif()
 
 set(OPENMENU_SOURCES
         src/main.c
+        src/backend/bgm.c
+        src/backend/boot_defaults.c
         src/backend/gdemu_control.c
         src/backend/gdemu_sdk.c
         src/texture/block_pool.c

@@ -92,7 +92,7 @@
                         <TextBlock Grid.Row="1" Grid.Column="0" FontWeight="SemiBold">Remove</TextBlock>
                         <TextBlock Grid.Row="1" Grid.Column="1">[-] or Delete key</TextBlock>
                         <TextBlock Grid.Row="2" Grid.Column="0" FontWeight="SemiBold">Reorder</TextBlock>
-                        <TextBlock Grid.Row="2" Grid.Column="1">Drag and drop</TextBlock>
+                        <TextBlock Grid.Row="2" Grid.Column="1">Drag and drop or up/down buttons</TextBlock>
                         <TextBlock Grid.Row="3" Grid.Column="0" FontWeight="SemiBold">Sort</TextBlock>
                         <TextBlock Grid.Row="3" Grid.Column="1">[Sort List] button</TextBlock>
                     </Grid>
@@ -130,14 +130,13 @@
                 <StackPanel Grid.Column="2">
                     <!-- Artwork -->
                     <TextBlock FontWeight="Bold" TextWrapping="Wrap">Artwork (openMenu mode)</TextBlock>
-                    <TextBlock Margin="0,4,0,0" TextWrapping="Wrap">Click Assign/Manage button in the Art column to set box art.</TextBlock>
+                    <TextBlock Margin="0,4,0,0" TextWrapping="Wrap">Click Assign/Manage button in the Artwork column to set a game's box art. Click Folder Tools button and open the Folder Artwork tab to set artwork shown when hovering a folder in Folders view mode.</TextBlock>
 
                     <Separator Margin="0,12"/>
 
-                    <!-- Batch Folder Move and Rename -->
-                    <TextBlock FontWeight="Bold" TextWrapping="Wrap">Batch Folder Move and Rename (openMenu mode)</TextBlock>
-                    <TextBlock Margin="0,4,0,0">Reorganize folder hierarchy via tree view.</TextBlock>
-                    <TextBlock>Double-click to rename, drag to reparent.</TextBlock>
+                    <!-- Batch Folder Move/Rename -->
+                    <TextBlock FontWeight="Bold" TextWrapping="Wrap">Batch Folder Move/Rename (openMenu mode)</TextBlock>
+                    <TextBlock Margin="0,4,0,0" TextWrapping="Wrap">Click Folder Tools button and open the Batch Folder Move/Rename tab to reorganize folder hierarchy via tree view. Double-click to rename, drag to reparent.</TextBlock>
 
                     <Separator Margin="0,12"/>
 
@@ -188,6 +187,7 @@
         <!-- Check for Updates button (top-right, rendered after StackPanel so it's on top for clicks) -->
         <Button Content="Check for Updates" Click="CheckForUpdatesButton_Click"
                 HorizontalAlignment="Right" VerticalAlignment="Top"
-                Height="28" Padding="12 0"/>
+                Height="28" Padding="12 0"
+                ToolTip="Check GitHub for a newer version of openMenu Virtual Folder Bundle"/>
     </Grid>
 </Window>

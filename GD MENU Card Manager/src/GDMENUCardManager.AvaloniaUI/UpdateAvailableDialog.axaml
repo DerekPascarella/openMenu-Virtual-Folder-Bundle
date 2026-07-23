@@ -5,7 +5,7 @@
         mc:Ignorable="d" d:DesignWidth="450" d:DesignHeight="220"
         x:Class="GDMENUCardManager.UpdateAvailableDialog"
         Title="Update Available" SizeToContent="Height" Width="450"
-        CanResize="False"
+        CanResize="False" CanMinimize="False"
         WindowStartupLocation="CenterOwner">
   <Grid Margin="20">
     <Grid.RowDefinitions>
@@ -23,16 +23,20 @@
 
       <Button x:Name="ChangelogButton" Content="View Changelog" Click="Changelog_Click" Margin="0 0 0 15"
               Background="Transparent" BorderBrush="Transparent" Foreground="Blue"
-              Padding="0" Cursor="Hand" HorizontalAlignment="Left"/>
+              Padding="0" Cursor="Hand" HorizontalAlignment="Left"
+              ToolTip.Tip="Open the changelog in your web browser"/>
 
       <TextBlock TextWrapping="Wrap" Text="Would you like to update now? An update wizard will walk you through options to preserve your current assets."/>
     </StackPanel>
 
     <!-- Buttons -->
     <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 15 0 0">
-      <Button Content="Skip This Version" Click="SkipButton_Click" Width="120" Height="28" Margin="0 0 10 0"/>
-      <Button Content="Remind Me Later" Click="RemindButton_Click" Width="120" Height="28" Margin="0 0 10 0"/>
-      <Button Content="Update Now" Click="UpdateButton_Click" Width="90" Height="28" IsDefault="True"/>
+      <Button Content="Skip This Version" Click="SkipButton_Click" Width="120" Padding="15,8" Margin="0 0 10 0"
+              ToolTip.Tip="Ignore this version and don't ask again until the next release"/>
+      <Button Content="Remind Me Later" Click="RemindButton_Click" Width="120" Padding="15,8" Margin="0 0 10 0"
+              ToolTip.Tip="Close and be reminded the next time the application starts"/>
+      <Button Content="Update Now" Click="UpdateButton_Click" Width="90" Padding="15,8" IsDefault="True"
+              ToolTip.Tip="Download and install the update"/>
     </StackPanel>
   </Grid>
 </Window>

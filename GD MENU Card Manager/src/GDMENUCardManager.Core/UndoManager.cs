@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
 
 namespace GDMENUCardManager.Core
@@ -196,6 +197,9 @@ namespace GDMENUCardManager.Core
                 case nameof(GdItem.Disc):
                     Item.Disc = value as string;
                     break;
+                case nameof(GdItem.Region):
+                    Item.Region = value as string;
+                    break;
             }
         }
     }
@@ -259,6 +263,57 @@ namespace GDMENUCardManager.Core
             }
 
             RefreshArtworkStatus?.Invoke(Serial);
+        }
+    }
+
+    /// <summary>
+    /// Represents an undoable folder artwork change (add, update, or delete).
+    /// </summary>
+    public class FolderArtChangeOperation : UndoOperation
+    {
+        public string FolderPath { get; set; }
+        public byte[] OldPvrData { get; set; }
+        public byte[] NewPvrData { get; set; }
+        public FolderArtDatManager FolderArtDat { get; set; }
+
+        /// <summary>
+        /// Optional callback to refresh any open folder artwork UI after undo/redo.
+        /// </summary>
+        public Action RefreshFolderArtStatus { get; set; }
+
+        public override string Description
+        {
+            get
+            {
+                if (OldPvrData == null && NewPvrData != null)
+                    return "Add Folder Artwork";
+                if (OldPvrData != null && NewPvrData == null)
+                    return "Delete Folder Artwork";
+                return "Change Folder Artwork";
+            }
+        }
+
+        public override void Undo()
+        {
+            ApplyArtwork(OldPvrData);
+        }
+
+        public override void Redo()
+        {
+            ApplyArtwork(NewPvrData);
+        }
+
+        private void ApplyArtwork(byte[] pvrData)
+        {
+            if (FolderArtDat == null)
+                return;
+
+            if (pvrData == null)
+                FolderArtDat.DeleteEntryForFolder(FolderPath);
+            else
+                FolderArtDat.SetArtworkForFolder(FolderPath, pvrData);
+
+            RefreshFolderArtStatus?.Invoke();
         }
     }
 
@@ -540,6 +595,10 @@ namespace GDMENUCardManager.Core
 
         public List<ItemSnapshot> Snapshots { get; set; } = new List<ItemSnapshot>();
 
+        // Folder artwork entries that were moved along with the rename
+        public FolderArtDatManager FolderArtDat { get; set; }
+        public List<(string OldPath, string NewPath)> ArtRekeys { get; set; } = new List<(string, string)>();
+
         public override string Description => "Batch Folder Rename";
 
         public override void Undo()
@@ -549,6 +608,9 @@ namespace GDMENUCardManager.Core
                 s.Item.Folder = s.OldFolder;
                 s.Item.AlternativeFolders = new List<string>(s.OldAltFolders);
             }
+
+            if (FolderArtDat != null && ArtRekeys.Count > 0)
+                FolderArtDat.ApplyRekeys(ArtRekeys.Select(r => (r.NewPath, r.OldPath)).ToList());
         }
 
         public override void Redo()
@@ -558,6 +620,9 @@ namespace GDMENUCardManager.Core
                 s.Item.Folder = s.NewFolder;
                 s.Item.AlternativeFolders = new List<string>(s.NewAltFolders);
             }
+
+            if (FolderArtDat != null && ArtRekeys.Count > 0)
+                FolderArtDat.ApplyRekeys(ArtRekeys);
         }
     }
 }

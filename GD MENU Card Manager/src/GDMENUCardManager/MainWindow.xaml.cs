@@ -345,7 +345,7 @@ namespace GDMENUCardManager
                     typeColumn = col;
                 else if (col is DataGridTextColumn discTextCol && discTextCol.Header?.ToString() == "Disc")
                     discColumn = discTextCol;
-                else if (col.Header?.ToString() == "Art")
+                else if (col.Header?.ToString() == "Artwork")
                     artColumn = col;
             }
 
@@ -1024,6 +1024,12 @@ namespace GDMENUCardManager
                         // Check for serial translations that were applied to added items
                         await ShowSerialTranslationDialogIfNeeded();
                     }
+
+                    if (result.UnsupportedRedumpGdi.Count > 0)
+                    {
+                        MessageBox.Show(this, LegacyRedumpGdiDetector.BuildMessage(result.UnsupportedRedumpGdi),
+                            "Information", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
                 }
             }
             catch (InvalidDropException ex)
@@ -1287,27 +1293,38 @@ namespace GDMENUCardManager
             window.ShowDialog();
         }
 
-        private void ButtonBatchFolderRename_Click(object sender, RoutedEventArgs e)
+        private void ButtonMenuOptions_Click(object sender, RoutedEventArgs e)
         {
-            if (IsFilterActive)
-                return;
-            if (Manager.ItemList.Count == 0)
-                return;
-
             try
             {
-                var folderCounts = Manager.GetFolderCounts();
+                var window = new MenuOptionsWindow(Manager);
+                window.Owner = this;
+                window.ShowDialog();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
 
-                if (folderCounts.Count == 0)
+        private void ButtonFolderTools_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // Only offer the batch rename tab when the full unfiltered list is loaded and has folders
+                Dictionary<string, int> folderCounts = null;
+                if (!IsFilterActive && Manager.ItemList.Count > 0)
                 {
-                    MessageBox.Show("No folders found in the current game list.", "Information", MessageBoxButton.OK, MessageBoxImage.Information);
-                    return;
+                    var counts = Manager.GetFolderCounts();
+                    if (counts.Count > 0)
+                        folderCounts = counts;
                 }
 
-                var window = new BatchFolderRenameWindow(folderCounts, Manager.ItemList.Count);
+                var window = new FolderToolsWindow(Manager, folderCounts, Manager.ItemList.Count);
                 window.Owner = this;
+                window.ShowDialog();
 
-                if (window.ShowDialog() == true && window.FolderMappings != null)
+                if (window.FolderMappings != null)
                 {
                     // snapshot before applying
                     var snapshots = Manager.ItemList.Select(i => new BatchFolderRenameOperation.ItemSnapshot
@@ -1318,6 +1335,9 @@ namespace GDMENUCardManager
                     }).ToList();
 
                     var (updatedCount, conflictsRemoved) = Manager.ApplyFolderMappings(window.FolderMappings);
+
+                    // Move any folder artwork along with the renamed paths
+                    var artRekeys = Manager.RekeyFolderArtForMappings(window.FolderMappings);
 
                     if (updatedCount > 0 || conflictsRemoved > 0)
                     {
@@ -1331,7 +1351,10 @@ namespace GDMENUCardManager
                                 undoOp.Snapshots.Add(s);
                         }
 
-                        if (undoOp.Snapshots.Count > 0)
+                        undoOp.FolderArtDat = Manager.FolderArtDat;
+                        undoOp.ArtRekeys = artRekeys;
+
+                        if (undoOp.Snapshots.Count > 0 || artRekeys.Count > 0)
                             Manager.UndoManager.RecordChange(undoOp);
 
                         var msg = $"{updatedCount} disc image(s) updated across {window.FolderMappings.Count} folder(s).";
@@ -1826,6 +1849,13 @@ namespace GDMENUCardManager
                     }
                 }
 
+                // Region can only be edited on uncompressed Game images in a patchable format
+                if (e.Column.Header?.ToString() == "Region" && !CanEditRegion(item))
+                {
+                    e.Cancel = true;
+                    return;
+                }
+
                 // Capture old value for undo
                 _editingItem = item;
                 var column = e.Column;
@@ -1853,6 +1883,11 @@ namespace GDMENUCardManager
                 {
                     _editingPropertyName = nameof(GdItem.Disc);
                     _editingOldValue = item.Disc;
+                }
+                else if (column.Header?.ToString() == "Region")
+                {
+                    _editingPropertyName = nameof(GdItem.Region);
+                    _editingOldValue = item.Region;
                 }
                 else
                 {
@@ -1950,6 +1985,44 @@ namespace GDMENUCardManager
                 return;
             }
 
+            // Region edits get normalized before committing
+            if (propertyName == nameof(GdItem.Region))
+            {
+                _editingItem = null;
+                _editingPropertyName = null;
+                _editingOldValue = null;
+
+                var oldRegion = oldValue as string;
+                var normalized = GdItem.NormalizeRegion(newValue as string);
+
+                if (normalized == null || normalized == oldRegion)
+                {
+                    // invalid or unchanged input, silently put the old value back
+                    SetEditingTextBoxText(e.EditingElement, oldRegion ?? "");
+                    item.Region = oldRegion;
+                    return;
+                }
+
+                // push the normalized value so the binding commits it (e.g. "ej" becomes "JE")
+                SetEditingTextBoxText(e.EditingElement, normalized);
+
+                // no undo entry if the previous value wasn't a usable region
+                if (oldRegion != null && GdItem.NormalizeRegion(oldRegion) == oldRegion)
+                {
+                    Manager.UndoManager.RecordChange(new PropertyEditOperation
+                    {
+                        Item = item,
+                        PropertyName = nameof(GdItem.Region),
+                        OldValue = oldRegion,
+                        NewValue = normalized
+                    });
+                }
+
+                // image gets patched to match on save
+                item.Region = normalized;
+                return;
+            }
+
             // Clear immediately so next edit can capture its own values
             _editingItem = null;
             _editingPropertyName = null;
@@ -1982,8 +2055,33 @@ namespace GDMENUCardManager
             }
         }
 
+        // Editing elements from text columns are a bare TextBox, template columns may wrap one
+        private static void SetEditingTextBoxText(object editingElement, string text)
+        {
+            if (editingElement is TextBox tb)
+                tb.Text = text;
+            else if (editingElement is DependencyObject dep)
+            {
+                var innerTb = FindVisualChild<TextBox>(dep);
+                if (innerTb != null)
+                    innerTb.Text = text;
+            }
+        }
+
+        private static bool CanEditRegion(GdItem item)
+        {
+            return item.FileFormat == FileFormat.Uncompressed
+                && item.DiscType == "Game"
+                && item.Ip != null
+                && RegionPatcher.CanPatch(item.ImageFile);
+        }
+
         private void MainWindow_PreviewKeyDown(object sender, KeyEventArgs e)
         {
+            // Undo/redo buttons are disabled while busy, do the same for the shortcuts
+            if (IsBusy)
+                return;
+
             // Handle Ctrl+Z for Undo
             if (e.Key == Key.Z && Keyboard.Modifiers == ModifierKeys.Control)
             {
@@ -2076,13 +2174,19 @@ namespace GDMENUCardManager
                 {
                     IsBusy = true;
 
-                    var invalid = await Manager.AddGames(dialog.FileNames);
+                    var (invalid, unsupportedRedumpGdi) = await Manager.AddGames(dialog.FileNames);
 
                     if (invalid.Any())
                     {
                         var w = new TextWindow("Ignored folders/files", string.Join(Environment.NewLine, invalid));
                         w.Owner = this;
                         w.ShowDialog();
+                    }
+
+                    if (unsupportedRedumpGdi.Any())
+                    {
+                        MessageBox.Show(this, LegacyRedumpGdiDetector.BuildMessage(unsupportedRedumpGdi),
+                            "Information", MessageBoxButton.OK, MessageBoxImage.Information);
                     }
 
                     // Check for serial translations that were applied
@@ -2119,6 +2223,85 @@ namespace GDMENUCardManager
                     ClearFilterFromGrid();
                 }
             }
+        }
+
+        private void ButtonMoveUp_Click(object sender, RoutedEventArgs e)
+        {
+            if (IsFilterActive)
+                return;
+            var selectedItems = dg1.SelectedItems.Cast<GdItem>().ToArray();
+
+            if (!selectedItems.Any())
+                return;
+
+            // Don't allow moving menu items
+            if (selectedItems.Any(item => item.Ip?.Name == "GDMENU" || item.Ip?.Name == "openMenu"))
+                return;
+
+            int moveTo = Manager.ItemList.IndexOf(selectedItems.First()) - 1;
+
+            // Don't allow moving items above the menu (position 0)
+            if (moveTo < 1)
+                return;
+
+            // Capture order before move for undo
+            var oldOrder = new List<GdItem>(Manager.ItemList);
+
+            foreach (var item in selectedItems)
+                Manager.ItemList.Remove(item);
+
+            foreach (var item in selectedItems)
+                Manager.ItemList.Insert(moveTo++, item);
+
+            Manager.UndoManager.RecordChange(new ListReorderOperation("Move Up")
+            {
+                ItemList = Manager.ItemList,
+                OldOrder = oldOrder,
+                NewOrder = new List<GdItem>(Manager.ItemList)
+            });
+
+            dg1.SelectedItems.Clear();
+            foreach (var item in selectedItems)
+                dg1.SelectedItems.Add(item);
+        }
+
+        private void ButtonMoveDown_Click(object sender, RoutedEventArgs e)
+        {
+            if (IsFilterActive)
+                return;
+            var selectedItems = dg1.SelectedItems.Cast<GdItem>().ToArray();
+
+            if (!selectedItems.Any())
+                return;
+
+            // Don't allow moving menu items
+            if (selectedItems.Any(item => item.Ip?.Name == "GDMENU" || item.Ip?.Name == "openMenu"))
+                return;
+
+            int moveTo = Manager.ItemList.IndexOf(selectedItems.Last()) - selectedItems.Length + 2;
+
+            if (moveTo > Manager.ItemList.Count - selectedItems.Length)
+                return;
+
+            // Capture order before move for undo
+            var oldOrder = new List<GdItem>(Manager.ItemList);
+
+            foreach (var item in selectedItems)
+                Manager.ItemList.Remove(item);
+
+            foreach (var item in selectedItems)
+                Manager.ItemList.Insert(moveTo++, item);
+
+            Manager.UndoManager.RecordChange(new ListReorderOperation("Move Down")
+            {
+                ItemList = Manager.ItemList,
+                OldOrder = oldOrder,
+                NewOrder = new List<GdItem>(Manager.ItemList)
+            });
+
+            dg1.SelectedItems.Clear();
+            foreach (var item in selectedItems)
+                dg1.SelectedItems.Add(item);
         }
 
         private async void ButtonSearch_Click(object sender, RoutedEventArgs e)
@@ -2243,8 +2426,7 @@ namespace GDMENUCardManager
 
         private void FolderComboBox_PreviewLostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
         {
-            // Capture the raw text BEFORE the binding pushes (UpdateSourceTrigger=LostFocus
-            // will strip non-ASCII via CleanFolderPath before FolderComboBox_LostFocus fires)
+            // grab the raw text before the LostFocus binding strips non-ASCII via CleanFolderPath
             if (sender is ComboBox comboBox)
             {
                 _rawFolderText = comboBox.Text;
@@ -2281,9 +2463,7 @@ namespace GDMENUCardManager
         {
             if (sender is ComboBox comboBox && comboBox.DataContext is GdItem item)
             {
-                // Use raw text captured before the binding pushed (the binding's
-                // UpdateSourceTrigger=LostFocus strips non-ASCII via CleanFolderPath
-                // before this handler fires, so comboBox.Text is already clean)
+                // comboBox.Text is already ASCII-stripped by now, so use the raw text captured earlier
                 var textBeforeBinding = _rawFolderText ?? comboBox.Text;
                 _rawFolderText = null;
 

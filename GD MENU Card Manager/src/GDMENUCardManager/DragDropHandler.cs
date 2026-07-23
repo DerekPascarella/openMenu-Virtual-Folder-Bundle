@@ -20,6 +20,7 @@ namespace GDMENUCardManager
         public List<GdItem> OldOrder { get; set; }
         public List<GdItem> NewOrder { get; set; }
         public List<(GdItem Item, int Index)> AddedItems { get; set; } = new List<(GdItem, int)>();
+        public List<string> UnsupportedRedumpGdi { get; } = new List<string>();
     }
 
     internal static class DragDropHandler
@@ -94,6 +95,10 @@ namespace GDMENUCardManager
                         result.AddedItems.Add((toInsert, insertIndex));
                         insertIndex++;
                     }
+                    catch (UnsupportedDiscFormatException)
+                    {
+                        result.UnsupportedRedumpGdi.Add(System.IO.Path.GetFileName(o));
+                    }
                     catch (Exception ex)
                     {
                         invalid.Add($"{o} - {ex.Message}");
@@ -140,7 +145,14 @@ namespace GDMENUCardManager
             }
 
             if (invalid.Any())
+            {
+                // The result gets discarded when this throws, so fold any rejected
+                // redump GDIs into the same list instead of losing them
+                foreach (var name in result.UnsupportedRedumpGdi)
+                    invalid.Add($"{name} - {LegacyRedumpGdiDetector.ShortMessage}");
+
                 throw new InvalidDropException(string.Join(Environment.NewLine, invalid));
+            }
 
             return result;
         }

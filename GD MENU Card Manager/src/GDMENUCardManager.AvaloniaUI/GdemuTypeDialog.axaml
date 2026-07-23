@@ -5,9 +5,10 @@
         mc:Ignorable="d" d:DesignWidth="460" d:DesignHeight="200"
         x:Class="GDMENUCardManager.GdemuTypeDialog"
         Title="GDEMU.INI Setup" SizeToContent="Height" Width="460"
-        WindowStartupLocation="CenterOwner" CanResize="False">
+        WindowStartupLocation="CenterOwner" CanResize="False" CanMinimize="False">
     <Grid Margin="20">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
@@ -20,12 +21,26 @@
             <TextBlock TextWrapping="Wrap" Margin="0,10,0,0">Please select which type of GDEMU you have.</TextBlock>
         </StackPanel>
 
+        <!-- Options. the radio holds only the label so the glyph lines up with it,
+             the Avalonia template centers the glyph against the whole content and
+             would leave it floating between the two lines otherwise -->
+        <StackPanel Grid.Row="1" Margin="10,15,0,0">
+            <RadioButton x:Name="AuthenticRadio" GroupName="GdemuType"
+                         ToolTip.Tip="Use timing values for an authentic GDEMU purchased directly from its creator">
+                <TextBlock Text="Authentic" FontWeight="SemiBold"/>
+            </RadioButton>
+            <TextBlock Text="Purchased directly from its creator" Foreground="Gray" Margin="24,0,0,0"/>
+            <RadioButton x:Name="CloneRadio" GroupName="GdemuType" IsChecked="True" Margin="0,8,0,0"
+                         ToolTip.Tip="Use timing values for a clone GDEMU (recommended for most users)">
+                <TextBlock Text="Clone" FontWeight="SemiBold"/>
+            </RadioButton>
+            <TextBlock Text="Recommended for most users" Foreground="Gray" Margin="24,0,0,0"/>
+        </StackPanel>
+
         <!-- Buttons -->
-        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,20,0,0">
-            <Button Content="Authentic" Click="AuthenticButton_Click" Width="120" Height="32" Margin="0,0,20,0"
-                    ToolTip.Tip="Use timing values for an authentic GDEMU purchased directly from its creator"/>
-            <Button Content="Clone" Click="CloneButton_Click" Width="120" Height="32"
-                    ToolTip.Tip="Use timing values for a clone GDEMU (recommended for most users)"/>
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+            <Button Content="OK" Click="OkButton_Click" Width="90" Padding="15,8" IsDefault="True"
+                    ToolTip.Tip="Create GDEMU.INI with timing values for the selected model"/>
         </StackPanel>
     </Grid>
 </Window>

@@ -30,6 +30,8 @@ set OUTPUT_DIR=_releases\GDMENUCardManager.%VERSION%-win-x64
 dotnet publish src\GDMENUCardManager\GDMENUCardManager.csproj -c Release -o "%OUTPUT_DIR%"
 if %ERRORLEVEL% neq 0 goto :error
 xcopy /E /I /Y src\GDMENUCardManager.Core\tools "%OUTPUT_DIR%\tools\"
+REM never ship user-generated menu options files
+del /Q "%OUTPUT_DIR%\tools\openMenu\menu_data\DEFAULTS.INI" "%OUTPUT_DIR%\tools\openMenu\menu_data\BGM.ADP" 2>nul
 copy /Y redump2cdi\windows-x86_64-msvc\redump2cdi.exe "%OUTPUT_DIR%\tools\"
 copy /Y LICENSE "%OUTPUT_DIR%\"
 copy /Y README.md "%OUTPUT_DIR%\"
@@ -47,6 +49,8 @@ set OUTPUT_DIR=_releases\GDMENUCardManager.%VERSION%-win-x86
 dotnet publish src\GDMENUCardManager\GDMENUCardManager.csproj -c Release -r win-x86 --self-contained false -o "%OUTPUT_DIR%"
 if %ERRORLEVEL% neq 0 goto :error
 xcopy /E /I /Y src\GDMENUCardManager.Core\tools "%OUTPUT_DIR%\tools\"
+REM never ship user-generated menu options files
+del /Q "%OUTPUT_DIR%\tools\openMenu\menu_data\DEFAULTS.INI" "%OUTPUT_DIR%\tools\openMenu\menu_data\BGM.ADP" 2>nul
 copy /Y redump2cdi\windows-x86-msvc\redump2cdi.exe "%OUTPUT_DIR%\tools\"
 copy /Y LICENSE "%OUTPUT_DIR%\"
 copy /Y README.md "%OUTPUT_DIR%\"
@@ -72,6 +76,8 @@ set OUTPUT_DIR=_releases\GDMENUCardManager.%VERSION%-linux-x64
 dotnet publish src\GDMENUCardManager.AvaloniaUI\GDMENUCardManager.AvaloniaUI.csproj -c Release --self-contained true -r linux-x64 -p:PublishSingleFile=false -p:IncludeNativeLibrariesForSelfExtract=true -o "%OUTPUT_DIR%"
 if %ERRORLEVEL% neq 0 goto :error
 xcopy /E /I /Y src\GDMENUCardManager.Core\tools "%OUTPUT_DIR%\tools\"
+REM never ship user-generated menu options files
+del /Q "%OUTPUT_DIR%\tools\openMenu\menu_data\DEFAULTS.INI" "%OUTPUT_DIR%\tools\openMenu\menu_data\BGM.ADP" 2>nul
 copy /Y redump2cdi\linux-x86_64\redump2cdi "%OUTPUT_DIR%\tools\"
 copy /Y LICENSE "%OUTPUT_DIR%\"
 copy /Y README.md "%OUTPUT_DIR%\"
@@ -88,6 +94,8 @@ set OUTPUT_DIR=_releases
 dotnet publish src\GDMENUCardManager.AvaloniaUI\GDMENUCardManager.AvaloniaUI.csproj -c Release --self-contained true -r osx-x64 -p:PublishSingleFile=false -p:IncludeNativeLibrariesForSelfExtract=true -o "%TEMP_OUTPUT_DIR%"
 if %ERRORLEVEL% neq 0 goto :error
 xcopy /E /I /Y src\GDMENUCardManager.Core\tools "%TEMP_OUTPUT_DIR%\tools\"
+REM never ship user-generated menu options files
+del /Q "%TEMP_OUTPUT_DIR%\tools\openMenu\menu_data\DEFAULTS.INI" "%TEMP_OUTPUT_DIR%\tools\openMenu\menu_data\BGM.ADP" 2>nul
 copy /Y redump2cdi\macos-x86_64\redump2cdi "%TEMP_OUTPUT_DIR%\tools\"
 copy /Y LICENSE "%TEMP_OUTPUT_DIR%\"
 copy /Y README.md "%TEMP_OUTPUT_DIR%\"
@@ -107,6 +115,8 @@ set OUTPUT_DIR=_releases
 dotnet publish src\GDMENUCardManager.AvaloniaUI\GDMENUCardManager.AvaloniaUI.csproj -c Release --self-contained true -r osx-arm64 -p:PublishSingleFile=false -p:IncludeNativeLibrariesForSelfExtract=true -o "%TEMP_OUTPUT_DIR%"
 if %ERRORLEVEL% neq 0 goto :error
 xcopy /E /I /Y src\GDMENUCardManager.Core\tools "%TEMP_OUTPUT_DIR%\tools\"
+REM never ship user-generated menu options files
+del /Q "%TEMP_OUTPUT_DIR%\tools\openMenu\menu_data\DEFAULTS.INI" "%TEMP_OUTPUT_DIR%\tools\openMenu\menu_data\BGM.ADP" 2>nul
 copy /Y redump2cdi\macos-aarch64\redump2cdi "%TEMP_OUTPUT_DIR%\tools\"
 copy /Y LICENSE "%TEMP_OUTPUT_DIR%\"
 copy /Y README.md "%TEMP_OUTPUT_DIR%\"

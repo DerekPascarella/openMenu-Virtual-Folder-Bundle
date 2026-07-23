@@ -5,14 +5,14 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:GDMENUCardManager"
         mc:Ignorable="d"
-        Title="Progress" Height="100" Width="600" MinHeight="100" MinWidth="600"
+        Title="Progress" Width="600" MinWidth="600" SizeToContent="Height" ResizeMode="NoResize"
         WindowStartupLocation="CenterOwner">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="20"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-        <ProgressBar Grid.Row="0" Minimum="0" Maximum="{Binding TotalItems, Mode=OneWay}" Value="{Binding ProcessedItems, Mode=OneWay}"/>
-        <Label Grid.Row="1" Content="{Binding TextContent, Mode=OneWay}"/>
+        <ProgressBar Grid.Row="0" IsIndeterminate="True"/>
+        <Label Grid.Row="1" Margin="0,0,0,6" Content="{Binding TextContent, Mode=OneWay}"/>
     </Grid>
 </Window>

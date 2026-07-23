@@ -28,6 +28,7 @@ void font_bmf_draw_sub_wrap(int x, int y, uint32_t color, const char* str, int w
 void font_bmf_draw_auto_size(int x, int y, uint32_t color, const char* str, int width);
 void font_bmf_draw_centered(int x, int y, uint32_t color, const char* str);
 void font_bmf_draw_centered_auto_size(int x, int y, uint32_t color, const char* str, int width);
+void font_bmf_draw_right(int x, int y, uint32_t color, const char* str);
 
 /* Basic fixed width bitmap font */
 int font_bmp_init(const char* filename, int char_width, int char_height);

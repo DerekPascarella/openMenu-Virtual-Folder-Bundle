@@ -1,9 +1,12 @@
-﻿using Avalonia.Controls;
+using Avalonia;
+using Avalonia.Platform.Storage;
+using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.VisualTree;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
-using MessageBox.Avalonia;
-using MessageBox.Avalonia.Models;
+using MsBox.Avalonia;
+using MsBox.Avalonia.Models;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -164,12 +167,27 @@ namespace GDMENUCardManager
             set { Manager.EnableLockCheck = value; RaisePropertyChanged(); }
         }
 
-        private readonly List<FileDialogFilter> fileFilterList;
+        private readonly List<FilePickerFileType> fileFilterList;
 
 
         #region window controls
         DataGrid dg1;
+        Border DropLine;
         Button ButtonSort;
+
+        // where a drop will land, worked out while the drag hovers and used when it lands.
+        // -1 means we have not settled on a spot yet.
+        private int _pendingDropIndex = -1;
+
+        // row reorder drag state. the dragged items ride in _rowDragItems since source
+        // and target are the same window, the marker format is there because macOS
+        // refuses a drag that declares no types at all.
+        private static readonly DataFormat<byte[]> RowDragFormat =
+            DataFormat.CreateBytesApplicationFormat("gdmcm-games-row-drag");
+        private Avalonia.Input.PointerPressedEventArgs _rowDragTrigger;
+        private Point _rowDragStartPoint;
+        private GdItem _rowDragPressedItem;
+        private List<GdItem> _rowDragItems;
         #endregion
 
         // Undo tracking for cell edits
@@ -191,12 +209,11 @@ namespace GDMENUCardManager
             var compressedFileFormats = new string[] { ".7z", ".rar", ".zip" };
             _ManagerInstance = GDMENUCardManager.Core.Manager.CreateInstance(new DependencyManager(), compressedFileFormats);
             var fullList = Manager.supportedImageFormats.Concat(compressedFileFormats).ToArray();
-            fileFilterList = new List<FileDialogFilter>
+            fileFilterList = new List<FilePickerFileType>
             {
-                new FileDialogFilter
+                new FilePickerFileType($"Dreamcast Game ({string.Join("; ", fullList.Select(x => $"*{x}"))})")
                 {
-                    Name = $"Dreamcast Game ({string.Join("; ", fullList.Select(x => $"*{x}"))})",
-                    Extensions = fullList.Select(x => x.Substring(1)).ToList()
+                    Patterns = fullList.Select(x => $"*{x}").ToList()
                 }
             };
 
@@ -207,10 +224,8 @@ namespace GDMENUCardManager
             {
                 await CheckConfigWritability();
 
-                // macOS first-time setup: copy BOX.DAT, ICON.DAT, META.DAT from the bundle to
-                // ~/Library/Application Support/GDMENUCardManager/menu_data/ with a progress bar.
-                // This runs fully before anything else so the DAT files are in place before any
-                // card loading or artwork operations occur.
+                // on macOS, copy BOX.DAT, ICON.DAT, META.DAT from the bundle into
+                // ~/Library/Application Support/GDMENUCardManager/menu_data/ before anything loads
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
                     && MacOsDataMigration.NeedsFirstTimeDatSetup())
                 {
@@ -312,12 +327,16 @@ namespace GDMENUCardManager
         {
             AvaloniaXamlLoader.Load(this);
             this.AddHandler(DragDrop.DropEvent, WindowDrop);
+            this.AddHandler(DragDrop.DragOverEvent, WindowDragOver);
+            this.AddHandler(DragDrop.DragLeaveEvent, WindowDragLeave);
             dg1 = this.FindControl<DataGrid>("dg1");
+            DropLine = this.FindControl<Border>("DropLine");
             ButtonSort = this.FindControl<Button>("ButtonSort");
 
             // Add tunneling handler to intercept right-clicks before context menu opens
             dg1.AddHandler(Avalonia.Input.InputElement.PointerPressedEvent, DataGrid_PointerPressed, Avalonia.Interactivity.RoutingStrategies.Tunnel);
             dg1.AddHandler(Avalonia.Input.InputElement.PointerReleasedEvent, DataGrid_PointerReleased, Avalonia.Interactivity.RoutingStrategies.Tunnel);
+            dg1.PointerMoved += DataGrid_PointerMoved;
         }
 
         // Track if we should block context menu for current right-click
@@ -326,6 +345,25 @@ namespace GDMENUCardManager
         private void DataGrid_PointerPressed(object sender, Avalonia.Input.PointerPressedEventArgs e)
         {
             _blockContextMenu = false;
+
+            // a left press on a row may turn into a reorder drag, remember it until the
+            // pointer has moved far enough to count as one
+            if (e.GetCurrentPoint(dg1).Properties.IsLeftButtonPressed)
+            {
+                var pressSource = e.Source as Avalonia.Controls.Control;
+                while (pressSource != null)
+                {
+                    if (pressSource is Avalonia.Controls.DataGridRow pressRow)
+                    {
+                        _rowDragPressedItem = pressRow.DataContext as GdItem;
+                        _rowDragTrigger = _rowDragPressedItem != null ? e : null;
+                        _rowDragStartPoint = e.GetPosition(this);
+                        break;
+                    }
+                    pressSource = pressSource.Parent as Avalonia.Controls.Control;
+                }
+                return;
+            }
 
             // Only handle right-clicks
             if (!e.GetCurrentPoint(dg1).Properties.IsRightButtonPressed)
@@ -434,12 +472,74 @@ namespace GDMENUCardManager
 
         private void DataGrid_PointerReleased(object sender, Avalonia.Input.PointerReleasedEventArgs e)
         {
+            // released without crossing the drag threshold, so no reorder drag
+            _rowDragTrigger = null;
+            _rowDragPressedItem = null;
+
             // Block context menu for menu entry (folder 01) on pointer release too
             if (_blockContextMenu && e.InitialPressMouseButton == Avalonia.Input.MouseButton.Right)
             {
                 e.Handled = true;
                 _blockContextMenu = false;
             }
+        }
+
+        private async void DataGrid_PointerMoved(object sender, Avalonia.Input.PointerEventArgs e)
+        {
+            if (_rowDragTrigger == null || _rowDragItems != null)
+                return;
+
+            if (!e.GetCurrentPoint(dg1).Properties.IsLeftButtonPressed)
+            {
+                _rowDragTrigger = null;
+                _rowDragPressedItem = null;
+                return;
+            }
+
+            if (IsBusy || IsFilterActive || Manager.sdPath == null || _editingItem != null)
+                return;
+
+            var current = e.GetPosition(this);
+            if (Math.Abs(current.X - _rowDragStartPoint.X) < 4 &&
+                Math.Abs(current.Y - _rowDragStartPoint.Y) < 4)
+                return;
+
+            // dragging a row that is part of the selection moves the whole selection
+            var items = new List<GdItem>();
+            if (dg1.SelectedItems != null && dg1.SelectedItems.Contains(_rowDragPressedItem) && dg1.SelectedItems.Count > 1)
+                items.AddRange(dg1.SelectedItems.OfType<GdItem>().OrderBy(x => Manager.ItemList.IndexOf(x)));
+            else
+                items.Add(_rowDragPressedItem);
+
+            // the menu entry stays in slot 0, it does not get dragged
+            if (items.Count == 0 || items.Any(IsMenuEntry))
+            {
+                _rowDragTrigger = null;
+                _rowDragPressedItem = null;
+                return;
+            }
+
+            var trigger = _rowDragTrigger;
+            _rowDragTrigger = null;
+            _rowDragPressedItem = null;
+            _rowDragItems = items;
+
+
+            var data = new DataTransfer();
+            data.Add(DataTransferItem.Create(RowDragFormat, new byte[] { 1 }));
+
+            try
+            {
+                await DragDrop.DoDragDropAsync(trigger, data, DragDropEffects.Move);
+            }
+            catch (Exception)
+            {
+                // a failed platform drag just cancels the move
+            }
+
+            _rowDragItems = null;
+            _pendingDropIndex = -1;
+            HideDropLine();
         }
 
         private void UpdateFolderColumnVisibility()
@@ -461,7 +561,7 @@ namespace GDMENUCardManager
                     typeColumn = col;
                 else if (col is DataGridTemplateColumn discTemplateCol && discTemplateCol.Header?.ToString() == "Disc")
                     discColumn = discTemplateCol;
-                else if (col.Header?.ToString() == "Art")
+                else if (col.Header?.ToString() == "Artwork")
                     artColumn = col;
             }
 
@@ -470,6 +570,9 @@ namespace GDMENUCardManager
                 if (MenuKindSelected == MenuKind.openMenu)
                 {
                     folderColumn.IsVisible = true;
+                    // setting the same star width back does nothing when the column was
+                    // hidden, so bounce it through Auto first to force the widths to redo
+                    folderColumn.Width = DataGridLength.Auto;
                     folderColumn.Width = new DataGridLength(1, DataGridLengthUnitType.Star);
                 }
                 else
@@ -497,8 +600,7 @@ namespace GDMENUCardManager
                 artColumn.IsVisible = showArt;
             }
 
-            // Disc column read-only handling is now done via BeginningEdit event
-            // since it's a template column
+            // Disc column read-only is handled in BeginningEdit (template column)
         }
 
         private void UpdateSortButtonTooltip()
@@ -533,6 +635,13 @@ namespace GDMENUCardManager
                     }
                 }
 
+                // Region can only be edited on uncompressed Game images in a patchable format
+                if (e.Column.Header?.ToString() == "Region" && !CanEditRegion(item))
+                {
+                    e.Cancel = true;
+                    return;
+                }
+
                 // Capture old value for undo
                 _editingItem = item;
                 var column = e.Column;
@@ -560,6 +669,11 @@ namespace GDMENUCardManager
                 {
                     _editingPropertyName = nameof(GdItem.Disc);
                     _editingOldValue = item.Disc;
+                }
+                else if (column.Header?.ToString() == "Region")
+                {
+                    _editingPropertyName = nameof(GdItem.Region);
+                    _editingOldValue = item.Region;
                 }
                 else
                 {
@@ -648,10 +762,48 @@ namespace GDMENUCardManager
                 // keep editing state so the next commit attempt can validate
                 Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
                 {
-                    await MessageBoxManager.GetMessageBoxStandardWindow("Information",
+                    await MessageBoxManager.GetMessageBoxStandard("Information",
                         "Only printable ASCII characters (letters, numbers, and standard symbols) are supported by openMenu.",
-                        icon: MessageBox.Avalonia.Enums.Icon.Warning).ShowDialog(this);
+                        icon: MsBox.Avalonia.Enums.Icon.Warning).ShowWindowDialogAsync(this);
                 });
+                return;
+            }
+
+            // Region edits get normalized before committing
+            if (propertyName == nameof(GdItem.Region))
+            {
+                _editingItem = null;
+                _editingPropertyName = null;
+                _editingOldValue = null;
+
+                var oldRegion = oldValue as string;
+                var normalized = GdItem.NormalizeRegion(newValue as string);
+
+                if (normalized == null || normalized == oldRegion)
+                {
+                    // invalid or unchanged input, silently put the old value back
+                    SetEditingTextBoxText(e.EditingElement, oldRegion ?? "");
+                    item.Region = oldRegion;
+                    return;
+                }
+
+                // push the normalized value so the binding commits it (e.g. "ej" becomes "JE")
+                SetEditingTextBoxText(e.EditingElement, normalized);
+
+                // no undo entry if the previous value wasn't a usable region
+                if (oldRegion != null && GdItem.NormalizeRegion(oldRegion) == oldRegion)
+                {
+                    Manager.UndoManager.RecordChange(new PropertyEditOperation
+                    {
+                        Item = item,
+                        PropertyName = nameof(GdItem.Region),
+                        OldValue = oldRegion,
+                        NewValue = normalized
+                    });
+                }
+
+                // image gets patched to match on save
+                item.Region = normalized;
                 return;
             }
 
@@ -674,9 +826,9 @@ namespace GDMENUCardManager
                         e.Cancel = true;
                         Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
                         {
-                            await MessageBoxManager.GetMessageBoxStandardWindow("Information",
+                            await MessageBoxManager.GetMessageBoxStandard("Information",
                                 "This folder path is already assigned to this disc image as an additional folder path.",
-                                icon: MessageBox.Avalonia.Enums.Icon.Info).ShowDialog(this);
+                                icon: MsBox.Avalonia.Enums.Icon.Info).ShowWindowDialogAsync(this);
                         });
                         return;
                     }
@@ -719,7 +871,31 @@ namespace GDMENUCardManager
                 case nameof(GdItem.Folder):
                     item.Folder = oldValue as string;
                     break;
+                case nameof(GdItem.Region):
+                    item.Region = oldValue as string;
+                    break;
             }
+        }
+
+        // Editing elements from template columns can be a bare TextBox or one wrapped in a panel
+        private static void SetEditingTextBoxText(object editingElement, string text)
+        {
+            if (editingElement is TextBox tb)
+                tb.Text = text;
+            else if (editingElement is Panel panel)
+            {
+                var innerTb = panel.Children.OfType<TextBox>().FirstOrDefault();
+                if (innerTb != null)
+                    innerTb.Text = text;
+            }
+        }
+
+        private static bool CanEditRegion(GdItem item)
+        {
+            return item.FileFormat == FileFormat.Uncompressed
+                && item.DiscType == "Game"
+                && item.Ip != null
+                && RegionPatcher.CanPatch(item.ImageFile);
         }
 
         private async void MainWindow_PropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -755,7 +931,7 @@ namespace GDMENUCardManager
                 if (filteredItems.Count == 0)
                     ClearFilterFromGrid();
                 else
-                    dg1.Items = filteredItems;
+                    dg1.ItemsSource = filteredItems;
             }
         }
 
@@ -852,7 +1028,7 @@ namespace GDMENUCardManager
             }
             catch (Exception ex)
             {
-                await MessageBoxManager.GetMessageBoxStandardWindow("Information", $"Problem loading the following folder(s):\n\n{ex.Message}", icon: MessageBox.Avalonia.Enums.Icon.Warning).ShowDialog(this);
+                await MessageBoxManager.GetMessageBoxStandard("Information", $"Problem loading the following folder(s):\n\n{ex.Message}", icon: MsBox.Avalonia.Enums.Icon.Warning).ShowWindowDialogAsync(this);
             }
             finally
             {
@@ -903,7 +1079,7 @@ namespace GDMENUCardManager
             {
                 case DatFileStatus.BothMissing:
                     {
-                        var result = await MessageBoxManager.GetMessageBoxCustomWindow(new MessageBox.Avalonia.DTO.MessageBoxCustomParams
+                        var result = await MessageBoxManager.GetMessageBoxCustom(new MsBox.Avalonia.Dto.MessageBoxCustomParams
                         {
                             ContentTitle = "Confirmation",
                             ContentMessage = "BOX.DAT and ICON.DAT were not found in the expected location.\n\n" +
@@ -911,7 +1087,7 @@ namespace GDMENUCardManager
                                 "Click Create to create empty DAT files.\n\n" +
                                 "Click Close to close and add files manually.\n\n" +
                                 "Click Skip to proceed without artwork features.",
-                            Icon = MessageBox.Avalonia.Enums.Icon.Warning,
+                            Icon = MsBox.Avalonia.Enums.Icon.Warning,
                             ShowInCenter = true,
                             WindowStartupLocation = WindowStartupLocation.CenterOwner,
                             ButtonDefinitions = new ButtonDefinition[]
@@ -920,7 +1096,7 @@ namespace GDMENUCardManager
                                 new ButtonDefinition { Name = "Close" },
                                 new ButtonDefinition { Name = "Skip" }
                             }
-                        }).ShowDialog(this);
+                        }).ShowWindowDialogAsync(this);
 
                         if (result == "Create")
                         {
@@ -928,7 +1104,7 @@ namespace GDMENUCardManager
                             var (success, error) = Manager.CreateEmptyDatFiles();
                             if (!success)
                             {
-                                await MessageBoxManager.GetMessageBoxStandardWindow("Error", $"Failed to create DAT files: {error}", icon: MessageBox.Avalonia.Enums.Icon.Error).ShowDialog(this);
+                                await MessageBoxManager.GetMessageBoxStandard("Error", $"Failed to create DAT files: {error}", icon: MsBox.Avalonia.Enums.Icon.Error).ShowWindowDialogAsync(this);
                                 Manager.ArtworkDisabled = true;
                             }
                         }
@@ -945,7 +1121,7 @@ namespace GDMENUCardManager
 
                 case DatFileStatus.BoxMissingIconExists:
                     {
-                        var result = await MessageBoxManager.GetMessageBoxCustomWindow(new MessageBox.Avalonia.DTO.MessageBoxCustomParams
+                        var result = await MessageBoxManager.GetMessageBoxCustom(new MsBox.Avalonia.Dto.MessageBoxCustomParams
                         {
                             ContentTitle = "Confirmation",
                             ContentMessage = "BOX.DAT was not found but ICON.DAT exists.\n\n" +
@@ -953,7 +1129,7 @@ namespace GDMENUCardManager
                                 "Click Create to create an empty BOX.DAT file.\n\n" +
                                 "Click Close to close and add BOX.DAT manually.\n\n" +
                                 "Click Skip to proceed without artwork features.",
-                            Icon = MessageBox.Avalonia.Enums.Icon.Warning,
+                            Icon = MsBox.Avalonia.Enums.Icon.Warning,
                             ShowInCenter = true,
                             WindowStartupLocation = WindowStartupLocation.CenterOwner,
                             ButtonDefinitions = new ButtonDefinition[]
@@ -962,7 +1138,7 @@ namespace GDMENUCardManager
                                 new ButtonDefinition { Name = "Close" },
                                 new ButtonDefinition { Name = "Skip" }
                             }
-                        }).ShowDialog(this);
+                        }).ShowWindowDialogAsync(this);
 
                         if (result == "Create")
                         {
@@ -970,7 +1146,7 @@ namespace GDMENUCardManager
                             var (success, error) = Manager.CreateEmptyBoxDat();
                             if (!success)
                             {
-                                await MessageBoxManager.GetMessageBoxStandardWindow("Error", $"Failed to create BOX.DAT: {error}", icon: MessageBox.Avalonia.Enums.Icon.Error).ShowDialog(this);
+                                await MessageBoxManager.GetMessageBoxStandard("Error", $"Failed to create BOX.DAT: {error}", icon: MsBox.Avalonia.Enums.Icon.Error).ShowWindowDialogAsync(this);
                                 Manager.ArtworkDisabled = true;
                             }
                         }
@@ -987,7 +1163,7 @@ namespace GDMENUCardManager
 
                 case DatFileStatus.BoxExistsIconMissing:
                     {
-                        var result = await MessageBoxManager.GetMessageBoxCustomWindow(new MessageBox.Avalonia.DTO.MessageBoxCustomParams
+                        var result = await MessageBoxManager.GetMessageBoxCustom(new MsBox.Avalonia.Dto.MessageBoxCustomParams
                         {
                             ContentTitle = "Confirmation",
                             ContentMessage = "ICON.DAT was not found but BOX.DAT exists.\n\n" +
@@ -995,7 +1171,7 @@ namespace GDMENUCardManager
                                 "Click Generate to generate ICON.DAT from BOX.DAT (recommended).\n\n" +
                                 "Click Close to close and add ICON.DAT manually.\n\n" +
                                 "Click Skip to proceed without artwork features.",
-                            Icon = MessageBox.Avalonia.Enums.Icon.Question,
+                            Icon = MsBox.Avalonia.Enums.Icon.Question,
                             ShowInCenter = true,
                             WindowStartupLocation = WindowStartupLocation.CenterOwner,
                             ButtonDefinitions = new ButtonDefinition[]
@@ -1004,7 +1180,7 @@ namespace GDMENUCardManager
                                 new ButtonDefinition { Name = "Close" },
                                 new ButtonDefinition { Name = "Skip" }
                             }
-                        }).ShowDialog(this);
+                        }).ShowWindowDialogAsync(this);
 
                         if (result == "Generate")
                         {
@@ -1012,7 +1188,7 @@ namespace GDMENUCardManager
                             var (success, error) = Manager.GenerateIconDatFromBox();
                             if (!success)
                             {
-                                await MessageBoxManager.GetMessageBoxStandardWindow("Error", $"Failed to generate ICON.DAT: {error}", icon: MessageBox.Avalonia.Enums.Icon.Error).ShowDialog(this);
+                                await MessageBoxManager.GetMessageBoxStandard("Error", $"Failed to generate ICON.DAT: {error}", icon: MsBox.Avalonia.Enums.Icon.Error).ShowWindowDialogAsync(this);
                                 Manager.ArtworkDisabled = true;
                             }
                         }
@@ -1029,7 +1205,7 @@ namespace GDMENUCardManager
 
                 case DatFileStatus.SerialsMismatch:
                     {
-                        var result = await MessageBoxManager.GetMessageBoxCustomWindow(new MessageBox.Avalonia.DTO.MessageBoxCustomParams
+                        var result = await MessageBoxManager.GetMessageBoxCustom(new MsBox.Avalonia.Dto.MessageBoxCustomParams
                         {
                             ContentTitle = "Confirmation",
                             ContentMessage = "ICON.DAT entries don't match BOX.DAT entries.\n\n" +
@@ -1037,7 +1213,7 @@ namespace GDMENUCardManager
                                 "Click Regenerate to regenerate ICON.DAT from BOX.DAT (recommended).\n\n" +
                                 "Click Proceed to proceed with mismatched files (some icons may be missing).\n\n" +
                                 "Click Skip to proceed without artwork features.",
-                            Icon = MessageBox.Avalonia.Enums.Icon.Warning,
+                            Icon = MsBox.Avalonia.Enums.Icon.Warning,
                             ShowInCenter = true,
                             WindowStartupLocation = WindowStartupLocation.CenterOwner,
                             ButtonDefinitions = new ButtonDefinition[]
@@ -1046,7 +1222,7 @@ namespace GDMENUCardManager
                                 new ButtonDefinition { Name = "Proceed" },
                                 new ButtonDefinition { Name = "Skip" }
                             }
-                        }).ShowDialog(this);
+                        }).ShowWindowDialogAsync(this);
 
                         if (result == "Regenerate")
                         {
@@ -1054,7 +1230,7 @@ namespace GDMENUCardManager
                             var (success, error) = Manager.GenerateIconDatFromBox();
                             if (!success)
                             {
-                                await MessageBoxManager.GetMessageBoxStandardWindow("Error", $"Failed to regenerate ICON.DAT: {error}", icon: MessageBox.Avalonia.Enums.Icon.Error).ShowDialog(this);
+                                await MessageBoxManager.GetMessageBoxStandard("Error", $"Failed to regenerate ICON.DAT: {error}", icon: MsBox.Avalonia.Enums.Icon.Error).ShowWindowDialogAsync(this);
                             }
                         }
                         else if (result == "Skip")
@@ -1084,11 +1260,11 @@ namespace GDMENUCardManager
                 // Check for multi-disc items without serial (openMenu only)
                 if (MenuKindSelected == MenuKind.openMenu && HasMultiDiscItemsWithoutSerial())
                 {
-                    var result = await MessageBoxManager.GetMessageBoxCustomWindow(new MessageBox.Avalonia.DTO.MessageBoxCustomParams
+                    var result = await MessageBoxManager.GetMessageBoxCustom(new MsBox.Avalonia.Dto.MessageBoxCustomParams
                     {
                         ContentTitle = "Confirmation",
                         ContentMessage = "One or more disc images that are part of multi-disc sets do not have a required Serial value assigned to them, which will break their display in openMenu.\n\nDo you want to proceed and ignore the disc numbers and counts, or return to make edits?",
-                        Icon = MessageBox.Avalonia.Enums.Icon.Warning,
+                        Icon = MsBox.Avalonia.Enums.Icon.Warning,
                         ShowInCenter = true,
                         WindowStartupLocation = WindowStartupLocation.CenterOwner,
                         ButtonDefinitions = new ButtonDefinition[]
@@ -1096,7 +1272,7 @@ namespace GDMENUCardManager
                             new ButtonDefinition { Name = "Return" },
                             new ButtonDefinition { Name = "Proceed" }
                         }
-                    }).ShowDialog(this);
+                    }).ShowWindowDialogAsync(this);
 
                     if (result == "Return")
                     {
@@ -1111,11 +1287,11 @@ namespace GDMENUCardManager
                 // Check for multi-disc sets exceeding 10 discs (openMenu only)
                 if (MenuKindSelected == MenuKind.openMenu && HasMultiDiscSetsExceeding10())
                 {
-                    var result = await MessageBoxManager.GetMessageBoxCustomWindow(new MessageBox.Avalonia.DTO.MessageBoxCustomParams
+                    var result = await MessageBoxManager.GetMessageBoxCustom(new MsBox.Avalonia.Dto.MessageBoxCustomParams
                     {
                         ContentTitle = "Confirmation",
                         ContentMessage = "One or more multi-disc set exceeds 10 discs total, the maximum supported by openMenu.\n\nDo you want to proceed or return to make edits?",
-                        Icon = MessageBox.Avalonia.Enums.Icon.Warning,
+                        Icon = MsBox.Avalonia.Enums.Icon.Warning,
                         ShowInCenter = true,
                         WindowStartupLocation = WindowStartupLocation.CenterOwner,
                         ButtonDefinitions = new ButtonDefinition[]
@@ -1123,7 +1299,7 @@ namespace GDMENUCardManager
                             new ButtonDefinition { Name = "Return" },
                             new ButtonDefinition { Name = "Proceed" }
                         }
-                    }).ShowDialog(this);
+                    }).ShowWindowDialogAsync(this);
 
                     if (result == "Return")
                     {
@@ -1136,12 +1312,12 @@ namespace GDMENUCardManager
                 {
                     SaveTempFolderConfig();
                     SaveLockCheckConfig();
-                    await MessageBoxManager.GetMessageBoxStandardWindow("Information", "Done!").ShowDialog(this);
+                    await MessageBoxManager.GetMessageBoxStandard("Information", "Done!").ShowWindowDialogAsync(this);
                 }
             }
             catch (Exception ex)
             {
-                await MessageBoxManager.GetMessageBoxStandardWindow("Error", ex.Message, icon: MessageBox.Avalonia.Enums.Icon.Error).ShowDialog(this);
+                await MessageBoxManager.GetMessageBoxStandard("Error", ex.Message, icon: MsBox.Avalonia.Enums.Icon.Error).ShowWindowDialogAsync(this);
             }
             finally
             {
@@ -1364,7 +1540,7 @@ namespace GDMENUCardManager
             {
                 var config = ConfigurationManager.OpenExeConfiguration(System.Configuration.ConfigurationUserLevel.None);
 
-                // Save current bounds (Avalonia doesn't have RestoreBounds, use current values)
+                // no RestoreBounds available, so save the current bounds
                 SetOrAddSetting(config, "WindowLeft", Position.X.ToString());
                 SetOrAddSetting(config, "WindowTop", Position.Y.ToString());
                 SetOrAddSetting(config, "WindowWidth", Width.ToString());
@@ -1377,27 +1553,98 @@ namespace GDMENUCardManager
 
         private async void WindowDrop(object sender, DragEventArgs e)
         {
+            HideDropLine();
+
+            int pending = _pendingDropIndex;
+            _pendingDropIndex = -1;
+
             if (IsFilterActive)
                 return;
             if (Manager.sdPath == null)
                 return;
 
-            if (e.Data.Contains(DataFormats.FileNames))
+            if (_rowDragItems != null && e.DataTransfer.Contains(RowDragFormat))
             {
+                try
+                {
+                    // reorder drop. remove the dragged rows, walking the target index back
+                    // for each one that sat above it, then put them back at the target spot.
+                    int moveIndex = pending >= 0 ? pending : DefaultDropIndex();
+                    moveIndex = Math.Min(moveIndex, Manager.ItemList.Count);
+
+                    var oldOrder = new List<GdItem>(Manager.ItemList);
+
+                    foreach (var item in _rowDragItems)
+                    {
+                        var idx = Manager.ItemList.IndexOf(item);
+                        if (idx < 0)
+                            continue;
+                        Manager.ItemList.RemoveAt(idx);
+                        if (idx < moveIndex)
+                            moveIndex--;
+                    }
+
+                    if (moveIndex == 0 && Manager.ItemList.Count > 0 && IsMenuEntry(Manager.ItemList[0]))
+                        moveIndex = 1;
+                    moveIndex = Math.Min(moveIndex, Manager.ItemList.Count);
+
+                    foreach (var item in _rowDragItems)
+                        Manager.ItemList.Insert(moveIndex++, item);
+
+                    if (!oldOrder.SequenceEqual(Manager.ItemList))
+                    {
+                        var reorderOp = new ListReorderOperation
+                        {
+                            ItemList = Manager.ItemList,
+                            OldOrder = oldOrder,
+                            NewOrder = new List<GdItem>(Manager.ItemList)
+                        };
+                        Manager.UndoManager.RecordChange(reorderOp);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    await MessageBoxManager.GetMessageBoxStandard("Error", ex.Message, icon: MsBox.Avalonia.Enums.Icon.Error).ShowWindowDialogAsync(this);
+                }
+                return;
+            }
+
+            if (e.DataTransfer.Contains(DataFormat.File))
+            {
+                // land the drop where the guide line settled during the drag. the drop
+                // event position is not trustworthy on some setups, the hover position is.
+                int insertIndex = pending >= 0 ? pending : DefaultDropIndex();
+                insertIndex = Math.Min(insertIndex, Manager.ItemList.Count);
+
                 IsBusy = true;
                 var invalid = new List<string>();
+                var unsupportedRedumpGdi = new List<string>();
                 var addedItems = new List<(GdItem Item, int Index)>();
 
                 try
                 {
-                    foreach (var o in e.Data.GetFileNames())
+                    // dropped files arrive as storage items, take the real path off each
+                    var droppedItems = e.DataTransfer.TryGetFiles() ?? Array.Empty<IStorageItem>();
+                    foreach (var storageItem in droppedItems)
                     {
+                        var o = storageItem.TryGetLocalPath();
+                        if (o == null)
+                        {
+                            invalid.Add($"{storageItem.Name} - not a local file");
+                            continue;
+                        }
+
                         try
                         {
                             var gdItem = await ImageHelper.CreateGdItemAsync(o);
-                            int index = Manager.ItemList.Count;
-                            Manager.ItemList.Add(gdItem);
-                            addedItems.Add((gdItem, index));
+                            insertIndex = Math.Min(insertIndex, Manager.ItemList.Count);
+                            Manager.ItemList.Insert(insertIndex, gdItem);
+                            addedItems.Add((gdItem, insertIndex));
+                            insertIndex++;
+                        }
+                        catch (UnsupportedDiscFormatException)
+                        {
+                            unsupportedRedumpGdi.Add(Path.GetFileName(o));
                         }
                         catch (Exception ex)
                         {
@@ -1417,7 +1664,10 @@ namespace GDMENUCardManager
                     }
 
                     if (invalid.Any())
-                        await MessageBoxManager.GetMessageBoxStandardWindow("Error", string.Join(Environment.NewLine, invalid), icon: MessageBox.Avalonia.Enums.Icon.Error).ShowDialog(this);
+                        await MessageBoxManager.GetMessageBoxStandard("Error", string.Join(Environment.NewLine, invalid), icon: MsBox.Avalonia.Enums.Icon.Error).ShowWindowDialogAsync(this);
+
+                    if (unsupportedRedumpGdi.Any())
+                        await MessageBoxManager.GetMessageBoxStandard("Information", LegacyRedumpGdiDetector.BuildMessage(unsupportedRedumpGdi), icon: MsBox.Avalonia.Enums.Icon.Info).ShowWindowDialogAsync(this);
                 }
                 catch (Exception)
                 {
@@ -1427,6 +1677,175 @@ namespace GDMENUCardManager
                     IsBusy = false;
                 }
             }
+        }
+
+        // the menu disc must stay in slot 0, so everything that protects that slot goes
+        // through this. IsMenuItem alone is not enough, it reads Ip which stays null for
+        // lazy loaded items until a metadata scan runs, so check the cached name and the
+        // folder number too, same as the context menu block.
+        private static bool IsMenuEntry(GdItem item)
+        {
+            if (item == null)
+                return false;
+            if (item.IsMenuItem)
+                return true;
+            if (item.Name == "GDMENU" || item.Name == "openMenu")
+                return true;
+            return item.SdNumber == 1;
+        }
+
+        // fallback spot when the pointer is not over a row. anything we can't place
+        // goes to the end of the list.
+        private int DefaultDropIndex()
+        {
+            return Manager.ItemList.Count;
+        }
+
+        private void WindowDragOver(object sender, DragEventArgs e)
+        {
+            bool isFileDrag = e.DataTransfer.Contains(DataFormat.File);
+            bool isRowDrag = _rowDragItems != null && e.DataTransfer.Contains(RowDragFormat);
+
+            if (IsFilterActive || Manager.sdPath == null || (!isFileDrag && !isRowDrag))
+            {
+                _pendingDropIndex = -1;
+                HideDropLine();
+                return;
+            }
+
+            if (isRowDrag)
+                e.DragEffects = DragDropEffects.Move;
+
+            var target = HitTestDropRow(e);
+            if (target == null)
+            {
+                _pendingDropIndex = DefaultDropIndex();
+                HideDropLine();
+            }
+            else
+            {
+                _pendingDropIndex = target.Value.InsertIndex;
+                ShowDropLine(target.Value.Row, target.Value.Below);
+            }
+        }
+
+        private void WindowDragLeave(object sender, RoutedEventArgs e)
+        {
+            // DragLeave can fire right before Drop, so don't wipe _pendingDropIndex here
+            // or the drop snaps to slot 1. just hide the line.
+            HideDropLine();
+        }
+
+        // finds the row under the pointer and where an item would go. upper half of a row
+        // means above it, lower half below. the menu entry keeps slot 0, so a drop meant
+        // for the very top lands just under it instead. pointing at the open space under
+        // the last row means after that row. returns null when off the rows.
+        private (DataGridRow Row, bool Below, int InsertIndex)? HitTestDropRow(DragEventArgs e)
+        {
+            try
+            {
+                var list = Manager.ItemList;
+
+                if (dg1 == null || !dg1.IsVisible)
+                    return null;
+
+                var pos = e.GetPosition(dg1);
+                double y = pos.Y;
+
+                DataGridRow bottomRow = null;
+                GdItem bottomItem = null;
+                double bottomEdge = double.MinValue;
+
+                foreach (var row in dg1.GetVisualDescendants().OfType<DataGridRow>())
+                {
+                    // recycled rows from a previous card load stay parked in the visual
+                    // tree, invisible, holding items that are no longer in the list. they
+                    // tile the empty area below the live rows, so they must not count as
+                    // drop targets or as the bottom row.
+                    if (!row.IsVisible)
+                        continue;
+
+                    if (!(row.DataContext is GdItem hoveredItem))
+                        continue;
+
+                    int index = list.IndexOf(hoveredItem);
+                    if (index < 0)
+                        continue;
+
+                    var rowTop = row.TranslatePoint(new Point(0, 0), dg1);
+                    if (rowTop == null)
+                        continue;
+
+                    double top = rowTop.Value.Y;
+                    double height = row.Bounds.Height;
+
+                    if (top + height > bottomEdge)
+                    {
+                        bottomEdge = top + height;
+                        bottomRow = row;
+                        bottomItem = hoveredItem;
+                    }
+
+                    if (y < top || y >= top + height)
+                        continue;
+
+                    bool below = y > top + height / 2;
+                    int insertIndex = below ? index + 1 : index;
+
+                    if (insertIndex == 0 && list.Count > 0 && IsMenuEntry(list[0]))
+                    {
+                        insertIndex = 1;
+                        below = true;
+                    }
+
+                    return (row, below, Math.Min(insertIndex, list.Count));
+                }
+
+                // pointer is somewhere under the rows, in the grid's empty space or past
+                // the bottom of the grid itself, both read as plain white space to the
+                // user. land the drop after the lowest row, which can only be the last
+                // item since rows fill the view when scrolled mid list. no lower bound
+                // on y, anything below the last row within the grid's width means append.
+                if (bottomRow != null && y >= bottomEdge &&
+                    pos.X >= 0 && pos.X < dg1.Bounds.Width)
+                {
+                    int index = list.IndexOf(bottomItem);
+                    if (index >= 0)
+                        return (bottomRow, true, Math.Min(index + 1, list.Count));
+                }
+
+                return null;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        private void ShowDropLine(DataGridRow row, bool below)
+        {
+            if (DropLine == null || dg1 == null)
+                return;
+
+            var top = row.TranslatePoint(new Point(0, 0), dg1);
+            if (top == null)
+            {
+                HideDropLine();
+                return;
+            }
+
+            double y = top.Value.Y;
+            if (below)
+                y += row.Bounds.Height;
+
+            DropLine.Margin = new Thickness(0, y - 1, 0, 0);
+            DropLine.IsVisible = true;
+        }
+
+        private void HideDropLine()
+        {
+            if (DropLine != null)
+                DropLine.IsVisible = false;
         }
 
         private async void ButtonSaveChanges_Click(object sender, RoutedEventArgs e)
@@ -1448,9 +1867,9 @@ namespace GDMENUCardManager
                     ? "1 disc image doesn't have a Serial ID assigned to it."
                     : $"{count} disc images don't have Serial IDs assigned to them.";
                 msg += "\n\nA valid openMenu configuration requires all disc images are assigned a Serial ID.";
-                var msgBox = MessageBoxManager.GetMessageBoxStandardWindow("Error",
-                    msg, MessageBox.Avalonia.Enums.ButtonEnum.Ok, MessageBox.Avalonia.Enums.Icon.Error);
-                await msgBox.ShowDialog(this);
+                var msgBox = MessageBoxManager.GetMessageBoxStandard("Error",
+                    msg, MsBox.Avalonia.Enums.ButtonEnum.Ok, MsBox.Avalonia.Enums.Icon.Error);
+                await msgBox.ShowWindowDialogAsync(this);
                 return;
             }
 
@@ -1463,7 +1882,7 @@ namespace GDMENUCardManager
             if (Manager.debugEnabled)
             {
                 var list = DriveInfo.GetDrives().Where(x => x.IsReady).Select(x => $"{x.DriveType}; {x.DriveFormat}; {x.Name}").ToArray();
-                await MessageBoxManager.GetMessageBoxStandardWindow("Information", string.Join(Environment.NewLine, list), icon: MessageBox.Avalonia.Enums.Icon.None).ShowDialog(this);
+                await MessageBoxManager.GetMessageBoxStandard("Information", string.Join(Environment.NewLine, list), icon: MsBox.Avalonia.Enums.Icon.None).ShowWindowDialogAsync(this);
             }
             await new AboutWindow().ShowDialog(this);
             IsBusy = false;
@@ -1471,20 +1890,25 @@ namespace GDMENUCardManager
 
         private async void ButtonFolder_Click(object sender, RoutedEventArgs e)
         {
-            var folderDialog = new OpenFolderDialog { Title = "Select Temporary Folder" };
+            var pickerOptions = new FolderPickerOpenOptions
+            {
+                Title = "Select Temporary Folder",
+                AllowMultiple = false
+            };
 
             if (!string.IsNullOrEmpty(TempFolder))
-                folderDialog.Directory = TempFolder;
+                pickerOptions.SuggestedStartLocation = await StorageProvider.TryGetFolderFromPathAsync(TempFolder);
 
-            var selectedFolder = await folderDialog.ShowAsync(this);
+            var folders = await StorageProvider.OpenFolderPickerAsync(pickerOptions);
+            var selectedFolder = folders.Count > 0 ? folders[0].TryGetLocalPath() : null;
             if (!string.IsNullOrEmpty(selectedFolder))
                 TempFolder = selectedFolder;
         }
 
         private async void ButtonResetTempFolder_Click(object sender, RoutedEventArgs e)
         {
-            var result = await MessageBoxManager.GetMessageBoxStandardWindow("Confirmation", "Reset the Temporary Folder path to default?", MessageBox.Avalonia.Enums.ButtonEnum.YesNo, MessageBox.Avalonia.Enums.Icon.Question).ShowDialog(this);
-            if (result == MessageBox.Avalonia.Enums.ButtonResult.Yes)
+            var result = await MessageBoxManager.GetMessageBoxStandard("Confirmation", "Reset the Temporary Folder path to default?", MsBox.Avalonia.Enums.ButtonEnum.YesNo, MsBox.Avalonia.Enums.Icon.Question).ShowWindowDialogAsync(this);
+            if (result == MsBox.Avalonia.Enums.ButtonResult.Yes)
             {
                 TempFolder = Path.GetTempPath();
                 SaveTempFolderConfig();
@@ -1506,7 +1930,7 @@ namespace GDMENUCardManager
             }
             catch (Exception ex)
             {
-                await MessageBoxManager.GetMessageBoxStandardWindow("Error", ex.Message, icon: MessageBox.Avalonia.Enums.Icon.Error).ShowDialog(this);
+                await MessageBoxManager.GetMessageBoxStandard("Error", ex.Message, icon: MsBox.Avalonia.Enums.Icon.Error).ShowWindowDialogAsync(this);
             }
             IsBusy = false;
         }
@@ -1547,7 +1971,7 @@ namespace GDMENUCardManager
             }
             catch (Exception ex)
             {
-                await MessageBoxManager.GetMessageBoxStandardWindow("Error", ex.Message, icon: MessageBox.Avalonia.Enums.Icon.Error).ShowDialog(this);
+                await MessageBoxManager.GetMessageBoxStandard("Error", ex.Message, icon: MsBox.Avalonia.Enums.Icon.Error).ShowWindowDialogAsync(this);
             }
             finally
             {
@@ -1572,13 +1996,13 @@ namespace GDMENUCardManager
             var sortDescription = MenuKindSelected == MenuKind.openMenu
                 ? "Your disc images will be automatically sorted in alphanumeric order based on a combination of Folder and Title.\n\nDo you want to continue?"
                 : "Your disc images will be automatically sorted in alphanumeric order based on Title.\n\nDo you want to continue?";
-            var result = await MessageBoxManager.GetMessageBoxStandardWindow(
+            var result = await MessageBoxManager.GetMessageBoxStandard(
                 "Confirmation",
                 sortDescription,
-                MessageBox.Avalonia.Enums.ButtonEnum.YesNo,
-                MessageBox.Avalonia.Enums.Icon.Question).ShowDialog(this);
+                MsBox.Avalonia.Enums.ButtonEnum.YesNo,
+                MsBox.Avalonia.Enums.Icon.Question).ShowWindowDialogAsync(this);
 
-            if (result != MessageBox.Avalonia.Enums.ButtonResult.Yes)
+            if (result != MsBox.Avalonia.Enums.ButtonResult.Yes)
                 return;
 
             IsBusy = true;
@@ -1588,7 +2012,7 @@ namespace GDMENUCardManager
             }
             catch (Exception ex)
             {
-                await MessageBoxManager.GetMessageBoxStandardWindow("Error", ex.Message, icon: MessageBox.Avalonia.Enums.Icon.Error).ShowDialog(this);
+                await MessageBoxManager.GetMessageBoxStandard("Error", ex.Message, icon: MsBox.Avalonia.Enums.Icon.Error).ShowWindowDialogAsync(this);
             }
             IsBusy = false;
         }
@@ -1632,11 +2056,11 @@ namespace GDMENUCardManager
                     }
                 }
 
-                await MessageBoxManager.GetMessageBoxStandardWindow("Information", $"{count} item(s) renamed").ShowDialog(this);
+                await MessageBoxManager.GetMessageBoxStandard("Information", $"{count} item(s) renamed").ShowWindowDialogAsync(this);
             }
             catch (Exception ex)
             {
-                await MessageBoxManager.GetMessageBoxStandardWindow("Error", ex.Message, icon: MessageBox.Avalonia.Enums.Icon.Error).ShowDialog(this);
+                await MessageBoxManager.GetMessageBoxStandard("Error", ex.Message, icon: MsBox.Avalonia.Enums.Icon.Error).ShowWindowDialogAsync(this);
             }
             finally
             {
@@ -1657,6 +2081,88 @@ namespace GDMENUCardManager
             await window.ShowDialog(this);
         }
 
+        private async void ButtonMenuOptions_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                var window = new MenuOptionsWindow(Manager);
+                await window.ShowDialog(this);
+            }
+            catch (Exception ex)
+            {
+                await MessageBoxManager.GetMessageBoxStandard("Error", ex.Message,
+                    icon: MsBox.Avalonia.Enums.Icon.Error).ShowWindowDialogAsync(this);
+            }
+        }
+
+        private async void ButtonFolderTools_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // Only offer the batch rename tab when the full unfiltered list is loaded and has folders
+                Dictionary<string, int> folderCounts = null;
+                if (!IsFilterActive && Manager.ItemList.Count > 0)
+                {
+                    var counts = Manager.GetFolderCounts();
+                    if (counts.Count > 0)
+                        folderCounts = counts;
+                }
+
+                var window = new FolderToolsWindow(Manager, folderCounts, Manager.ItemList.Count);
+                await window.ShowDialog(this);
+
+                if (window.FolderMappings != null)
+                {
+                    // snapshot before applying
+                    var snapshots = Manager.ItemList.Select(i => new BatchFolderRenameOperation.ItemSnapshot
+                    {
+                        Item = i,
+                        OldFolder = i.Folder,
+                        OldAltFolders = new List<string>(i.AlternativeFolders)
+                    }).ToList();
+
+                    var (updatedCount, conflictsRemoved) = Manager.ApplyFolderMappings(window.FolderMappings);
+
+                    // Move any folder artwork along with the renamed paths
+                    var artRekeys = Manager.RekeyFolderArtForMappings(window.FolderMappings);
+
+                    if (updatedCount > 0 || conflictsRemoved > 0)
+                    {
+                        // fill in new values and filter to only changed items
+                        var undoOp = new BatchFolderRenameOperation();
+                        foreach (var s in snapshots)
+                        {
+                            s.NewFolder = s.Item.Folder;
+                            s.NewAltFolders = new List<string>(s.Item.AlternativeFolders);
+                            if (s.OldFolder != s.NewFolder || !s.OldAltFolders.SequenceEqual(s.NewAltFolders))
+                                undoOp.Snapshots.Add(s);
+                        }
+
+                        undoOp.FolderArtDat = Manager.FolderArtDat;
+                        undoOp.ArtRekeys = artRekeys;
+
+                        if (undoOp.Snapshots.Count > 0 || artRekeys.Count > 0)
+                            Manager.UndoManager.RecordChange(undoOp);
+
+                        var msg = $"{updatedCount} disc image(s) updated across {window.FolderMappings.Count} folder(s).";
+                        if (conflictsRemoved > 0)
+                            msg += $"\n\n{conflictsRemoved} additional folder path(s) were automatically removed because they became duplicates of their disc image's primary folder path after renaming.";
+                        msg += "\n\nClick 'Save Changes' to write updates to SD card.";
+
+                        await MessageBoxManager.GetMessageBoxStandard("Information", msg).ShowWindowDialogAsync(this);
+                    }
+                    else
+                    {
+                        await MessageBoxManager.GetMessageBoxStandard("Information", "No changes were made.").ShowWindowDialogAsync(this);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                await MessageBoxManager.GetMessageBoxStandard("Error", ex.Message, icon: MsBox.Avalonia.Enums.Icon.Error).ShowWindowDialogAsync(this);
+            }
+        }
+
         private async void ButtonPreload_Click(object sender, RoutedEventArgs e)
         {
             if (Manager.ItemList.Count == 0)
@@ -1670,7 +2176,7 @@ namespace GDMENUCardManager
             catch (ProgressWindowClosedException) { }
             catch (Exception ex)
             {
-                await MessageBoxManager.GetMessageBoxStandardWindow("Error", ex.Message, icon: MessageBox.Avalonia.Enums.Icon.Error).ShowDialog(this);
+                await MessageBoxManager.GetMessageBoxStandard("Error", ex.Message, icon: MsBox.Avalonia.Enums.Icon.Error).ShowWindowDialogAsync(this);
             }
             finally
             {
@@ -1692,8 +2198,12 @@ namespace GDMENUCardManager
 
         private async void ButtonBrowseSdPath_Click(object sender, RoutedEventArgs e)
         {
-            var folderDialog = new OpenFolderDialog { Title = "Select SD Card Folder" };
-            var selectedPath = await folderDialog.ShowAsync(this);
+            var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+            {
+                Title = "Select SD Card Folder",
+                AllowMultiple = false
+            });
+            var selectedPath = folders.Count > 0 ? folders[0].TryGetLocalPath() : null;
 
             if (!string.IsNullOrEmpty(selectedPath))
             {
@@ -1703,13 +2213,13 @@ namespace GDMENUCardManager
 
                 if (!hasGdemuIni && !has01Folder)
                 {
-                    await MessageBoxManager.GetMessageBoxStandardWindow(
+                    await MessageBoxManager.GetMessageBoxStandard(
                         "Information",
                         "The selected folder does not appear to be a GDEMU SD card.\n\n" +
                         "No GDEMU.INI file or numbered folders (01, 02, etc.) were found.\n\n" +
                         "You may proceed, but the folder may not work as expected.",
-                        MessageBox.Avalonia.Enums.ButtonEnum.Ok,
-                        MessageBox.Avalonia.Enums.Icon.Info).ShowDialog(this);
+                        MsBox.Avalonia.Enums.ButtonEnum.Ok,
+                        MsBox.Avalonia.Enums.Icon.Info).ShowWindowDialogAsync(this);
                 }
 
                 // Set the custom path
@@ -1851,8 +2361,7 @@ namespace GDMENUCardManager
                 }
 
                 // Disable context menu for menu entry (folder 01) by setting all items disabled
-                // Note: In Avalonia, we can't easily prevent context menu from showing,
-                // but individual handlers already filter out SdNumber == 1
+                // we can't easily stop the menu from showing, but the handlers already skip SdNumber == 1
             }
         }
 
@@ -2014,7 +2523,7 @@ namespace GDMENUCardManager
             }
             catch (Exception ex)
             {
-                await MessageBoxManager.GetMessageBoxStandardWindow("Error", ex.Message, icon: MessageBox.Avalonia.Enums.Icon.Error).ShowDialog(this);
+                await MessageBoxManager.GetMessageBoxStandard("Error", ex.Message, icon: MsBox.Avalonia.Enums.Icon.Error).ShowWindowDialogAsync(this);
             }
             IsBusy = false;
         }
@@ -2027,7 +2536,7 @@ namespace GDMENUCardManager
             // Only allow in openMenu mode
             if (MenuKindSelected != MenuKind.openMenu)
             {
-                await MessageBoxManager.GetMessageBoxStandardWindow("Information", "Assign Folder Path is only available in openMenu mode.", icon: MessageBox.Avalonia.Enums.Icon.Info).ShowDialog(this);
+                await MessageBoxManager.GetMessageBoxStandard("Information", "Assign Folder Path is only available in openMenu mode.", icon: MsBox.Avalonia.Enums.Icon.Info).ShowWindowDialogAsync(this);
                 return;
             }
 
@@ -2039,7 +2548,7 @@ namespace GDMENUCardManager
 
             if (selectedItems.Count == 0)
             {
-                await MessageBoxManager.GetMessageBoxStandardWindow("Information", "No valid items selected.", icon: MessageBox.Avalonia.Enums.Icon.Info).ShowDialog(this);
+                await MessageBoxManager.GetMessageBoxStandard("Information", "No valid items selected.", icon: MsBox.Avalonia.Enums.Icon.Info).ShowWindowDialogAsync(this);
                 return;
             }
 
@@ -2073,9 +2582,9 @@ namespace GDMENUCardManager
                         item.AlternativeFolders.Contains(folderPath)).ToList();
                     if (conflicting.Count > 0)
                     {
-                        await MessageBoxManager.GetMessageBoxStandardWindow("Information",
+                        await MessageBoxManager.GetMessageBoxStandard("Information",
                             "This folder path is already assigned to this disc image as an additional folder path.",
-                            icon: MessageBox.Avalonia.Enums.Icon.Info).ShowDialog(this);
+                            icon: MsBox.Avalonia.Enums.Icon.Info).ShowWindowDialogAsync(this);
                         return;
                     }
                 }
@@ -2108,9 +2617,9 @@ namespace GDMENUCardManager
 
             if (MenuKindSelected != MenuKind.openMenu)
             {
-                await MessageBoxManager.GetMessageBoxStandardWindow("Information",
+                await MessageBoxManager.GetMessageBoxStandard("Information",
                     "Additional folder paths are only available in openMenu mode.",
-                    icon: MessageBox.Avalonia.Enums.Icon.Info).ShowDialog(this);
+                    icon: MsBox.Avalonia.Enums.Icon.Info).ShowWindowDialogAsync(this);
                 return;
             }
 
@@ -2189,6 +2698,10 @@ namespace GDMENUCardManager
 
         private void MainWindow_KeyDown(object sender, KeyEventArgs e)
         {
+            // Undo/redo buttons are disabled while busy, do the same for the shortcuts
+            if (IsBusy)
+                return;
+
             // Handle Ctrl+Z for Undo
             if (e.Key == Key.Z && e.KeyModifiers == KeyModifiers.Control)
             {
@@ -2252,14 +2765,14 @@ namespace GDMENUCardManager
                         var filteredItems = Manager.ItemList.Where(item => FilterInItem(item, _activeFilterText)).ToList();
                         if (filteredItems.Count == 0)
                         {
-                            await MessageBoxManager.GetMessageBoxStandardWindow("Information",
+                            await MessageBoxManager.GetMessageBoxStandard("Information",
                                 "Nothing to show for the currently applied filter.",
-                                icon: MessageBox.Avalonia.Enums.Icon.Info).ShowDialog(this);
+                                icon: MsBox.Avalonia.Enums.Icon.Info).ShowWindowDialogAsync(this);
                             ClearFilterFromGrid();
                         }
                         else
                         {
-                            dg1.Items = filteredItems;
+                            dg1.ItemsSource = filteredItems;
                         }
                     }
                 }
@@ -2272,22 +2785,28 @@ namespace GDMENUCardManager
         {
             if (IsFilterActive)
                 return;
-            var fileDialog = new OpenFileDialog
+            var pickedFiles = await StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
             {
                 Title = "Select File(s)",
                 AllowMultiple = true,
-                Filters = fileFilterList
-            };
+                FileTypeFilter = fileFilterList
+            });
 
-            var files = await fileDialog.ShowAsync(this);
-            if (files != null && files.Any())
+            var files = pickedFiles
+                .Select(f => f.TryGetLocalPath())
+                .Where(p => p != null)
+                .ToArray();
+            if (files.Any())
             {
                 IsBusy = true;
 
-                var invalid = await Manager.AddGames(files);
+                var (invalid, unsupportedRedumpGdi) = await Manager.AddGames(files);
 
                 if (invalid.Any())
-                    await MessageBoxManager.GetMessageBoxStandardWindow("Error", string.Join(Environment.NewLine, invalid), icon: MessageBox.Avalonia.Enums.Icon.Error).ShowDialog(this);
+                    await MessageBoxManager.GetMessageBoxStandard("Error", string.Join(Environment.NewLine, invalid), icon: MsBox.Avalonia.Enums.Icon.Error).ShowWindowDialogAsync(this);
+
+                if (unsupportedRedumpGdi.Any())
+                    await MessageBoxManager.GetMessageBoxStandard("Information", LegacyRedumpGdiDetector.BuildMessage(unsupportedRedumpGdi), icon: MsBox.Avalonia.Enums.Icon.Info).ShowWindowDialogAsync(this);
 
                 // Show serial translation dialog if any items were translated
                 await ShowSerialTranslationDialogIfNeeded();
@@ -2319,14 +2838,14 @@ namespace GDMENUCardManager
                 var filteredItems = Manager.ItemList.Where(item => FilterInItem(item, _activeFilterText)).ToList();
                 if (filteredItems.Count == 0)
                 {
-                    await MessageBoxManager.GetMessageBoxStandardWindow("Information",
+                    await MessageBoxManager.GetMessageBoxStandard("Information",
                         "Nothing to show for the currently applied filter.",
-                        icon: MessageBox.Avalonia.Enums.Icon.Info).ShowDialog(this);
+                        icon: MsBox.Avalonia.Enums.Icon.Info).ShowWindowDialogAsync(this);
                     ClearFilterFromGrid();
                 }
                 else
                 {
-                    dg1.Items = filteredItems;
+                    dg1.ItemsSource = filteredItems;
                 }
             }
         }
@@ -2431,14 +2950,14 @@ namespace GDMENUCardManager
             if (dg1.SelectedIndex == -1 || !searchInGrid(dg1.SelectedIndex))
             {
                 if (!searchInGrid(0))
-                    await MessageBoxManager.GetMessageBoxStandardWindow("Information", "No matches found.",
-                        icon: MessageBox.Avalonia.Enums.Icon.Info).ShowDialog(this);
+                    await MessageBoxManager.GetMessageBoxStandard("Information", "No matches found.",
+                        icon: MsBox.Avalonia.Enums.Icon.Info).ShowWindowDialogAsync(this);
             }
         }
 
         private bool searchInGrid(int start)
         {
-            var visibleItems = (dg1.Items as System.Collections.IEnumerable)?.Cast<GdItem>().ToList()
+            var visibleItems = (dg1.ItemsSource as System.Collections.IEnumerable)?.Cast<GdItem>().ToList()
                                ?? Manager.ItemList.ToList();
 
             for (int i = start; i < visibleItems.Count; i++)
@@ -2470,14 +2989,14 @@ namespace GDMENUCardManager
             IsFilterActive = true;
 
             var filteredItems = Manager.ItemList.Where(item => FilterInItem(item, filterText)).ToList();
-            dg1.Items = filteredItems;
+            dg1.ItemsSource = filteredItems;
 
             DragDrop.SetAllowDrop(this, false);
         }
 
         private void ClearFilterFromGrid()
         {
-            dg1.Items = Manager.ItemList;
+            dg1.ItemsSource = Manager.ItemList;
 
             _activeFilterText = null;
             Filter = null;
@@ -2504,8 +3023,8 @@ namespace GDMENUCardManager
             bool hasMatches = Manager.ItemList.Any(item => FilterInItem(item, filterText));
             if (!hasMatches)
             {
-                await MessageBoxManager.GetMessageBoxStandardWindow("Information", "No matches found.",
-                    icon: MessageBox.Avalonia.Enums.Icon.Info).ShowDialog(this);
+                await MessageBoxManager.GetMessageBoxStandard("Information", "No matches found.",
+                    icon: MsBox.Avalonia.Enums.Icon.Info).ShowWindowDialogAsync(this);
                 return;
             }
 

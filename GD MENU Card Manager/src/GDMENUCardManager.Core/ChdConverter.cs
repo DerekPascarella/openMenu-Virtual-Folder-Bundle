@@ -237,7 +237,7 @@ namespace GDMENUCardManager.Core
 
         /// <summary>
         /// Byte-swap 16-bit audio samples (big-endian to little-endian).
-        /// CHD v5+ stores audio in big-endian; BIN/RAW files expect little-endian.
+        /// CHD v5+ stores audio big-endian. BIN/RAW files expect little-endian.
         /// </summary>
         private static void SwapAudioEndianness(byte[] data)
         {

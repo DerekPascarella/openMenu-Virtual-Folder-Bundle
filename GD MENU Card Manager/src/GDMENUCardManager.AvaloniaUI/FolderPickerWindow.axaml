@@ -1,0 +1,27 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="420" d:DesignHeight="400"
+        x:Class="GDMENUCardManager.FolderPickerWindow"
+        Title="Select Folder" Width="420" Height="400" MinWidth="320" MinHeight="240"
+        WindowStartupLocation="CenterOwner">
+  <Grid Margin="15">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto"/>
+      <RowDefinition Height="1*"/>
+      <RowDefinition Height="Auto"/>
+    </Grid.RowDefinitions>
+
+    <TextBlock Grid.Row="0" Text="Select the folder to receive this artwork:" Margin="0,0,0,10"/>
+
+    <ListBox Grid.Row="1" Name="FolderList" ItemsSource="{Binding Paths}" DoubleTapped="FolderList_DoubleTapped"/>
+
+    <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+      <Button Content="OK" Click="OkButton_Click" IsDefault="True" Width="80" Padding="15,8" Margin="0,0,10,0"
+              ToolTip.Tip="Assign the artwork to the selected folder"/>
+      <Button Content="Cancel" Click="CancelButton_Click" IsCancel="True" Width="80" Padding="15,8"
+              ToolTip.Tip="Close without assigning"/>
+    </StackPanel>
+  </Grid>
+</Window>

@@ -318,6 +318,8 @@ namespace GDMENUCardManager.Core
                     DeleteIfExists(Path.Combine(menuDataPath, "BOX.DAT"));
                     DeleteIfExists(Path.Combine(menuDataPath, "META.DAT"));
                     DeleteIfExists(Path.Combine(menuDataPath, "ICON.DAT"));
+                    DeleteIfExists(Path.Combine(menuDataPath, "FOLDRART.DAT"));
+                    DeleteIfExists(Path.Combine(menuDataPath, "FOLDRART.MAP"));
                 }
 
                 if (options.PreserveThemes)
