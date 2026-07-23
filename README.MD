@@ -126,7 +126,7 @@ The latest version of **openMenu Virtual Folder Bundle** is [1.6.0-ateam](https:
     - Card Manager now rejects Redump's old, short-lived GDI format with a clear message (see [Issue 170](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/170)).
     - Batch Folder Move/Rename function added to Linux and macOS builds (see [Issue 173](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/173)).
     - Card Manager can set a default style and theme for openMenu to use on launch, as well as custom background music (see [Issue 174](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/174)).
-    - Small cosmetic clean-ups (see [Issue 175](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/175)).
+    - Small cosmetic cleanups (see [Issue 175](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/175)).
     - Drag-and-drop added to Linux version of Card Manager, and macOS drag-and-drop functionality enhanced (see [Issue 176](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/176)).
     - Up/down buttons added to Windows version of Card Manager (see [Issue 177](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/177)).
 - **Version 1.5.5-ateam (2026-05-27)**
