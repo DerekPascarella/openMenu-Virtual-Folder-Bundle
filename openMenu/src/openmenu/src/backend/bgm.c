@@ -35,6 +35,17 @@
  * for more than that in one go */
 #define BGM_STAGING_SIZE (32 << 10)
 
+/* AICA interrupt registers */
+#define AICA_REG(x)      (0xa0700000 + (x))
+#define AICA_TIMER_A     AICA_REG(0x2890)
+#define AICA_SCIEB       AICA_REG(0x289c)
+#define AICA_SCIRE       AICA_REG(0x28a4)
+#define AICA_SCILV0      AICA_REG(0x28a8)
+#define AICA_SCILV1      AICA_REG(0x28ac)
+#define AICA_SCILV2      AICA_REG(0x28b0)
+#define AICA_MCIEB       AICA_REG(0x28b4)
+#define AICA_MCIRE       AICA_REG(0x28bc)
+
 static int bgm_ok = 0; /* valid BGM.ADP found at boot */
 static int playing = 0;
 static int snd_ready = 0;
@@ -162,6 +173,28 @@ bgm_available(void) {
     return bgm_ok;
 }
 
+/* The sound driver needs an AICA timer interrupt that it never arms
+ * on its own. After an exit to BIOS the old setup is gone and the
+ * driver stalls silently. Arm the timer here. */
+static void
+bgm_arm_aica_timer(void) {
+    g2_fifo_wait();
+    /* mask and clear pending interrupts */
+    g2_write_32(AICA_SCIEB, 0);
+    g2_write_32(AICA_MCIEB, 0);
+    g2_write_32(AICA_SCIRE, 0x7ff);
+    g2_write_32(AICA_MCIRE, 0x7ff);
+    g2_fifo_wait();
+    /* route timer A to the driver's FIQ handler */
+    g2_write_32(AICA_SCILV0, 0x18);
+    g2_write_32(AICA_SCILV1, 0x50);
+    g2_write_32(AICA_SCILV2, 0x08);
+    g2_fifo_wait();
+    /* start timer A and enable its interrupt */
+    g2_write_32(AICA_TIMER_A, 256 - (44100 / 4410));
+    g2_write_32(AICA_SCIEB, 0x40);
+}
+
 static void
 bgm_start(void) {
     if (!snd_ready) {
@@ -172,6 +205,8 @@ bgm_start(void) {
             bgm_fd = -1;
             return;
         }
+        /* wake the driver in case the BIOS menu left its timer dead */
+        bgm_arm_aica_timer();
         snd_ready = 1;
     }
 

@@ -98,7 +98,7 @@ To accommodate the new openMenu, a modified version of [GD MENU Card Manager](ht
 
 ## Current Version
 
-The latest version of **openMenu Virtual Folder Bundle** is [1.6.0-ateam](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/releases/tag/1.6.0-ateam).
+The latest version of **openMenu Virtual Folder Bundle** is [1.6.1-ateam](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/releases/tag/1.6.1-ateam).
 
 ---
 
@@ -114,6 +114,11 @@ The latest version of **openMenu Virtual Folder Bundle** is [1.6.0-ateam](https:
 ---
 
 ## Changelog
+- **Version 1.6.1-ateam (2026-07-24)**
+  - **openMenu**
+    - Fixed bug causing background music not to play when returning to openMenu after exiting to BIOS (see [Issue 180](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/180)).
+  - **GD MENU Card Manager**
+    - Fixed bug causing no keyboard/mouse input in certain macOS environments (see [Issue 179](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/179)).
 - **Version 1.6.0-ateam (2026-07-23)**
   - **openMenu**
     - The settings menu is now scrollable in all view modes (see [Issue 168](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/168)).

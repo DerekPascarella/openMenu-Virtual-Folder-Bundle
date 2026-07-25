@@ -63,12 +63,26 @@ else
     echo "Warning: Icon file not found at src/${APP_NAME}.AvaloniaUI/Assets/icon.icns"
 fi
 
-# Ad-hoc code signing (required for Apple Silicon arm64 binaries to execute)
+# Ad-hoc code signing (required for Apple Silicon arm64 binaries to execute).
+# Apple's codesign seals every bundle file and passes strict verification, so
+# prefer it when building on a Mac. rcodesign covers WSL/Linux cross-builds but
+# cannot seal the non Mach-O files in Contents/MacOS (apple-platform-rs issue
+# 87), so cross-built archives fail strict verification until re-signed on a Mac.
 echo "Ad-hoc code signing the bundle..."
-if command -v rcodesign &> /dev/null; then
-    rcodesign sign "${BUNDLE_PATH}" 2>&1 | grep -v "non Mach-O file\|we do not know how\|if the bundle signs"
-elif command -v codesign &> /dev/null; then
-    codesign --force --deep -s - "${BUNDLE_PATH}"
+if [ "$(uname)" == "Darwin" ] && command -v codesign &> /dev/null; then
+    codesign --force --deep --sign - "${BUNDLE_PATH}"
+    echo "Verifying signature..."
+    codesign --verify --deep --strict --verbose=2 "${BUNDLE_PATH}"
+elif command -v rcodesign &> /dev/null; then
+    SIGN_RC=0
+    SIGN_OUTPUT=$(rcodesign sign "${BUNDLE_PATH}" 2>&1) || SIGN_RC=$?
+    echo "${SIGN_OUTPUT}" | grep -v "non Mach-O file\|we do not know how\|if the bundle signs" || true
+    if [ ${SIGN_RC} -ne 0 ]; then
+        echo "ERROR: rcodesign failed (exit code ${SIGN_RC})."
+        exit 1
+    fi
+    echo "Note: this cross-built archive will not pass codesign --verify --deep --strict."
+    echo "macOS users can re-seal it with: codesign --force --deep -s - ${BUNDLE_NAME}"
 else
     echo "ERROR: No code signing tool found (rcodesign or codesign)."
     echo "Apple Silicon Macs require signed binaries. Install rcodesign:"
