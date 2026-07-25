@@ -1,14 +1,16 @@
 /*
  * File: bgm.c
  * Project: backend
- * Description: Background music streaming from /cd/BGM.ADP
  *
- * The track is Yamaha AICA ADPCM behind a small "OMBG" header written by
- * GDMENUCardManager. The AICA decodes it in hardware, we just keep its
- * ring in sound RAM topped up. Between the disc and the sound chip sits a
- * 512 KB buffer in main RAM so box art loads can hog the GD drive for many
- * seconds without the music running dry. Everything here runs on the main
- * thread (the stream callback fires inside snd_stream_poll), so no locking.
+ * Streams background music from /cd/BGM.ADP.
+ *
+ * The file contains Yamaha AICA ADPCM data with a small "OMBG" header added
+ * by GDMENUCardManager. The AICA handles decoding, while this code keeps the
+ * sound RAM ring buffer filled.
+ *
+ * A 512 KB buffer in main RAM sits between the GD drive and the sound chip.
+ * This gives box art loading enough time to use the drive without interrupting
+ * playback.
  */
 
 #include <stdint.h>
