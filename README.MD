@@ -104,6 +104,7 @@ The latest version of **openMenu Virtual Folder Bundle** is [1.6.1-ateam](https:
 
 ## Roadmap Ideas
 
+- Add ability to import assigned game artwork from a disc image's `0GDTEX.PVR` file in GD MENU Card Manager.
 - Extend GD MENU Card Manager's **Menu Options** feature to set more default openMenu settings beyond view style and theme.
 - New metadata format with optional openMenu popup window when a disc image is selected, showing screenshots, description, and more.
 - Keep track of a recently played list in openMenu.
