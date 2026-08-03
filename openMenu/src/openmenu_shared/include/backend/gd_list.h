@@ -10,7 +10,29 @@
 
 #pragma once
 
+#define LIST_FOLDER_PATH_MAX 512
+
 struct gd_item;
+
+/* What the list is showing right now, so a launch can be traced back to
+ * the view it came from */
+typedef enum LIST_VIEW_KIND {
+    LIST_VIEW_FLAT = 0, /* games straight up */
+    LIST_VIEW_CATEGORY, /* the letter, region or genre rows */
+    LIST_VIEW_DRILL,    /* games inside one of those categories */
+    LIST_VIEW_FOLDER,
+    LIST_VIEW_RECENT
+} LIST_VIEW_KIND;
+
+typedef struct list_view {
+    int kind;
+    char drill_type; /* 'A', 'R' or 'G', zero when not drilled */
+    int drill_num;
+    const char* folder_path;
+} list_view;
+
+void list_view_get(struct list_view* out);
+
 int list_read(const char* filename);
 int list_read_default(void);
 void list_destroy(void);
@@ -41,6 +63,18 @@ int list_length(void);
 int list_multidisc_length(void);
 const struct gd_item* list_item_get(int idx);
 
+/* Recently played view */
+void list_set_recent(void);
+int list_recent_count(void);
+struct gd_item** list_recent_entries(int* count);
+
+/* Finding a game again after a reboot */
+const struct gd_item* list_find_by_hash(unsigned int hash);
+const struct gd_item* list_find_by_product(const char* product);
+const struct gd_item* list_visible_disc(const struct gd_item* item);
+int list_index_of(const struct gd_item* item);
+int list_index_of_product(const char* product);
+
 /* Folder navigation functions */
 void list_folder_init(void);
 void list_set_folder_root(void);
@@ -51,3 +85,7 @@ int list_folder_go_back(void);
 int list_folder_get_depth(void);
 int list_folder_is_root(void);
 void list_folder_destroy(void);
+unsigned int list_folder_path_hash(const char* path);
+int list_folder_path_by_hash(unsigned int hash, char* out, int out_size);
+int list_folder_contains(const char* path, const struct gd_item* item);
+int list_folder_enter_path(const char* path);

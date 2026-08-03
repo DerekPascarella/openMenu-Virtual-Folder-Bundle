@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -65,8 +64,6 @@ namespace GDMENUCardManager.Core
 
         private readonly string currentAppPath = AppDomain.CurrentDomain.BaseDirectory;
 
-        private readonly string gdishrinkPath;
-
         private string ipbinPath
         {
             get
@@ -91,16 +88,22 @@ namespace GDMENUCardManager.Core
         public bool EnableVgaPatchExisting;
 
         // When true, checks for locked files/folders before save
+        /// <summary>
+        /// Set false to skip the pre-save locked-file scan.
+        /// </summary>
         public bool EnableLockCheck = true;
 
         // set during save when patching changes a flag after the list text was built
         private bool savePatchChangedFlags;
         private readonly List<string> savePatchFailures = new List<string>();
 
-        // items patched to a manually edited region this save, the blanket region-free pass must not override them
+        // Items patched to a manually edited region this save, the blanket region-free pass must not override them.
         private readonly HashSet<GdItem> saveManualRegionItems = new HashSet<GdItem>();
 
 
+        /// <summary>
+        /// Display order is the order written to the card. Index 0 is the menu when present.
+        /// </summary>
         public ObservableCollection<GdItem> ItemList { get; } = new ObservableCollection<GdItem>();
 
         public ObservableCollection<string> KnownFolders { get; } = new ObservableCollection<string>();
@@ -153,7 +156,7 @@ namespace GDMENUCardManager.Core
         public string GetBgmPath() =>
             Path.Combine(GetMenuDataPath(), MenuOptions.MenuOptionsManager.BgmFileName);
 
-        // themes always ship inside the app, even on macOS where user data lives in Application Support
+        // Themes always ship inside the app, even on macOS where user data lives in Application Support.
         public MenuOptions.MenuOptionsManager CreateMenuOptionsManager() =>
             new MenuOptions.MenuOptionsManager(
                 GetMenuDataPath(),
@@ -254,8 +257,8 @@ namespace GDMENUCardManager.Core
                 GetDatBackupFolder(), proceedWithoutBackupOnFailure);
         }
 
-        // every folder path plus its ancestor prefixes, ordered depth first so each
-        // folder's children follow it (the artwork list needs that ordering)
+        // Every folder path plus its ancestor prefixes, ordered depth first so each
+        // folder's children follow it (the artwork list needs that ordering).
         public List<string> GetAllFolderArtPaths()
         {
             var paths = new HashSet<string>(StringComparer.Ordinal);
@@ -894,7 +897,7 @@ namespace GDMENUCardManager.Core
             if (boxExists && !iconExists)
                 return DatFileStatus.BoxExistsIconMissing;
 
-            // both exist, check if serials match
+            // Both exist, check if serials match.
             if (BoxDat != null && BoxDat.IsLoaded && IconDat != null && IconDat.IsLoaded)
             {
                 var boxSerials = BoxDat.GetAllSerials();
@@ -1018,7 +1021,7 @@ namespace GDMENUCardManager.Core
         /// Checks that all existing DAT files (BOX.DAT, ICON.DAT, META.DAT) are writable.
         /// Attempts TryMakeWritable first. If any are still locked, shows the LockedFilesDialog
         /// with Retry/Cancel. Returns true if all files are writable (or don't exist yet),
-        /// false if user cancelled.
+        /// false if user canceled.
         /// </summary>
         public async Task<bool> EnsureDatFilesWritable()
         {
@@ -1028,10 +1031,13 @@ namespace GDMENUCardManager.Core
                 if (lockedFiles.Count == 0) return true;
 
                 if (!await Helper.DependencyManager.ShowLockedFilesDialog(lockedFiles))
-                    return false; // user cancelled
+                    return false; // user canceled
             }
         }
 
+        /// <summary>
+        /// Call once at startup. Wires up the dependency manager the whole Core relies on.
+        /// </summary>
         public static Manager CreateInstance(IDependencyManager m, string[] compressedFileExtensions)
         {
             Helper.DependencyManager = m;
@@ -1042,7 +1048,6 @@ namespace GDMENUCardManager.Core
 
         private Manager()
         {
-            gdishrinkPath = Path.Combine(currentAppPath, "tools", "gdishrink.exe");
             //ipbinPath = Path.Combine(currentAppPath, "tools", "IP.BIN");
             PlayStationDB.LoadFrom(Constants.PS1GameDBFile);
         }
@@ -1078,7 +1083,7 @@ namespace GDMENUCardManager.Core
                         }
                         catch { }
 
-                    //not lazyloaded. force full reading
+                    // Not lazyloaded. Force full reading.
                     if (itemToAdd == null)
                         itemToAdd = await ImageHelper.CreateGdItemAsync(item.Item2);
 
@@ -1092,7 +1097,7 @@ namespace GDMENUCardManager.Core
                         //try to detect using name.txt info
                         MenuKindSelected = getMenuKindFromName(itemToAdd.Name);
 
-                        //not detected using name.txt. Try to load from ip.bin
+                        // Not detected using name.txt. Try to load from ip.bin.
                         if (MenuKindSelected == MenuKind.None)
                         {
                             await LoadIP(itemToAdd);
@@ -1385,7 +1390,7 @@ namespace GDMENUCardManager.Core
             if (nameFile != null)
                 itemName = await Helper.ReadAllTextAsync(nameFile);
 
-            //cached "name.txt" file is required.
+            // Cached "name.txt" file is required.
             if (string.IsNullOrWhiteSpace(nameFile))
                 return null;
 
@@ -1394,7 +1399,7 @@ namespace GDMENUCardManager.Core
             if (serialFile != null)
                 itemSerial = await Helper.ReadAllTextAsync(serialFile);
 
-            //cached "serial.txt" file is required.
+            // Cached "serial.txt" file is required.
             if (string.IsNullOrWhiteSpace(itemSerial))
                 return null;
 
@@ -1476,7 +1481,7 @@ namespace GDMENUCardManager.Core
 
             string itemImageFile = null;
 
-            //is uncompressed?
+            // Is uncompressed?
             foreach (var file in files)
             {
                 if (supportedImageFormats.Any(x => x.Equals(Path.GetExtension(file), StringComparison.OrdinalIgnoreCase)))
@@ -1776,6 +1781,9 @@ namespace GDMENUCardManager.Core
             return await Helper.CheckPathsAccessibilityAsync(pathsToCheck);
         }
 
+        /// <summary>
+        /// Mutates the card in place. Partial failure can leave numbered folders renamed.
+        /// </summary>
         public async Task<bool> Save(string tempFolderRoot)
         {
             string tempDirectory = null;
@@ -1817,7 +1825,7 @@ namespace GDMENUCardManager.Core
                     }
                 }
 
-                //load ipbin from lazy loaded items
+                // Load ipbin from lazy loaded items.
                 try
                 {
                     await LoadIpAll();
@@ -1837,6 +1845,7 @@ namespace GDMENUCardManager.Core
 
                         var lockCheckProgress = Helper.DependencyManager.CreateAndShowProgressWindow();
                         lockCheckProgress.TextContent = "Checking for locked files and folders...";
+                        lockCheckProgress.IsIndeterminate = false;
                         do { await Task.Delay(50); } while (!lockCheckProgress.IsInitialized);
 
                         Dictionary<string, string> lockedFiles;
@@ -1856,7 +1865,7 @@ namespace GDMENUCardManager.Core
                         // true = retry, false = cancel
                         if (!await Helper.DependencyManager.ShowLockedFilesDialog(lockedFiles))
                         {
-                            return false; // User cancelled
+                            return false; // User canceled
                         }
                         // User clicked retry, loop continues to check again
                     }
@@ -1871,7 +1880,7 @@ namespace GDMENUCardManager.Core
                 StringBuilder sb = new StringBuilder();
                 StringBuilder sb_open = new StringBuilder();
 
-                //delete unused folders that are numbers (but skip 01 as it's the menu folder)
+                // Delete unused folders that are numbers (but skip 01 as it's the menu folder).
                 List<string> foldersToDelete = new List<string>();
                 foreach (var item in await Helper.GetDirectoriesAsync(sdPath))
                     if (int.TryParse(Path.GetFileName(item), out int number))
@@ -1930,11 +1939,11 @@ namespace GDMENUCardManager.Core
 
                         if (ip01 != null && (ip01.Ip?.Name == "GDMENU" || ip01.Ip?.Name == "openMenu"))
                         {
-                            //delete sdcard menu folder 01
+                            // Delete sdcard menu folder 01.
                             await Helper.DeleteDirectoryAsync(folder01);
 
                             //if user changed between GDMENU <> openMenu
-                            //reload name and serial from ip.bin
+                            // Reload name and serial from ip.bin.
                             var menu = ItemList.FirstOrDefault(x => x.Ip?.Name == "GDMENU" || x.Ip?.Name == "openMenu");
 
                             if ((ip01.Ip?.Name == "GDMENU" && MenuKindSelected != MenuKind.gdMenu) || ip01.Ip?.Name == "openMenu" && MenuKindSelected != MenuKind.openMenu)
@@ -1994,7 +2003,7 @@ namespace GDMENUCardManager.Core
                                     var (success, errorMessage) = SaveBothDats(true); // Proceed without backup prompt
                                     if (!success)
                                     {
-                                        // non-fatal, continue
+                                        // Non-fatal, continue.
                                     }
                                 }
 
@@ -2027,7 +2036,7 @@ namespace GDMENUCardManager.Core
                     ItemList[0].Work = WorkMode.New;
                 }
 
-                //define what to do with each folder (skip first item if it's the menu)
+                // Define what to do with each folder (skip first item if it's the menu).
                 int startIndex = menuCurrentlyAtIndexZero ? 1 : 0;
                 for (int i = startIndex; i < ItemList.Count; i++)
                 {
@@ -2056,10 +2065,10 @@ namespace GDMENUCardManager.Core
                     await Helper.MoveDirectoryAsync(fromPath, toPath);
                 }
 
-                //rename guid to number
+                // Rename guid to number.
                 await MoveCardItems();
 
-                //copy new folders
+                // Copy new folders.
                 await CopyNewItems(tempDirectory);
 
                 // Shrink existing items if option is enabled (Windows only)
@@ -2074,13 +2083,13 @@ namespace GDMENUCardManager.Core
                     await PatchExistingItemsAsync();
                 }
 
-                // region edits the patch pass didn't reach get reverted so the card stays consistent
+                // Region edits the patch pass didn't reach get reverted so the card stays consistent.
                 RevertSkippedRegionEdits();
 
                 //finally rename disc images, write name text file (skip menu if it's at index 0)
                 foreach (var item in ItemList.Skip(menuCurrentlyAtIndexZero ? 1 : 0))
                 {
-                    //rename image file
+                    // Rename image file.
                     if (Path.GetFileNameWithoutExtension(item.ImageFile) != Constants.DefaultImageFileName)
                     {
                         var originalExt = Path.GetExtension(item.ImageFile).ToLower();
@@ -2103,23 +2112,23 @@ namespace GDMENUCardManager.Core
                         }
                     }
 
-                    //write text name into folder
+                    // Write text name into folder.
                     var itemNamePath = Path.Combine(item.FullFolderPath, Constants.NameTextFile);
                     if (!await Helper.FileExistsAsync(itemNamePath) || (await Helper.ReadAllTextAsync(itemNamePath)).Trim() != item.Name)
                         await Helper.WriteTextFileAsync(itemNamePath, item.Name);
 
-                    //write serial number into folder
+                    // Write serial number into folder.
                     var itemSerialPath = Path.Combine(item.FullFolderPath, Constants.SerialTextFile);
                     if (!await Helper.FileExistsAsync(itemSerialPath) || (await Helper.ReadAllTextAsync(itemSerialPath)).Trim() != item.ProductNumber)
                         await Helper.WriteTextFileAsync(itemSerialPath, item.ProductNumber.Trim());
 
-                    //write folder path into folder
+                    // Write folder path into folder.
                     var itemFolderPath = Path.Combine(item.FullFolderPath, Constants.FolderTextFile);
                     var folderValue = item.Folder ?? string.Empty;
                     if (!await Helper.FileExistsAsync(itemFolderPath) || (await Helper.ReadAllTextAsync(itemFolderPath)).Trim() != folderValue)
                         await Helper.WriteTextFileAsync(itemFolderPath, folderValue);
 
-                    //write alt folder paths
+                    // Write alt folder paths.
                     for (int altIdx = 0; altIdx < Constants.FolderAltTextFiles.Length; altIdx++)
                     {
                         var altFilePath = Path.Combine(item.FullFolderPath, Constants.FolderAltTextFiles[altIdx]);
@@ -2137,7 +2146,7 @@ namespace GDMENUCardManager.Core
                         }
                     }
 
-                    //write disc type into folder (openMenu only)
+                    // Write disc type into folder (openMenu only).
                     if (MenuKindSelected == MenuKind.openMenu)
                     {
                         var itemTypePath = Path.Combine(item.FullFolderPath, Constants.TypeTextFile);
@@ -2145,38 +2154,38 @@ namespace GDMENUCardManager.Core
                         if (!await Helper.FileExistsAsync(itemTypePath) || (await Helper.ReadAllTextAsync(itemTypePath)).Trim() != typeValue)
                             await Helper.WriteTextFileAsync(itemTypePath, typeValue);
 
-                        //write disc number into folder
+                        // Write disc number into folder.
                         var itemDiscPath = Path.Combine(item.FullFolderPath, Constants.DiscTextFile);
                         var discValue = item.Ip?.Disc ?? "1/1";
                         if (!await Helper.FileExistsAsync(itemDiscPath) || (await Helper.ReadAllTextAsync(itemDiscPath)).Trim() != discValue)
                             await Helper.WriteTextFileAsync(itemDiscPath, discValue);
 
-                        //write vga into folder
+                        // Write vga into folder.
                         var itemVgaPath = Path.Combine(item.FullFolderPath, Constants.VgaTextFile);
                         var vgaValue = (item.Ip?.Vga ?? false) ? "1" : "0";
                         if (!await Helper.FileExistsAsync(itemVgaPath) || (await Helper.ReadAllTextAsync(itemVgaPath)).Trim() != vgaValue)
                             await Helper.WriteTextFileAsync(itemVgaPath, vgaValue);
 
-                        //write version into folder
+                        // Write version into folder.
                         var itemVersionPath = Path.Combine(item.FullFolderPath, Constants.VersionTextFile);
                         var versionValue = item.Ip?.Version ?? string.Empty;
                         if (!await Helper.FileExistsAsync(itemVersionPath) || (await Helper.ReadAllTextAsync(itemVersionPath)).Trim() != versionValue)
                             await Helper.WriteTextFileAsync(itemVersionPath, versionValue);
 
-                        //write date into folder
+                        // Write date into folder.
                         var itemDatePath = Path.Combine(item.FullFolderPath, Constants.DateTextFile);
                         var dateValue = item.Ip?.ReleaseDate ?? string.Empty;
                         if (!await Helper.FileExistsAsync(itemDatePath) || (await Helper.ReadAllTextAsync(itemDatePath)).Trim() != dateValue)
                             await Helper.WriteTextFileAsync(itemDatePath, dateValue);
 
-                        //write region into folder
+                        // Write region into folder.
                         var itemRegionPath = Path.Combine(item.FullFolderPath, Constants.RegionTextFile);
                         var regionValue = item.Ip?.Region ?? string.Empty;
                         if (!await Helper.FileExistsAsync(itemRegionPath) || (await Helper.ReadAllTextAsync(itemRegionPath)).Trim() != regionValue)
                             await Helper.WriteTextFileAsync(itemRegionPath, regionValue);
                     }
 
-                    //write info text into folder for cdi files
+                    // Write info text into folder for cdi files.
                     //var itemInfoPath = Path.Combine(item.FullFolderPath, infotextfile);
                     //if (item.CdiTarget > 0)
                     //{
@@ -2188,7 +2197,7 @@ namespace GDMENUCardManager.Core
 
                 if (containsCompressedFile || savePatchChangedFlags)
                 {
-                    //build the menu again
+                    // Build the menu again.
 
                     var orderedList = ItemList.OrderBy(x => x.SdNumber);
 
@@ -2207,7 +2216,7 @@ namespace GDMENUCardManager.Core
                     //generate iso and save in temp
                     await GenerateMenuImageAsync(tempDirectory, sb.ToString(), sb_open.ToString(), true);
 
-                    //move to card
+                    // Move to card.
                     var menuitem = orderedList.First();
 
                     if (await Helper.DirectoryExistsAsync(menuitem.FullFolderPath))
@@ -2220,10 +2229,10 @@ namespace GDMENUCardManager.Core
                     sb_open.Clear();
                 }
 
-                //update menu item length
+                // Update menu item length.
                 UpdateItemLength(ItemList.OrderBy(x => x.SdNumber).First());
 
-                //write menu config to root of sdcard
+                // Write menu config to root of sdcard.
                 if (gdemuIsAuthentic.HasValue)
                 {
                     int openTime = gdemuIsAuthentic.Value ? 500 : 1000;
@@ -2243,7 +2252,7 @@ namespace GDMENUCardManager.Core
                         File.Copy(originFile, Path.Combine(sdPath, "MENU_DEBUG.TXT"), true);
                 }
 
-                //write disc list to root of sdcard
+                // Write disc list to root of sdcard.
                 var discListPath = Path.Combine(sdPath, "DISCLIST.TXT");
                 sb.Clear();
                 var sortedItems = ItemList.OrderBy(x => x.SdNumber).ToList();
@@ -2385,12 +2394,12 @@ namespace GDMENUCardManager.Core
 
         private async Task GenerateMenuImageAsync(string tempDirectory, string listText, string openmenuListText, bool isRebuilding = false)
         {
-            //create low density track
+            // Create low density track.
             var lowdataPath = Path.Combine(tempDirectory, "lowdensity_data");
             if (!await Helper.DirectoryExistsAsync(lowdataPath))
                 await Helper.CreateDirectoryAsync(lowdataPath);
 
-            //create hi density track
+            // Create hi density track.
             var dataPath = Path.Combine(tempDirectory, "data");
             if (!await Helper.DirectoryExistsAsync(dataPath))
                 await Helper.CreateDirectoryAsync(dataPath);
@@ -2487,7 +2496,7 @@ namespace GDMENUCardManager.Core
             }
 
 
-            //generate menu gdi
+            // Generate menu gdi.
             var builder = new DiscUtils.Gdrom.GDromBuilder()
             {
                 RawMode = false,
@@ -2496,9 +2505,9 @@ namespace GDMENUCardManager.Core
             };
             //builder.ReportProgress += ProgressReport;
 
-            //create low density track
+            // Create low density track.
             List<FileInfo> fileList = new List<FileInfo>();
-            //add additional files, like themes
+            // Add additional files, like themes.
             fileList.AddRange(new DirectoryInfo(lowdataPath).GetFiles());
 
             var track01Path = Path.Combine(cdiPath, "track01.iso");
@@ -2620,9 +2629,10 @@ namespace GDMENUCardManager.Core
             {
                 if (shrink)
                 {
-                    using (var p = CreateProcess(gdishrinkPath))
-                        if (!await RunShrinkProcess(p, Path.Combine(item.FullFolderPath, item.ImageFile), newPath))
-                            throw new Exception("Error during GDIShrink");
+                    var (success, message) = await GdiShrinker.Shrink(
+                        Path.Combine(item.FullFolderPath, item.ImageFile), newPath);
+                    if (!success)
+                        throw new Exception($"Failed to shrink {item.ImageFile}: {message}");
                 }
                 else
                 {
@@ -2631,7 +2641,7 @@ namespace GDMENUCardManager.Core
                     {
                         await Helper.DeleteDirectoryAsync(newPath);
                     }
-                    //then create a new one
+                    // Then create a new one.
                     await Helper.CreateDirectoryAsync(newPath);
 
                     foreach (var f in item.ImageFiles)
@@ -2666,15 +2676,6 @@ namespace GDMENUCardManager.Core
             }
 
             item.Work = WorkMode.None;
-        }
-
-        private Process CreateProcess(string fileName)
-        {
-            var p = new Process();
-            p.StartInfo.CreateNoWindow = true;
-            p.StartInfo.UseShellExecute = false;
-            p.StartInfo.FileName = fileName;
-            return p;
         }
 
         private async Task CopyNewItems(string tempdir)
@@ -2759,7 +2760,7 @@ namespace GDMENUCardManager.Core
                 }
             }
 
-            //gdishrink
+            // Gdishrink.
             var itemsToShrink = new List<GdItem>();
             var ignoreShrinkList = new List<string>();
             if (EnableGDIShrink)
@@ -2786,7 +2787,7 @@ namespace GDMENUCardManager.Core
                     ).OrderBy(x => x.Name).ThenBy(x => x.Ip?.Disc ?? "1/1").ToArray();
                 if (shrinkableItems.Any())
                 {
-                    var result = Helper.DependencyManager.GdiShrinkWindowShowDialog(shrinkableItems, "GDI Shrink Selector for New Games");
+                    var result = await Helper.DependencyManager.GdiShrinkWindowShowDialog(shrinkableItems, "GDI Shrink Selector for New Games");
                     if (result != null)
                         itemsToShrink.AddRange(result);
                 }
@@ -2859,9 +2860,10 @@ namespace GDMENUCardManager.Core
 
                                     var tempGdiItem = await ImageHelper.CreateGdItemAsync(tempCueDir);
 
-                                    using (var p = CreateProcess(gdishrinkPath))
-                                        if (!await RunShrinkProcess(p, Path.Combine(tempCueDir, tempGdiItem.ImageFile), newPath))
-                                            throw new Exception("Error during GDIShrink");
+                                    (success, message) = await GdiShrinker.Shrink(
+                                        Path.Combine(tempCueDir, tempGdiItem.ImageFile), newPath);
+                                    if (!success)
+                                        throw new Exception($"Failed to shrink {tempGdiItem.ImageFile}: {message}");
 
                                     await Helper.DeleteDirectoryAsync(tempCueDir);
 
@@ -2892,7 +2894,7 @@ namespace GDMENUCardManager.Core
                                     item.FileFormat = FileFormat.Uncompressed;
                                     item.ImageFiles.Clear();
                                     item.ImageFiles.AddRange(gdiItem.ImageFiles);
-                                    item.CanApplyGDIShrink = false;
+                                    item.CanApplyGDIShrink = true;
                                 }
                             }
                             else
@@ -3013,9 +3015,10 @@ namespace GDMENUCardManager.Core
 
                                     var tempGdiItem = await ImageHelper.CreateGdItemAsync(tempChdDir);
 
-                                    using (var p = CreateProcess(gdishrinkPath))
-                                        if (!await RunShrinkProcess(p, Path.Combine(tempChdDir, tempGdiItem.ImageFile), newPath))
-                                            throw new Exception("Error during GDIShrink");
+                                    (success, message) = await GdiShrinker.Shrink(
+                                        Path.Combine(tempChdDir, tempGdiItem.ImageFile), newPath);
+                                    if (!success)
+                                        throw new Exception($"Failed to shrink {tempGdiItem.ImageFile}: {message}");
 
                                     await Helper.DeleteDirectoryAsync(tempChdDir);
 
@@ -3044,7 +3047,7 @@ namespace GDMENUCardManager.Core
                                     item.FileFormat = FileFormat.Uncompressed;
                                     item.ImageFiles.Clear();
                                     item.ImageFiles.AddRange(gdiItem.ImageFiles);
-                                    item.CanApplyGDIShrink = false;
+                                    item.CanApplyGDIShrink = true;
                                 }
                             }
                             else
@@ -3102,7 +3105,7 @@ namespace GDMENUCardManager.Core
 
                                 shrink = true;
 
-                                //extract game to temp folder
+                                // Extract game to temp folder.
                                 var folderNumber = i + 1;
                                 var newPath = Path.Combine(sdPath, FormatFolderNumber(folderNumber));
 
@@ -3152,9 +3155,10 @@ namespace GDMENUCardManager.Core
 
                                             var tempGdiItem = await ImageHelper.CreateGdItemAsync(tempCueDir);
 
-                                            using (var p = CreateProcess(gdishrinkPath))
-                                                if (!await RunShrinkProcess(p, Path.Combine(tempCueDir, tempGdiItem.ImageFile), newPath))
-                                                    throw new Exception("Error during GDIShrink");
+                                            (success, message) = await GdiShrinker.Shrink(
+                                                Path.Combine(tempCueDir, tempGdiItem.ImageFile), newPath);
+                                            if (!success)
+                                                throw new Exception($"Failed to shrink {tempGdiItem.ImageFile}: {message}");
 
                                             await Helper.DeleteDirectoryAsync(tempCueDir);
                                         }
@@ -3178,7 +3182,8 @@ namespace GDMENUCardManager.Core
                                         item.ImageFiles.Clear();
                                         item.ImageFiles.AddRange(gdiItem.ImageFiles);
                                         item.Ip = gdi.Ip;
-                                        item.CanApplyGDIShrink = false;
+                                        if (shrink)
+                                            item.CanApplyGDIShrink = false;
                                     }
                                     else
                                     {
@@ -3269,9 +3274,10 @@ namespace GDMENUCardManager.Core
 
                                             var tempGdiItem = await ImageHelper.CreateGdItemAsync(tempChdGdiDir);
 
-                                            using (var p = CreateProcess(gdishrinkPath))
-                                                if (!await RunShrinkProcess(p, Path.Combine(tempChdGdiDir, tempGdiItem.ImageFile), newPath))
-                                                    throw new Exception("Error during GDIShrink");
+                                            (success, message) = await GdiShrinker.Shrink(
+                                                Path.Combine(tempChdGdiDir, tempGdiItem.ImageFile), newPath);
+                                            if (!success)
+                                                throw new Exception($"Failed to shrink {tempGdiItem.ImageFile}: {message}");
 
                                             await Helper.DeleteDirectoryAsync(tempChdGdiDir);
                                         }
@@ -3342,9 +3348,10 @@ namespace GDMENUCardManager.Core
                                     {
                                         progress.TextContent = $"Shrinking {item.Name}...";
 
-                                        using (var p = CreateProcess(gdishrinkPath))
-                                            if (!await RunShrinkProcess(p, Path.Combine(tempExtractDir, gdi.ImageFile), newPath))
-                                                throw new Exception("Error during GDIShrink");
+                                        var (success, message) = await GdiShrinker.Shrink(
+                                            Path.Combine(tempExtractDir, gdi.ImageFile), newPath);
+                                        if (!success)
+                                            throw new Exception($"Failed to shrink {gdi.ImageFile}: {message}");
 
                                         //get the new filenames
                                         gdi = await ImageHelper.CreateGdItemAsync(newPath);
@@ -3390,7 +3397,7 @@ namespace GDMENUCardManager.Core
 
                         progress.ProcessedItems++;
 
-                        //user closed window
+                        // User closed window.
                         if (!progress.IsVisible)
                             break;
                     }
@@ -3512,7 +3519,7 @@ namespace GDMENUCardManager.Core
 
             foreach (var item in ItemList)
             {
-                // count once per item using a set of all unique folder paths
+                // Count once per item using a set of all unique folder paths.
                 var allFolders = new HashSet<string>(StringComparer.Ordinal);
 
                 if (!string.IsNullOrWhiteSpace(item.Folder))
@@ -3610,7 +3617,7 @@ namespace GDMENUCardManager.Core
                     }
                 }
 
-                // remap alt folders
+                // Remap alt folders.
                 for (int i = 0; i < item.AlternativeFolders.Count; i++)
                 {
                     var altFolder = item.AlternativeFolders[i];
@@ -3636,17 +3643,17 @@ namespace GDMENUCardManager.Core
                 }
             }
 
-            // post-apply conflict scrub
+            // Post-apply conflict scrub.
             int conflictsRemoved = 0;
             foreach (var item in ItemList)
             {
                 if (item.AlternativeFolders.Count > 0)
                 {
-                    // remove alt folders that now match the primary folder
+                    // Remove alt folders that now match the primary folder.
                     if (!string.IsNullOrWhiteSpace(item.Folder))
                         conflictsRemoved += item.AlternativeFolders.RemoveAll(af => af == item.Folder);
 
-                    // deduplicate alt folders
+                    // Deduplicate alt folders.
                     var distinct = item.AlternativeFolders.Distinct(StringComparer.Ordinal).ToList();
                     if (distinct.Count < item.AlternativeFolders.Count)
                     {
@@ -3826,7 +3833,7 @@ namespace GDMENUCardManager.Core
             item.SdNumber = folderNumber;
             item.FileFormat = FileFormat.Uncompressed;
 
-            //compressed file by default will have its serial blank.
+            // Compressed file by default will have its serial blank.
             //if still blank, read from the now extracted ip info
             if (string.IsNullOrWhiteSpace(item.ProductNumber))
                 item.ProductNumber = extracted.ProductNumber;
@@ -3843,35 +3850,6 @@ namespace GDMENUCardManager.Core
             }
         }
 
-        private async Task<bool> RunShrinkProcess(Process p, string inputFilePath, string outputFolderPath)
-        {
-            if (!Directory.Exists(outputFolderPath))
-                Directory.CreateDirectory(outputFolderPath);
-
-            p.StartInfo.ArgumentList.Clear();
-
-            p.StartInfo.ArgumentList.Add(inputFilePath);
-            p.StartInfo.ArgumentList.Add(outputFolderPath);
-
-            await RunProcess(p);
-            return p.ExitCode == 0;
-        }
-
-        private Task RunProcess(Process p)
-        {
-            //p.StartInfo.RedirectStandardOutput = true;
-            //p.StartInfo.RedirectStandardError = true;
-
-            //p.OutputDataReceived += (ss, ee) => { Debug.WriteLine("[OUTPUT] " + ee.Data); };
-            //p.ErrorDataReceived += (ss, ee) => { Debug.WriteLine("[ERROR] " + ee.Data); };
-
-            p.Start();
-
-            //p.BeginOutputReadLine();
-            //p.BeginErrorReadLine();
-
-            return Task.Run(() => p.WaitForExit());
-        }
         //todo implement
         internal static void UpdateItemLength(GdItem item)
         {
@@ -3936,7 +3914,7 @@ namespace GDMENUCardManager.Core
 
         private async Task<PatchResult> PatchItemAsync(GdItem item, bool patchRegion, bool patchVga)
         {
-            // manual region edits win over the blanket region-free option
+            // Manual region edits win over the blanket region-free option.
             var pendingRegion = item.PendingRegionChange;
             var targetRegion = pendingRegion;
             if (targetRegion == null && patchRegion && !saveManualRegionItems.Contains(item))
@@ -3959,7 +3937,7 @@ namespace GDMENUCardManager.Core
 
             var result = await RegionPatcher.PatchImageAsync(imagePath, targetRegion, patchVga);
 
-            // region edit didn't take effect, put the old value back
+            // Region edit didn't take effect, put the old value back.
             if (pendingRegion != null && (!result.Success || result.IpBinHeaderCount == 0))
             {
                 RevertPendingRegion(item, result.Success ? "No IP.BIN header found in image" : (result.ErrorMessage ?? "Patch failed"));
@@ -3996,7 +3974,7 @@ namespace GDMENUCardManager.Core
             return result;
         }
 
-        // restore the region from the image and keep the reason for the warning shown after save
+        // Restore the region from the image and keep the reason for the warning shown after save.
         private void RevertPendingRegion(GdItem item, string reason)
         {
             item.Region = item.ImageRegion;
@@ -4004,7 +3982,7 @@ namespace GDMENUCardManager.Core
             savePatchChangedFlags = true;
         }
 
-        // catches edits the patch pass skipped, like a cancelled progress window or a disc type change
+        // Catches edits the patch pass skipped, like a canceled progress window or a disc type change.
         private void RevertSkippedRegionEdits()
         {
             foreach (var item in ItemList.Where(x => x.PendingRegionChange != null).ToList())
@@ -4044,13 +4022,10 @@ namespace GDMENUCardManager.Core
                 return;
 
             // Show dialog to let user select which items to shrink
-            if (Helper.DependencyManager.GdiShrinkWindowShowDialog != null)
-            {
-                var result = Helper.DependencyManager.GdiShrinkWindowShowDialog(itemsToShrink, "GDI Shrink Selector for Existing Games");
-                if (result == null || result.Length == 0)
-                    return;
-                itemsToShrink = result.ToList();
-            }
+            var selected = await Helper.DependencyManager.GdiShrinkWindowShowDialog(itemsToShrink, "GDI Shrink Selector for Existing Games");
+            if (selected == null || selected.Length == 0)
+                return;
+            itemsToShrink = selected.ToList();
 
             var progress = Helper.DependencyManager.CreateAndShowProgressWindow();
             progress.TotalItems = itemsToShrink.Count;
@@ -4074,16 +4049,14 @@ namespace GDMENUCardManager.Core
 
                     try
                     {
-                        // Run gdishrink
-                        using (var p = CreateProcess(gdishrinkPath))
+                        var (success, _) = await GdiShrinker.Shrink(
+                            Path.Combine(item.FullFolderPath, item.ImageFile), tempOutputDir);
+                        if (!success)
                         {
-                            if (!await RunShrinkProcess(p, Path.Combine(item.FullFolderPath, item.ImageFile), tempOutputDir))
-                            {
-                                // Shrink failed, clean up and continue
-                                await Helper.DeleteDirectoryAsync(tempOutputDir);
-                                progress.ProcessedItems++;
-                                continue;
-                            }
+                            // Shrink failed, clean up and continue
+                            await Helper.DeleteDirectoryAsync(tempOutputDir);
+                            progress.ProcessedItems++;
+                            continue;
                         }
 
                         // Get the new shrunk GDI info and verify output
@@ -4099,17 +4072,17 @@ namespace GDMENUCardManager.Core
                         // Safely replace: rename original folder to backup first
                         if (await Helper.DirectoryExistsAsync(backupDir))
                             await Helper.DeleteDirectoryAsync(backupDir);
-                        Directory.Move(item.FullFolderPath, backupDir);
+                        await Helper.MoveDirectoryAsync(item.FullFolderPath, backupDir);
 
                         // Create new folder and move shrunk files
                         await Helper.CreateDirectoryAsync(item.FullFolderPath);
                         foreach (var file in shrunkFiles)
                         {
                             var destPath = Path.Combine(item.FullFolderPath, Path.GetFileName(file));
-                            File.Move(file, destPath);
+                            await Helper.MoveFileAsync(file, destPath);
                         }
 
-                        // done, clean up
+                        // Done, clean up.
                         await Helper.DeleteDirectoryAsync(backupDir);
                         await Helper.DeleteDirectoryAsync(tempOutputDir);
 
@@ -4129,7 +4102,7 @@ namespace GDMENUCardManager.Core
                         {
                             if (!await Helper.DirectoryExistsAsync(item.FullFolderPath))
                             {
-                                Directory.Move(backupDir, item.FullFolderPath);
+                                await Helper.MoveDirectoryAsync(backupDir, item.FullFolderPath);
                             }
                             else
                             {

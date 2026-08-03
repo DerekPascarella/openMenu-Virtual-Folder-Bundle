@@ -6,6 +6,9 @@ using System.Runtime.CompilerServices;
 
 namespace GDMENUCardManager.Core
 {
+    /// <summary>
+    /// One node of the folder hierarchy built from each item's Folder path.
+    /// </summary>
     public class FolderTreeNode : INotifyPropertyChanged
     {
         private string _Name;
@@ -55,6 +58,9 @@ namespace GDMENUCardManager.Core
         }
 
         private int _TotalGameCount;
+        /// <summary>
+        /// Includes descendants. On the root node this is set directly, not summed.
+        /// </summary>
         public int TotalGameCount
         {
             get => _TotalGameCount;
@@ -127,6 +133,9 @@ namespace GDMENUCardManager.Core
 
         public bool IsRootNode { get; set; }
 
+        /// <summary>
+        /// Recomputes FullPath for this node and every descendant.
+        /// </summary>
         public void UpdateFullPath()
         {
             if (IsRootNode)
@@ -142,7 +151,6 @@ namespace GDMENUCardManager.Core
                 FullPath = string.IsNullOrEmpty(Parent.FullPath) ? Name : $"{Parent.FullPath}\\{Name}";
             }
 
-            // Cascade to children
             foreach (var child in Children)
             {
                 child.UpdateFullPath();
@@ -151,7 +159,7 @@ namespace GDMENUCardManager.Core
 
         public void RecalculateCounts()
         {
-            // Don't recalculate root, it's set manually to the total item count.
+            // The root count is set manually to the total item count, so leave it alone.
             if (IsRootNode)
                 return;
 
@@ -172,7 +180,7 @@ namespace GDMENUCardManager.Core
             foreach (var child in sortedChildren)
             {
                 Children.Add(child);
-                child.SortChildren(); // Recursively sort all descendants
+                child.SortChildren();
             }
         }
 

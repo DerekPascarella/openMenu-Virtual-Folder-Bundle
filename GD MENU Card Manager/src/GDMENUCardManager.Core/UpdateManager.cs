@@ -43,6 +43,9 @@ namespace GDMENUCardManager.Core
         public bool PreserveSettings { get; set; } = true;
     }
 
+    /// <summary>
+    /// Checks GitHub releases for a newer build.
+    /// </summary>
     public static class UpdateManager
     {
         private static readonly HttpClient _client;
@@ -80,6 +83,9 @@ namespace GDMENUCardManager.Core
             return Version.TryParse(cleaned, out var v) ? v : new Version(0, 0);
         }
 
+        /// <summary>
+        /// Network failures return no update rather than throwing.
+        /// </summary>
         public static async Task<UpdateCheckResult> CheckForUpdateAsync(CancellationToken cancellationToken = default)
         {
             var result = new UpdateCheckResult();
@@ -125,7 +131,7 @@ namespace GDMENUCardManager.Core
             }
             catch
             {
-                // swallow network/parse errors
+                // Swallow network/parse errors.
                 result.UpdateAvailable = false;
             }
 
@@ -282,7 +288,7 @@ namespace GDMENUCardManager.Core
             }
             catch
             {
-                // tar not available, fall through
+                // Tar not available, fall through.
             }
 
             throw new Exception("Could not extract tar.gz archive. Please ensure 'tar' is available on your system.");
@@ -503,12 +509,20 @@ namespace GDMENUCardManager.Core
             Environment.Exit(0);
         }
 
+        // The script templates below are verbatim string literals, so their line endings
+        // are whatever this file happens to be saved with. Pinning them here keeps cmd.exe
+        // and bash working regardless of how the file is stored.
+        private static string WithLineEndings(string text, string lineEnding)
+        {
+            return text.Replace("\r\n", "\n").Replace('\r', '\n').Replace("\n", lineEnding);
+        }
+
         private static string GenerateWindowsScript(int pid, string processName, string extractedDir, string appDir)
         {
             var escaped_extracted = extractedDir.Replace("/", "\\");
             var escaped_app = appDir.TrimEnd('\\').Replace("/", "\\");
 
-            return $@"@echo off
+            return WithLineEndings($@"@echo off
 :waitloop
 tasklist /FI ""PID eq {pid}"" 2>NUL | find /I ""{processName}"" >NUL
 if not errorlevel 1 (
@@ -524,14 +538,14 @@ rmdir /S /Q ""{GetStagingDir().Replace("/", "\\")}""
 start """" ""{Path.Combine(escaped_app, "GDMENUCardManager.exe")}""
 
 del ""%~f0""
-";
+", "\r\n");
         }
 
         private static string GenerateUnixScript(int pid, string extractedDir, string appDir)
         {
             var escaped_app = appDir.TrimEnd('/');
 
-            return $@"#!/bin/bash
+            return WithLineEndings($@"#!/bin/bash
 
 # Wait for the app to exit
 while kill -0 {pid} 2>/dev/null; do
@@ -552,7 +566,7 @@ chmod +x ""{escaped_app}/GDMENUCardManager""
 
 # Delete this script
 rm ""$0""
-";
+", "\n");
         }
 
         public static void CleanupStaleStagingData()

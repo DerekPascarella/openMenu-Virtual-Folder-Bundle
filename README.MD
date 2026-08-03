@@ -68,6 +68,8 @@ To accommodate the new openMenu, a modified version of [GD MENU Card Manager](ht
   - [Save/Load Manager](#saveload-manager)
   - [PlayStation Emulator Feature](#playstation-emulator-feature)
   - [Multi-Disc Launcher](#multi-disc-launcher)
+  - [Recently Played](#recently-played)
+  - [Remember Last Game](#remember-last-game)
   - [Exiting to BIOS](#exiting-to-bios)
     - [Available Options by Context](#available-options-by-context)
     - [Options Explanation](#options-explanation)
@@ -98,16 +100,14 @@ To accommodate the new openMenu, a modified version of [GD MENU Card Manager](ht
 
 ## Current Version
 
-The latest version of **openMenu Virtual Folder Bundle** is [1.6.1-ateam](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/releases/tag/1.6.1-ateam).
+The latest version of **openMenu Virtual Folder Bundle** is [1.6.2-ateam](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/releases/tag/1.6.2-ateam).
 
 ---
 
 ## Roadmap Ideas
 
-- Add ability to import assigned game artwork from a disc image's `0GDTEX.PVR` file in GD MENU Card Manager.
 - Extend GD MENU Card Manager's **Menu Options** feature to set more default openMenu settings beyond view style and theme.
 - New metadata format with optional openMenu popup window when a disc image is selected, showing screenshots, description, and more.
-- Keep track of a recently played list in openMenu.
 - See [Dreamcast Now](https://dreamcast.online/now/) information directly from openMenu (DreamPi or BBA required).
 - Implement a housekeeping function in GD MENU Card Manager to help users easily identify gaps or issues with their disc image collection (e.g., duplicate serials, missing artwork, missing discs in multi-disc sets).
 - Arbitrary disc queueing in openMenu (i.e., ability to define a playlist of disc images that can be cycled through using the in-game reset button combination).
@@ -115,6 +115,21 @@ The latest version of **openMenu Virtual Folder Bundle** is [1.6.1-ateam](https:
 ---
 
 ## Changelog
+- **Version 1.6.2-ateam (2026-08-03)**
+  - **openMenu**
+    - openMenu now has an optional Recently Played list for the last 10, 20, 30, 40, and 50 games played (see [Issue 182](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/182)).
+    - Old character-stepping marquee scroll method replaced with smooth subpixel scrolling (see [Issue 183](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/183)).
+    - Multi-Disc launcher fixed to be consistent with other parts of openMenu (see [Issue 184](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/184)).
+    - openMenu can now remember the last game played, automatically placing cursor there on next launch (see [Issue 185](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/185)).
+    - Multi-disc PlayStation games now use correct launcher (see [Issue 188](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/188)).
+    - If CodeBreaker is absent from the openMenu build, an error is thrown instead of freezing (see [Issue 189](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/189)).
+  - **GD MENU Card Manager**
+    - Disc image artwork can now be imported from baked-in 0GDTEX.PVR where available (see [Issue 181](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/181)).
+    - Determinate progress bar restored for locked file/folder check and metadata re-scan (see [Issue 186](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/186)).
+    - Hot-swapping SD cards in Card Manager has been fixed (see [Issue 187](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/187)).
+    - GDI shrinking option added to Linux and macOS, third-party external tool dropped from Windows version (see [Issue 190](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/190)).
+    - Compressed disc images can now be shrunk in same session (see [Issue 191](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/191)).
+    - Enhanced detection and rejection of Redump's old, short-lived GDI format to avoid false positives (see [Issue 192](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/192)).
 - **Version 1.6.1-ateam (2026-07-24)**
   - **openMenu**
     - Fixed bug causing background music not to play when returning to openMenu after exiting to BIOS (see [Issue 180](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/180)).
@@ -334,6 +349,7 @@ The latest version of **openMenu Virtual Folder Bundle** is [1.6.1-ateam](https:
   - Nachosonic
   - Patrick Graham
   - onlycodered
+  - Hass
 - **Special Thanks**
   - mrneo240 for his original work on openMenu
   - megavolt85 for forking openMenu and adding new features
@@ -419,12 +435,12 @@ To assign artwork to a game:
    - The button is labeled **Assign** if no artwork is presently tied to the Serial ID, and **Manage** if there is.
 2. The Artwork window displays the game's Serial ID and current artwork (if any).
 3. Click **Browse for Image** to select an image file (supported formats: PNG, JPG, JPEG, GIF, WebP, BMP, TIFF, TGA).
-   - Avoid images with transparency (e.g., PNGs with transparent backgrounds).
-4. The application automatically generates two PVR textures:
+4. In the rare case that a disc image's baked in `0GDTEX.PVR` artwork is preferable to an external image file, click **Import From Disc**.
+5. The application automatically generates two PVR textures:
    - 256x256 pixels for `BOX.DAT` (full-size artwork shown in openMenu)
    - 128x128 pixels for `ICON.DAT` (thumbnail preview used in Grid mode)
-5. Preview the artwork in the window, then click **Save** to apply the changes.
-6. To remove artwork, click **Delete Entry** (only available when the game has existing artwork and no pending changes).
+6. Preview the artwork in the window, then click **Save** to apply the changes.
+7. To remove artwork, click **Delete Entry** (only available when the game has existing artwork and no pending changes).
 
 **Important Notes:**
 - Artwork changes are held in memory until the user clicks **Save Changes** in the main window to write them to the DAT files.
@@ -444,7 +460,6 @@ To assign artwork to a folder:
 3. Click the **Assign** or **Manage** button in the row of the folder to edit.
    - The button is labeled **Assign** if no artwork is presently tied to the folder, and **Manage** if there is.
 4. The editing window works identically to the game artwork window: click **Browse for Image**, preview, then click **Save**. Left/right arrows navigate between folders.
-   - Avoid images with transparency (e.g., PNGs with transparent backgrounds).
 5. To remove artwork, click **Delete Entry**.
 
 Folder artwork is stored in `FOLDRART.DAT`, with a companion `FOLDRART.MAP` file that keeps track of which folder each entry belongs to. Both files live alongside the other DATs in the `tools\openMenu\menu_data` folder (`~/Library/Application-Support/GDMENUCardManager/menu_data` on macOS).
@@ -968,6 +983,30 @@ openMenu detects multi-disc sets by finding two or more entries with the same Se
 
 If the Multi-Disc setting is on "Compact", multiple discs part of the same entry will only appear once in the menu and users will be provided with a launcher menu to decide which disc to boot. There's an additional degree of control over how multi-disc entries are treated, the details of which can be read about in the [Folders Mode Settings](#folders-mode-settings) section.
 
+### Recently Played
+
+openMenu can keep a running list of the games most recently launched. Note that **this feature is exclusive to Folders view mode**.
+
+Use the "Recently Played" setting (see the [Settings Menu](#settings-menu) section) to choose how many entries to display, with options for the last 10, 20, 30, 40, or 50 games played. Set it to "Off" to disable the feature entirely.
+
+Once turned on, a `<Recently Played>` entry is pinned to the top of the root folder view, with the item details read-out showing how many discs it currently holds. Press the A button to open it, where every recently played disc appears with the most recent at the top.
+
+Launching a disc from this list boots the exact disc that was recorded, meaning the multi-disc launcher is bypassed. For that reason, any entry belonging to a multi-disc set displays its disc number (e.g., `Shenmue II (2/4)`).
+
+Two other entries appear inside the list. The `[..]` entry returns to the root folder view, and the `<Manage List>` entry opens a window offering the following options:
+
+- **Remove entries**: Displays a scrollable list of every recently played disc, where individual entries can be removed one at a time after confirming.
+- **Clear list**: Wipes out the entire list after confirming.
+- **Close**: Returns to the recently played list.
+
+Removing a game from an SD card drops it from the list, and users who regularly swap between two or more SD cards will only ever see the entries belonging to whichever card is inserted.
+
+### Remember Last Game
+
+With the "Remember Last Game" setting turned on (see the [Settings Menu](#settings-menu) section), openMenu automatically places the cursor on the last disc image launched the next time it boots. In Folders view mode, this includes navigating into whichever virtual folder that disc lives in.
+
+This setting is turned off by default and works in all four view modes.
+
 ### Exiting to BIOS
 
 This build of openMenu has enhanced "Exit to BIOS" options which are dynamically displayed based on the disc image type and the presence of a virtual VMU device like VM2, VMUPro, USB4MAPLE, and Pico2Maple.
@@ -1021,14 +1060,14 @@ Each view mode has its own set of available settings. Below is a breakdown of ea
 | **Sort** | Alphabetical, Name, Region, Genre, SD Card Order | Determines how the game list is sorted. "SD Card Order" matches physical folder order on SD card. |
 | **Filter** | All, Action, Racing, Simulation, Sports, Lightgun, Fighting, Shooter, Survival, Adventure, Platformer, RPG, Shmup, Strategy, Puzzle, Arcade, Music | Filters the game list to show only titles matching the selected genre. |
 | **Multi-Disc** | Show All, Compact | "Show All" displays every disc individually. "Compact" groups multi-disc games into a single entry. |
-| **VMU Time Sync** | Off, On | Use VMU date and time to set console date and time when openMenu boots (VM2 and VMUPro must be using a supported firmware). |
-| **VMU Game ID** | Send to All, Send to First, Off | If virtual VMU device like VM2, VMUPro, USB4MAPLE, or Pico2Maple detected, send Game ID to the first one detected (starting at the first controller port and first VMU socket), all detected, or turn off ID transmission altogether (see the [Virtual VMU Device Support](#virtual-vmu-device-support) section) |
-| **Serial VMU** | Off, On (A1), On (A2), On (B1), On (B2), On (C1), On (C2), On (D1), On (D2) | If serial SD card detected, use it to store per-game virtual VMUs in the specified Port and Socket. |
-| **Serial VMU Multi-Slot** | Off, On | If Serial VMU is enabled, also enable up to five per-game slots, or leave off to default to one virtual VMU per game. |
+| **Remember Last Game** | Off, On | Places the cursor on the last disc image launched the next time openMenu boots (see the [Remember Last Game](#remember-last-game) section). |
 | **Boot Mode** | Full Boot, License Only, Animation Only, Fast Boot | Controls how the game is launched. "Full Boot" displays the complete boot sequence, "License Only" shows only the SEGA license screen, "Animation Only" plays only the Dreamcast boot animation, and "Fast Boot" skips all startup screens and launches the game immediately. Some titles may not function correctly in modes other than "Full Boot". DreamConn S users are generally advised to use "Full Boot" to ensure VMU synchronization completes before the game starts, which is required for certain games' automatic load features. |
+| **Serial VMU** | Off, On (A1), On (A2), On (B1), On (B2), On (C1), On (C2), On (D1), On (D2) | If serial SD card detected, use it to store per-game virtual VMUs in the specified Port and Socket. Only shown when a serial SD card is detected, and when either no virtual VMU device is connected or the VMU Game ID setting is turned off. |
+| **Serial VMU Multi-Slot** | Off, On | If Serial VMU is enabled, also enable up to five per-game slots, or leave off to default to one virtual VMU per game. Only shown when Serial VMU is turned on. |
+| **VMU Game ID** | Send to All, Send to First, Off | If virtual VMU device like VM2, VMUPro, USB4MAPLE, or Pico2Maple detected, send Game ID to the first one detected (starting at the first controller port and first VMU socket), all detected, or turn off ID transmission altogether (see the [Virtual VMU Device Support](#virtual-vmu-device-support) section). Only shown when such a device is connected and Serial VMU is turned off. |
+| **VMU Time Sync** | Off, On | Use VMU date and time to set console date and time when openMenu boots (VM2 and VMUPro must be using a supported firmware). |
 | **VMU Beep on Save** | Off, On | Sounds the VMU's buzzer while openMenu writes its settings save file. |
-| **Save/Load** | N/A | Opens the [Save/Load Manager](#saveload-manager). |
-| **Apply** | N/A | Applies settings for current session only. |
+| **Save/Load**, **Apply**, **Credits** | N/A | The final row of the Settings menu holds these three buttons side by side, chosen with D-Pad Left and Right. "Save/Load" opens the [Save/Load Manager](#saveload-manager), "Apply" applies settings for the current session only, and "Credits" opens the credits window. |
 
 #### Scroll Mode Settings
 
@@ -1045,15 +1084,15 @@ Each view mode has its own set of available settings. Below is a breakdown of ea
 | **Artwork** | Off, On | Toggles display of box art/cover artwork. |
 | **Display Index Numbers** | Off, On | Shows or hides the index number next to each game entry. |
 | **Disc Details** | Show, Hide | Toggles display of disc information (region, VGA support, etc.) alongside game entries. |
+| **Remember Last Game** | Off, On | Places the cursor on the last disc image launched the next time openMenu boots (see the [Remember Last Game](#remember-last-game) section). |
 | **Marquee Speed** | Slow, Medium, Fast | Controls how quickly long game names scroll horizontally. |
-| **VMU Time Sync** | Off, On | Use VMU date and time to set console date and time when openMenu boots (VM2 and VMUPro must be using a supported firmware). |
-| **VMU Game ID** | Send to All, Send to First, Off | If virtual VMU device like VM2, VMUPro, USB4MAPLE, or Pico2Maple detected, send Game ID to the first one detected (starting at the first controller port and first VMU socket), all detected, or turn off ID transmission altogether (see the [Virtual VMU Device Support](#virtual-vmu-device-support) section) |
-| **Serial VMU** | Off, On (A1), On (A2), On (B1), On (B2), On (C1), On (C2), On (D1), On (D2) | If serial SD card detected, use it to store per-game virtual VMUs in the specified Port and Socket. |
-| **Serial VMU Multi-Slot** | Off, On | If Serial VMU is enabled, also enable up to five per-game slots, or leave off to default to one virtual VMU per game. |
 | **Boot Mode** | Full Boot, License Only, Animation Only, Fast Boot | Controls how the game is launched. "Full Boot" displays the complete boot sequence, "License Only" shows only the SEGA license screen, "Animation Only" plays only the Dreamcast boot animation, and "Fast Boot" skips all startup screens and launches the game immediately. Some titles may not function correctly in modes other than "Full Boot". DreamConn S users are generally advised to use "Full Boot" to ensure VMU synchronization completes before the game starts, which is required for certain games' automatic load features. |
+| **Serial VMU** | Off, On (A1), On (A2), On (B1), On (B2), On (C1), On (C2), On (D1), On (D2) | If serial SD card detected, use it to store per-game virtual VMUs in the specified Port and Socket. Only shown when a serial SD card is detected, and when either no virtual VMU device is connected or the VMU Game ID setting is turned off. |
+| **Serial VMU Multi-Slot** | Off, On | If Serial VMU is enabled, also enable up to five per-game slots, or leave off to default to one virtual VMU per game. Only shown when Serial VMU is turned on. |
+| **VMU Game ID** | Send to All, Send to First, Off | If virtual VMU device like VM2, VMUPro, USB4MAPLE, or Pico2Maple detected, send Game ID to the first one detected (starting at the first controller port and first VMU socket), all detected, or turn off ID transmission altogether (see the [Virtual VMU Device Support](#virtual-vmu-device-support) section). Only shown when such a device is connected and Serial VMU is turned off. |
+| **VMU Time Sync** | Off, On | Use VMU date and time to set console date and time when openMenu boots (VM2 and VMUPro must be using a supported firmware). |
 | **VMU Beep on Save** | Off, On | Sounds the VMU's buzzer while openMenu writes its settings save file. |
-| **Save/Load** | N/A | Opens the [Save/Load Manager](#saveload-manager). |
-| **Apply** | N/A | Applies settings for current session only. |
+| **Save/Load**, **Apply**, **Credits** | N/A | The final row of the Settings menu holds these three buttons side by side, chosen with D-Pad Left and Right. "Save/Load" opens the [Save/Load Manager](#saveload-manager), "Apply" applies settings for the current session only, and "Credits" opens the credits window. |
 
 #### Folders Mode Settings
 
@@ -1066,20 +1105,21 @@ Each view mode has its own set of available settings. Below is a breakdown of ea
 | **Exit to BIOS** | Standard, Alternate, Alternate + 3D | "Standard" uses a standard method when exiting to BIOS, whereas "Alternate" uses a custom method that removes save file copy protection in the BIOS save manager. "Alternate + 3D" does the same while also enabling the "hidden" 3D BIOS feature. If users experience a freeze when exiting to BIOS with either "Alternate" setting, it's advised they use the "Standard" setting instead. |
 | **Sort** | Alphabetical, SD Card Order | Determines how the game list is sorted. "SD Card Order" uses a "seen first" routine that organizes disc images, virtual folders, and subfolders based on their SD card sequence. |
 | **Multi-Disc** | Show All, Compact | "Show All" displays every disc individually. "Compact" groups multi-disc games into a single entry. |
-| **Multi-Disc Grouping** | Anywhere, Same Folder Only | Only enabled if Multi-Disc option is set to "Compact". "Anywhere" will show all associated discs on SD card when opening multi-disc launcher. "Same Folder Only" will treat discs as part of their own multi-disc (or single disc) set when organized in different folders. |
+| **Multi-Disc Grouping** | Anywhere, Same Folder Only | Only shown when the Multi-Disc option is set to "Compact". "Anywhere" will show all associated discs on SD card when opening multi-disc launcher. "Same Folder Only" will treat discs as part of their own multi-disc (or single disc) set when organized in different folders. |
 | **Game Artwork** | Off, On | Toggles display of box art/cover artwork for games. |
 | **Folder Artwork** | Off, On | Toggles display of artwork assigned to folders (see the [Folder Artwork Assignment](#folder-artwork-assignment) section) when the cursor hovers over a folder. |
 | **Item Details** | Off, On | Toggles display of the item details read-out below the artwork. |
+| **Remember Last Game** | Off, On | Places the cursor on the last disc image launched the next time openMenu boots (see the [Remember Last Game](#remember-last-game) section). |
+| **Recently Played** | Off, Last 10, Last 20, Last 30, Last 40, Last 50 | Pins a `<Recently Played>` entry to the top of the root folder view holding the chosen number of most recently launched disc images (see the [Recently Played](#recently-played) section). |
 | **Clock** | On (12-Hour), On (24-Hour), Off | Toggles display of the BIOS clock. |
 | **Marquee Speed** | Slow, Medium, Fast | Controls how quickly long game names scroll horizontally. |
-| **VMU Time Sync** | Off, On | Use VMU date and time to set console date and time when openMenu boots (VM2 and VMUPro must be using a supported firmware). |
-| **VMU Game ID** | Send to All, Send to First, Off | If virtual VMU device like VM2, VMUPro, USB4MAPLE, or Pico2Maple detected, send Game ID to the first one detected (starting at the first controller port and first VMU socket), all detected, or turn off ID transmission altogether (see the [Virtual VMU Device Support](#virtual-vmu-device-support) section) |
-| **Serial VMU** | Off, On (A1), On (A2), On (B1), On (B2), On (C1), On (C2), On (D1), On (D2) | If serial SD card detected, use it to store per-game virtual VMUs in the specified Port and Socket. |
-| **Serial VMU Multi-Slot** | Off, On | If Serial VMU is enabled, also enable up to five per-game slots, or leave off to default to one virtual VMU per game. |
 | **Boot Mode** | Full Boot, License Only, Animation Only, Fast Boot | Controls how the game is launched. "Full Boot" displays the complete boot sequence, "License Only" shows only the SEGA license screen, "Animation Only" plays only the Dreamcast boot animation, and "Fast Boot" skips all startup screens and launches the game immediately. Some titles may not function correctly in modes other than "Full Boot". DreamConn S users are generally advised to use "Full Boot" to ensure VMU synchronization completes before the game starts, which is required for certain games' automatic load features. |
+| **Serial VMU** | Off, On (A1), On (A2), On (B1), On (B2), On (C1), On (C2), On (D1), On (D2) | If serial SD card detected, use it to store per-game virtual VMUs in the specified Port and Socket. Only shown when a serial SD card is detected, and when either no virtual VMU device is connected or the VMU Game ID setting is turned off. |
+| **Serial VMU Multi-Slot** | Off, On | If Serial VMU is enabled, also enable up to five per-game slots, or leave off to default to one virtual VMU per game. Only shown when Serial VMU is turned on. |
+| **VMU Game ID** | Send to All, Send to First, Off | If virtual VMU device like VM2, VMUPro, USB4MAPLE, or Pico2Maple detected, send Game ID to the first one detected (starting at the first controller port and first VMU socket), all detected, or turn off ID transmission altogether (see the [Virtual VMU Device Support](#virtual-vmu-device-support) section). Only shown when such a device is connected and Serial VMU is turned off. |
+| **VMU Time Sync** | Off, On | Use VMU date and time to set console date and time when openMenu boots (VM2 and VMUPro must be using a supported firmware). |
 | **VMU Beep on Save** | Off, On | Sounds the VMU's buzzer while openMenu writes its settings save file. |
-| **Save/Load** | N/A | Opens the [Save/Load Manager](#saveload-manager). |
-| **Apply** | N/A | Applies settings for current session only. |
+| **Save/Load**, **Apply**, **Credits** | N/A | The final row of the Settings menu holds these three buttons side by side, chosen with D-Pad Left and Right. "Save/Load" opens the [Save/Load Manager](#saveload-manager), "Apply" applies settings for the current session only, and "Credits" opens the credits window. |
 
 ### Button Mapping
 

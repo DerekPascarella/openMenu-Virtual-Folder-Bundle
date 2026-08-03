@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
@@ -27,6 +29,16 @@ namespace GDMENUCardManager
         private readonly IList<GdItem> _navigableItems;
         private int _currentIndex;
         private int _keyHoldCount;
+
+        // 0GDTEX probe results per item, so navigating back is instant
+        private readonly Dictionary<GdItem, byte[]> _gdTexCache = new Dictionary<GdItem, byte[]>();
+        private CancellationTokenSource _gdTexProbeCts;
+
+        private const string ImportTooltipAvailable = "Import this disc's baked in 0GDTEX.PVR file as assigned artwork.";
+        private const string ImportTooltipChecking = "Checking this disc for a 0GDTEX.PVR file...";
+        private const string ImportTooltipNotFound = "No 0GDTEX.PVR file was found on this disc";
+        private const string ImportTooltipNotGame = "Only Dreamcast game discs contain a 0GDTEX.PVR file";
+        private const string ImportTooltipNotReadable = "Not available for compressed or unconverted images until they're saved to the SD card";
 
         public event PropertyChangedEventHandler PropertyChanged;
 
@@ -59,6 +71,20 @@ namespace GDMENUCardManager
 
         public bool CanDelete => !HasUnsavedChanges && _manager.BoxDat?.HasArtworkForSerial(Serial) == true;
 
+        private bool _canImportFromDisc;
+        public bool CanImportFromDisc
+        {
+            get => _canImportFromDisc;
+            private set { _canImportFromDisc = value; RaisePropertyChanged(); }
+        }
+
+        private string _importFromDiscTooltip;
+        public string ImportFromDiscTooltip
+        {
+            get => _importFromDiscTooltip;
+            private set { _importFromDiscTooltip = value; RaisePropertyChanged(); }
+        }
+
         public ArtworkWindow(GdItem item, Core.Manager manager, IList<GdItem> navigableItems = null)
         {
             InitializeComponent();
@@ -75,6 +101,15 @@ namespace GDMENUCardManager
             _originalIconPvrData = _manager.IconDat?.GetPvrDataForSerial(Serial);
 
             LoadCurrentArtwork();
+            ProbeGdTex();
+
+            // Widen the window if the button row needs more room than the default width offers
+            this.Loaded += (s, e) =>
+            {
+                ButtonRow.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                double chrome = ActualWidth - ((FrameworkElement)Content).ActualWidth - 20;
+                Width = Math.Max(420, ButtonRow.DesiredSize.Width + 20 + chrome);
+            };
 
             this.Closing += ArtworkWindow_Closing;
             this.KeyDown += (s, e) =>
@@ -141,9 +176,61 @@ namespace GDMENUCardManager
             _originalIconPvrData = _manager.IconDat?.GetPvrDataForSerial(Serial);
 
             LoadCurrentArtwork();
+            ProbeGdTex();
 
             RaisePropertyChanged(nameof(CanNavigatePrev));
             RaisePropertyChanged(nameof(CanNavigateNext));
+        }
+
+        private async void ProbeGdTex()
+        {
+            _gdTexProbeCts?.Cancel();
+            var cts = new CancellationTokenSource();
+            _gdTexProbeCts = cts;
+            var item = _item;
+
+            CanImportFromDisc = false;
+
+            if (!ImageHelper.CanExtractGdText(item))
+            {
+                ImportFromDiscTooltip = item.DiscType != "Game" ? ImportTooltipNotGame : ImportTooltipNotReadable;
+                return;
+            }
+
+            if (_gdTexCache.TryGetValue(item, out var cached))
+            {
+                ApplyGdTexProbeResult(cached);
+                return;
+            }
+
+            ImportFromDiscTooltip = ImportTooltipChecking;
+
+            // Small delay so holding an arrow key doesn't probe every item passed over
+            try { await Task.Delay(250, cts.Token); }
+            catch (TaskCanceledException) { return; }
+
+            byte[] gdtex = null;
+            try
+            {
+                gdtex = await ImageHelper.GetGdText(Path.Combine(item.FullFolderPath, item.ImageFile));
+                if (gdtex != null)
+                    new PuyoTools.PvrTexture().GetDecoded(gdtex);
+            }
+            catch
+            {
+                gdtex = null;
+            }
+
+            _gdTexCache[item] = gdtex;
+
+            if (!cts.IsCancellationRequested)
+                ApplyGdTexProbeResult(gdtex);
+        }
+
+        private void ApplyGdTexProbeResult(byte[] gdtex)
+        {
+            CanImportFromDisc = gdtex != null;
+            ImportFromDiscTooltip = gdtex != null ? ImportTooltipAvailable : ImportTooltipNotFound;
         }
 
         private bool PromptUnsavedChanges()
@@ -254,6 +341,35 @@ namespace GDMENUCardManager
             }
         }
 
+        private async void ImportFromDisc_Click(object sender, RoutedEventArgs e)
+        {
+            if (!_gdTexCache.TryGetValue(_item, out var gdtex) || gdtex == null)
+                return;
+
+            try
+            {
+                // Decode the disc's texture and reencode it through the same pipeline Browse uses
+                var encodingTasks = await Task.Run(() =>
+                {
+                    var decoded = new PuyoTools.PvrTexture().GetDecoded(gdtex);
+                    var boxPvr = PvrEncoder.EncodeFromPixels(decoded.Item1, decoded.Item2, decoded.Item3);
+                    var iconPvr = PvrEncoder.EncodeIconFromPixels(decoded.Item1, decoded.Item2, decoded.Item3);
+                    return (boxPvr, iconPvr);
+                });
+
+                _pendingPvrData = encodingTasks.boxPvr;
+                _pendingIconPvrData = encodingTasks.iconPvr;
+                _deleteRequested = false;
+
+                DisplayPvrData(_pendingPvrData);
+                HasUnsavedChanges = true;
+            }
+            catch
+            {
+                // Silently fail, so the user can try again.
+            }
+        }
+
         private void DeleteEntry_Click(object sender, RoutedEventArgs e)
         {
             var result = MessageBox.Show(
@@ -277,7 +393,6 @@ namespace GDMENUCardManager
                     _manager.BoxDat.DeleteEntryForSerial(Serial);
                     _manager.IconDat?.DeleteEntryForSerial(Serial);
 
-                    // Record undo operation
                     _manager.UndoManager.RecordChange(new ArtworkChangeOperation
                     {
                         Serial = Serial,
@@ -290,7 +405,6 @@ namespace GDMENUCardManager
                         RefreshArtworkStatus = _manager.RefreshArtworkStatusForSerial
                     });
 
-                    // Refresh the item's artwork status
                     _manager.RefreshArtworkStatusForSerial(Serial);
                     Close();
                 }
@@ -328,7 +442,6 @@ namespace GDMENUCardManager
                 }
             }
 
-            // Record undo operation
             _manager.UndoManager.RecordChange(new ArtworkChangeOperation
             {
                 Serial = Serial,
@@ -346,7 +459,6 @@ namespace GDMENUCardManager
             _pendingIconPvrData = null;
             _deleteRequested = false;
 
-            // Refresh the item's artwork status
             _manager.RefreshArtworkStatusForSerial(Serial);
         }
 

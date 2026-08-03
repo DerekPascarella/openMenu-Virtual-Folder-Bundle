@@ -5,10 +5,7 @@ using System.Windows.Data;
 
 namespace GDMENUCardManager.Converter
 {
-    /// <summary>
-    /// Converter that returns true only if ALL input values are true.
-    /// Used for combining multiple boolean conditions.
-    /// </summary>
+    // True only when every bound value is true.
     public class BoolAndMultiValueConverter : IMultiValueConverter
     {
         public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)

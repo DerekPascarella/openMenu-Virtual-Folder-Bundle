@@ -4,12 +4,14 @@
 #include <kos/thread.h>
 
 #include <backend/gd_item.h>
+#include <openmenu_savefile.h>
 #include <openmenu_settings.h>
 #include "backend/bgm.h"
 #include "backend/cb_loader.h"
 #include "backend/controls.p1.h"
 #include "backend/gdemu_sdk.h"
 #include "backend/gdmenu_binary.h"
+#include "backend/last_game.h"
 #include "vm2/vm2_api.h"
 
 extern int vm2_device_count;
@@ -33,6 +35,104 @@ check_bloom_available(void) {
 int
 is_bloom_available(void) {
     return bloom_available;
+}
+
+int
+codebreaker_available(void) {
+    file_t fd = fs_open("/cd/PELICAN.BIN", O_RDONLY);
+    if (fd == -1) {
+        return 0;
+    }
+    fs_close(fd);
+    return 1;
+}
+
+/* Write the history to wherever the settings currently live. Callers
+ * treat this as best effort and carry on when it fails. */
+static void
+launch_history_save(void) {
+    if (savefile_was_loaded_from_sd()) {
+        savefile_save_to_sd();
+    } else if (savefile_get_startup_device_id() >= 0) {
+        savefile_save_to_device(savefile_get_startup_device_id());
+    }
+}
+
+/* Push the launched game to the front of the recently played history.
+ * Returns 1 when the list moved. Nothing happens when the feature is off
+ * or when the game is already the newest entry. */
+static int
+recently_played_update(const gd_item* disc) {
+    if (sf_recently_played[0] == RECENTLY_PLAYED_OFF) {
+        return 0;
+    }
+
+    uint32_t hash = gd_item_recent_hash(disc);
+    if (sf_recent_games_get(0) == hash) {
+        return 0;
+    }
+
+    /* Pull the game out of the list if it was played before. Otherwise
+     * the oldest slot falls off the end. */
+    int shift_from = sf_recent_games_slots - 1;
+    for (int i = 1; i < sf_recent_games_slots; i++) {
+        if (sf_recent_games_get(i) == hash) {
+            shift_from = i;
+            break;
+        }
+    }
+    for (int i = shift_from; i > 0; i--) {
+        sf_recent_games_set(i, sf_recent_games_get(i - 1));
+    }
+    sf_recent_games_set(0, hash);
+    return 1;
+}
+
+/* Both histories move together so a launch costs one save at most. Folder
+ * rows never count as a launch. */
+void
+launch_history_record(const gd_item* disc) {
+    int changed;
+
+    if (!disc || !strncmp(disc->disc, "DIR", 3)) {
+        return;
+    }
+
+    changed = recently_played_update(disc);
+    changed |= last_game_record(disc);
+
+    /* The launch goes ahead even if this fails */
+    if (changed) {
+        launch_history_save();
+    }
+}
+
+/* Remove one hash from the history and persist the change right away.
+ * The tail shifts up one slot and the last slot becomes empty. */
+void
+recently_played_remove(uint32_t hash) {
+    int found = -1;
+    for (int i = 0; i < sf_recent_games_slots; i++) {
+        if (sf_recent_games_get(i) == hash) {
+            found = i;
+            break;
+        }
+    }
+    if (found < 0) {
+        return;
+    }
+    for (int i = found; i < sf_recent_games_slots - 1; i++) {
+        sf_recent_games_set(i, sf_recent_games_get(i + 1));
+    }
+    sf_recent_games_set(sf_recent_games_slots - 1, 0);
+    launch_history_save();
+}
+
+/* Empty the whole history and persist the change right away */
+void
+recently_played_clear(void) {
+    memset(sf_recent_games, 0, sf_recent_games_length);
+    launch_history_save();
 }
 
 void
@@ -65,6 +165,8 @@ bloom_launch(gd_item* disc) {
         /* printf("Can't open %s\n", "/cd/BLOOM.BIN"); */
         return;
     }
+
+    launch_history_record(disc);
 
     /* Committed to launching, hand it a quiet AICA */
     bgm_shutdown();
@@ -100,6 +202,8 @@ bleem_launch(gd_item* disc) {
         return;
     }
 
+    launch_history_record(disc);
+
     /* Committed to launching, hand it a quiet AICA */
     bgm_shutdown();
 
@@ -132,6 +236,8 @@ bleem_launch(gd_item* disc) {
 
 void
 dreamcast_launch_disc(gd_item* disc) {
+    launch_history_record(disc);
+
     /* Hand the next program a quiet AICA */
     bgm_shutdown();
 
@@ -237,6 +343,8 @@ dreamcast_launch_cb(gd_item* disc) {
     if (fd == -1) {
         return;
     }
+
+    launch_history_record(disc);
 
     /* Committed to launching, hand it a quiet AICA */
     bgm_shutdown();

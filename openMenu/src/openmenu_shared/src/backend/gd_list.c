@@ -100,9 +100,19 @@ static const struct gd_item* list_genre[17] = {
 
 static struct gd_item back_button = {"Back", "", " ", "DIR", "", "", 0, {' '}, ""};
 
+/* Set by every builder below so callers can ask what is on screen */
+static list_view current_view = {LIST_VIEW_FLAT, 0, 0, NULL};
+
+static void
+list_view_set(int kind, char drill_type, int drill_num) {
+    current_view.kind = kind;
+    current_view.drill_type = drill_type;
+    current_view.drill_num = drill_num;
+}
+
 /* Folder tree system for hierarchical navigation */
 #define MAX_FOLDER_DEPTH    8
-#define MAX_FOLDER_PATH     512
+#define MAX_FOLDER_PATH     LIST_FOLDER_PATH_MAX
 #define MAX_FOLDER_NODES    1024
 #define MAX_FOLDER_CHILDREN 1024
 
@@ -130,8 +140,31 @@ static struct gd_item parent_button = {"[..]", "", "F..", "DIR", "", "", 0, {' '
 static struct gd_item folder_items[MAX_FOLDER_NODES];
 static int folder_items_count = 0;
 
+#ifndef STANDALONE_BINARY
+/* Recently played entry pinned to the top of the root folder view */
+static struct gd_item recent_button = {"<Recently Played>", "", "RCNT", "DIR", "", "", 0, {' '}, ""};
+/* Management row pinned under the parent entry inside the recent view */
+static struct gd_item manage_button = {"<Manage List>", "", "MNGE", "DIR", "", "", 0, {' '}, ""};
+
+/* Launch history hashes resolved against the current game list */
+static gd_item* list_recent_resolved[sf_recent_games_slots];
+static int num_recent_resolved = 0;
+
+/* One hash per slot in gd_slots_BASE, filled on first use */
+static uint32_t* game_hash_cache = NULL;
+#endif
+
 /* Currently browsed folder node (set by list_set_folder_root/path) */
 static folder_node_t* folder_current_node = NULL;
+
+void
+list_view_get(list_view* out) {
+    if (!out) {
+        return;
+    }
+    *out = current_view;
+    out->folder_path = (current_view.kind == LIST_VIEW_FOLDER) ? folder_state.path : "";
+}
 
 /* Temporary list for holding all multidisc games in a set */
 #define MULTIDISC_MAX_GAMES_PER_SET (10)
@@ -347,6 +380,7 @@ list_set_sort_name(void) {
     list_temp_reset();
     list_current = (gd_item**)list_alphabet;
     num_items_current = num_items_alphabet;
+    list_view_set(LIST_VIEW_CATEGORY, 0, 0);
 }
 
 void
@@ -354,6 +388,7 @@ list_set_sort_region(void) {
     list_temp_reset();
     list_current = (gd_item**)list_region;
     num_items_current = num_items_region;
+    list_view_set(LIST_VIEW_CATEGORY, 0, 0);
 }
 
 void
@@ -361,6 +396,7 @@ list_set_sort_genre(void) {
     list_temp_reset();
     list_current = (gd_item**)list_genre;
     num_items_current = num_items_genre;
+    list_view_set(LIST_VIEW_CATEGORY, 0, 0);
 }
 
 void
@@ -368,6 +404,7 @@ list_set_sort_default(void) {
     list_temp_reset();
     list_current = list_temp;
     num_items_current = num_items_temp;
+    list_view_set(LIST_VIEW_FLAT, 0, 0);
 }
 
 void
@@ -376,6 +413,7 @@ list_set_sort_alphabetical(void) {
     qsort(list_temp, num_items_temp, sizeof(gd_item*), struct_cmp_by_name);
     list_current = list_temp;
     num_items_current = num_items_temp;
+    list_view_set(LIST_VIEW_FLAT, 0, 0);
 }
 
 void
@@ -439,6 +477,7 @@ list_set_sort_filter(const char type, int num) {
     qsort(&list_temp[1], temp_idx - 1, sizeof(gd_item*), struct_cmp_by_name);
     list_current = list_temp;
     num_items_current = num_items_temp = temp_idx;
+    list_view_set(LIST_VIEW_DRILL, type, num);
 #endif
 }
 
@@ -496,6 +535,7 @@ list_set_genre_sort(int genre, int sort) {
 
     list_current = list_temp;
     num_items_current = num_items_temp;
+    list_view_set(LIST_VIEW_FLAT, 0, 0);
 }
 
 void
@@ -738,6 +778,11 @@ list_destroy(void) {
     free(list_temp);
     gd_slots_BASE = NULL;
     list_temp = NULL;
+#ifndef STANDALONE_BINARY
+    free(game_hash_cache);
+    game_hash_cache = NULL;
+    num_recent_resolved = 0;
+#endif
 }
 
 const gd_item*
@@ -880,6 +925,15 @@ folder_cmp(const void* a, const void* b) {
     /* Directories always come first */
     if (is_dir_a != is_dir_b) {
         return is_dir_b - is_dir_a;
+    }
+
+    /* Recently played stays pinned above every folder in any sort mode */
+    if (is_dir_a && is_dir_b) {
+        int recent_a = !strcmp((*item_a)->product, "RCNT");
+        int recent_b = !strcmp((*item_b)->product, "RCNT");
+        if (recent_a != recent_b) {
+            return recent_b - recent_a;
+        }
     }
 
     /* In Folders mode, mapping is inverted for backward compatibility:
@@ -1060,6 +1114,291 @@ folder_set_art_id(gd_item* folder_entry, const char* path) {
     snprintf(folder_entry->product, sizeof(folder_entry->product), "F%08lX", (unsigned long)folder_hash(path));
 }
 
+unsigned int
+list_folder_path_hash(const char* path) {
+    return path ? folder_hash(path) : 0;
+}
+
+/* Walks down building each folder's full path until one of them hashes to
+ * the wanted value. The root has no path of its own and never matches. */
+static int
+folder_path_search(folder_node_t* node, const char* prefix, uint32_t hash, char* out, int out_size) {
+    for (int i = 0; i < node->num_children; i++) {
+        char path[MAX_FOLDER_PATH];
+
+        if (prefix[0]) {
+            snprintf(path, sizeof(path), "%s\\%s", prefix, node->children[i]->name);
+        } else {
+            snprintf(path, sizeof(path), "%s", node->children[i]->name);
+        }
+
+        if (folder_hash(path) == hash) {
+            strncpy(out, path, out_size - 1);
+            out[out_size - 1] = '\0';
+            return 1;
+        }
+
+        if (folder_path_search(node->children[i], path, hash, out, out_size)) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+int
+list_folder_path_by_hash(unsigned int hash, char* out, int out_size) {
+    if (!hash || !folder_tree_root || !out || out_size <= 0) {
+        return 0;
+    }
+    return folder_path_search(folder_tree_root, "", hash, out, out_size);
+}
+
+/* Whether a folder holds this game, or any other disc of the same set.
+ * Used to check a remembered path still makes sense before going there. */
+int
+list_folder_contains(const char* path, const gd_item* item) {
+    folder_node_t* node;
+
+    if (!folder_tree_root || !path || !item) {
+        return 0;
+    }
+
+    node = folder_find_by_path(folder_tree_root, path);
+    if (!node) {
+        return 0;
+    }
+
+    for (int i = 0; i < node->num_games; i++) {
+        if (node->games[i] == item) {
+            return 1;
+        }
+        if (item->product[0] && !strcmp(node->games[i]->product, item->product)) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+/* Row a folder sits on in the list being shown, matched on the bracketed
+ * name the builders write */
+static int
+folder_row_of_child(const char* name) {
+    char label[128];
+
+    snprintf(label, sizeof(label), "[%s]", name);
+
+    for (int i = 0; i < num_items_current; i++) {
+        if (!strncmp(list_current[i]->disc, "DIR", 3) && !strcmp(list_current[i]->name, label)) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+/* Descends a saved path one level at a time so the breadcrumbs and the
+ * per level cursor positions come out the same as they would after walking
+ * there by hand. Stops at the deepest folder that still exists. */
+int
+list_folder_enter_path(const char* path) {
+    char segments[MAX_FOLDER_DEPTH][256];
+    int depth;
+
+    if (!folder_tree_root || !path || !path[0]) {
+        return folder_state.depth;
+    }
+
+    depth = folder_parse_path(path, segments, MAX_FOLDER_DEPTH);
+
+    for (int d = 0; d < depth; d++) {
+        int before = folder_state.depth;
+        int row = folder_row_of_child(segments[d]);
+
+        list_folder_enter(segments[d], row < 0 ? 0 : row);
+
+        if (folder_state.depth == before) {
+            break;
+        }
+    }
+    return folder_state.depth;
+}
+
+int
+list_index_of(const gd_item* item) {
+    if (!item || !list_current) {
+        return -1;
+    }
+    for (int i = 0; i < num_items_current; i++) {
+        if (list_current[i] == item) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+/* First game row carrying this serial, which under Compact is the one disc
+ * of the set that made it into the list */
+int
+list_index_of_product(const char* product) {
+    if (!product || !product[0] || !list_current) {
+        return -1;
+    }
+    for (int i = 0; i < num_items_current; i++) {
+        if (!strncmp(list_current[i]->disc, "DIR", 3)) {
+            continue;
+        }
+        if (!strcmp(list_current[i]->product, product)) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+#ifndef STANDALONE_BINARY
+/* Match the stored launch history against the current game list. Runs every
+ * time the root view is built, so a save loaded mid session is picked up.
+ * Entries for games missing from this card stay in the save but resolve to
+ * nothing here. Stops once enough entries for the display setting are found. */
+static int
+game_hash_cache_ensure(void) {
+    if (game_hash_cache) {
+        return 1;
+    }
+    if (!gd_slots_BASE || num_items_BASE <= 1) {
+        return 0;
+    }
+
+    game_hash_cache = malloc(num_items_BASE * sizeof(uint32_t));
+    if (!game_hash_cache) {
+        return 0;
+    }
+    for (int i = 0; i < num_items_BASE; i++) {
+        game_hash_cache[i] = gd_item_recent_hash(&gd_slots_BASE[i]);
+    }
+    return 1;
+}
+
+static void
+list_recent_resolve(void) {
+    num_recent_resolved = 0;
+
+    if (sf_recently_played[0] == RECENTLY_PLAYED_OFF) {
+        return;
+    }
+    if (!game_hash_cache_ensure()) {
+        return;
+    }
+
+    int display_max = RECENTLY_PLAYED_DISPLAY_MAX(sf_recently_played[0]);
+    if (display_max > (int)sf_recent_games_slots) {
+        display_max = sf_recent_games_slots;
+    }
+
+    for (int slot = 0; slot < sf_recent_games_slots; slot++) {
+        uint32_t hash = sf_recent_games_get(slot);
+        if (!hash) {
+            continue;
+        }
+
+        /* Skip openMenu itself */
+        for (int i = 1; i < num_items_BASE; i++) {
+            if (game_hash_cache[i] == hash) {
+                list_recent_resolved[num_recent_resolved++] = &gd_slots_BASE[i];
+                break;
+            }
+        }
+
+        if (num_recent_resolved >= display_max) {
+            break;
+        }
+    }
+}
+
+void
+list_set_recent(void) {
+    list_recent_resolve();
+
+    int temp_idx = 0;
+    list_temp[temp_idx++] = &parent_button;
+    list_temp[temp_idx++] = &manage_button;
+
+    for (int i = 0; i < num_recent_resolved; i++) {
+        list_temp[temp_idx++] = list_recent_resolved[i];
+    }
+
+    list_current = list_temp;
+    num_items_current = num_items_temp = temp_idx;
+    list_view_set(LIST_VIEW_RECENT, 0, 0);
+}
+
+int
+list_recent_count(void) {
+    return num_recent_resolved;
+}
+
+gd_item**
+list_recent_entries(int* count) {
+    *count = num_recent_resolved;
+    return list_recent_resolved;
+}
+
+const gd_item*
+list_find_by_hash(unsigned int hash) {
+    if (!hash || !game_hash_cache_ensure()) {
+        return NULL;
+    }
+
+    /* Skip openMenu itself */
+    for (int i = 1; i < num_items_BASE; i++) {
+        if (game_hash_cache[i] == hash) {
+            return &gd_slots_BASE[i];
+        }
+    }
+    return NULL;
+}
+
+/* Falls back on the serial when the exact identity is gone, which happens
+ * when a card gets rebuilt and titles come back spelled differently */
+const gd_item*
+list_find_by_product(const char* product) {
+    const gd_item* best = NULL;
+    int best_num = 0;
+
+    if (!product || !product[0] || !gd_slots_BASE) {
+        return NULL;
+    }
+
+    for (int i = 1; i < num_items_BASE; i++) {
+        int num;
+
+        if (strcmp(gd_slots_BASE[i].product, product)) {
+            continue;
+        }
+
+        num = gd_item_disc_num(gd_slots_BASE[i].disc);
+        if (!best || num < best_num) {
+            best = &gd_slots_BASE[i];
+            best_num = num;
+        }
+    }
+    return best;
+}
+
+/* The disc of a set that the flat views actually put on screen. Compact
+ * keeps the lowest numbered one, so a hidden disc points at that instead. */
+const gd_item*
+list_visible_disc(const gd_item* item) {
+    if (!item || !item->product[0] || sf_multidisc[0] != MULTIDISC_HIDE) {
+        return item;
+    }
+    if (gd_item_disc_total(item->disc) <= 1) {
+        return item;
+    }
+
+    const gd_item* lowest = list_find_by_product(item->product);
+    return lowest ? lowest : item;
+}
+#endif
+
 void
 list_set_folder_root(void) {
     printf("list_set_folder_root: Starting\n");
@@ -1080,6 +1419,14 @@ list_set_folder_root(void) {
 
     int temp_idx = 0;
     folder_items_count = 0;
+
+#ifndef STANDALONE_BINARY
+    /* Root view only, never shown inside subfolders or when empty */
+    list_recent_resolve();
+    if (num_recent_resolved > 0) {
+        list_temp[temp_idx++] = &recent_button;
+    }
+#endif
 
     for (int i = 0; i < folder_tree_root->num_children; i++) {
         if (folder_items_count >= MAX_FOLDER_NODES) {
@@ -1121,6 +1468,7 @@ list_set_folder_root(void) {
     folder_current_node = folder_tree_root;
     folder_state.depth = 0;
     folder_state.path[0] = '\0';
+    list_view_set(LIST_VIEW_FOLDER, 0, 0);
 
     printf("list_set_folder_root: Complete, %d items in list\n", temp_idx);
 }
@@ -1195,6 +1543,7 @@ list_set_folder_path(const char* path) {
 
     list_current = list_temp;
     num_items_current = num_items_temp = temp_idx;
+    list_view_set(LIST_VIEW_FOLDER, 0, 0);
 }
 
 void
@@ -1286,15 +1635,21 @@ list_folder_go_back(void) {
     if (folder_state.depth > 0) {
         folder_state.depth--;
 
-        folder_state.path[0] = '\0';
-        for (int i = 0; i < folder_state.depth; i++) {
-            if (i > 0) {
-                strcat(folder_state.path, "\\");
+        if (folder_state.depth == 0) {
+            /* Back at the top, rebuild through the root builder so the
+             * pinned recently played entry comes back */
+            list_set_folder_root();
+        } else {
+            folder_state.path[0] = '\0';
+            for (int i = 0; i < folder_state.depth; i++) {
+                if (i > 0) {
+                    strcat(folder_state.path, "\\");
+                }
+                strcat(folder_state.path, folder_state.breadcrumbs[i]);
             }
-            strcat(folder_state.path, folder_state.breadcrumbs[i]);
-        }
 
-        list_set_folder_path(folder_state.path);
+            list_set_folder_path(folder_state.path);
+        }
 
         /* Retrieve saved cursor position with bounds checking */
         saved_cursor_pos = folder_state.cursor_positions[folder_state.depth];

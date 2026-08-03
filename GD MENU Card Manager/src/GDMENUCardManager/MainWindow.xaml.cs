@@ -253,7 +253,7 @@ namespace GDMENUCardManager
 
             SevenZip.SevenZipExtractor.SetLibraryPath(Environment.Is64BitProcess ? "7z64.dll" : "7z.dll");
 
-            //config parsing. all settings are optional and must reverse to default values if missing
+            // Config parsing. All settings are optional and must reverse to default values if missing.
             bool.TryParse(ConfigurationManager.AppSettings["ShowAllDrives"], out showAllDrives);
             bool.TryParse(ConfigurationManager.AppSettings["Debug"], out Manager.debugEnabled);
             if (bool.TryParse(ConfigurationManager.AppSettings["UseBinaryString"], out bool useBinaryString))
@@ -478,7 +478,7 @@ namespace GDMENUCardManager
                     }
                     else
                     {
-                        // quit
+                        // Quit.
                         Application.Current.Shutdown();
                         return;
                     }
@@ -508,9 +508,6 @@ namespace GDMENUCardManager
             }
         }
 
-        /// <summary>
-        /// Checks if any items have had serial translations applied and shows the dialog if so.
-        /// </summary>
         private async Task ShowSerialTranslationDialogIfNeeded()
         {
             var translatedItems = Manager.ItemList.Where(item => item.WasSerialTranslated).ToList();
@@ -526,6 +523,7 @@ namespace GDMENUCardManager
             progressWindow.Owner = this;
             progressWindow.Title = "Scanning Disc Images";
             progressWindow.TotalItems = items.Count;
+            progressWindow.IsIndeterminate = false;
             progressWindow.Show();
 
             var progress = new Progress<(int current, int total, string name)>(p =>
@@ -575,7 +573,7 @@ namespace GDMENUCardManager
                         }
                         else if (result == MessageBoxResult.No)
                         {
-                            // close and let user add manually
+                            // Close and let user add manually.
                             SelectedDrive = null;
                         }
                         else
@@ -710,7 +708,7 @@ namespace GDMENUCardManager
                         return;
                     }
 
-                    // reset disc to 1/1 for items without serial
+                    // Reset disc to 1/1 for items without serial.
                     ResetDiscValuesForItemsWithoutSerial();
                 }
 
@@ -1157,7 +1155,7 @@ namespace GDMENUCardManager
                 if (item == null || !item.CanManageArtwork)
                     return;
 
-                // handle serial translation before opening artwork window
+                // Handle serial translation before opening artwork window.
                 if (item.WasSerialTranslated)
                 {
                     _handlingSerialTranslation = true;
@@ -1326,7 +1324,7 @@ namespace GDMENUCardManager
 
                 if (window.FolderMappings != null)
                 {
-                    // snapshot before applying
+                    // Snapshot before applying.
                     var snapshots = Manager.ItemList.Select(i => new BatchFolderRenameOperation.ItemSnapshot
                     {
                         Item = i,
@@ -1341,7 +1339,7 @@ namespace GDMENUCardManager
 
                     if (updatedCount > 0 || conflictsRemoved > 0)
                     {
-                        // fill in new values and filter to only changed items
+                        // Fill in new values and filter to only changed items.
                         var undoOp = new BatchFolderRenameOperation();
                         foreach (var s in snapshots)
                         {
@@ -1406,7 +1404,27 @@ namespace GDMENUCardManager
                 Manager.sdPath = null;
                 Manager.ItemList.Clear();
             }
+
+            var previousDrive = SelectedDrive;
             FillDriveList(true);
+
+            // Swapping cards in the same reader keeps the drive letter. The refreshed
+            // list is identical, leaving no selection change to trigger a reload.
+            if (SelectedDrive != null && ReferenceEquals(SelectedDrive, previousDrive)
+                && DriveList.Contains(SelectedDrive))
+            {
+                // DriveInfo raises no change notification. Swapping in fresh instances
+                // is what makes the bound volume labels read the card in the reader now.
+                var selectedIndex = DriveList.IndexOf(SelectedDrive);
+                var scanned = DriveInfo.GetDrives();
+                for (int i = 0; i < DriveList.Count; i++)
+                {
+                    var match = scanned.FirstOrDefault(x => x.Name == DriveList[i].Name);
+                    if (match != null)
+                        DriveList[i] = match;
+                }
+                SelectedDrive = DriveList[selectedIndex];
+            }
         }
 
         private async void ButtonBrowseSdPath_Click(object sender, RoutedEventArgs e)
@@ -1455,16 +1473,16 @@ namespace GDMENUCardManager
 
                 DriveList.Clear();
             }
-            //fill drive list and try to find drive with gdemu contents
+            // Fill drive list and try to find drive with gdemu contents.
             foreach (DriveInfo drive in list)
             {
                 DriveList.Add(drive);
-                //look for GDEMU.INI file
+                // Look for GDEMU.INI file.
                 if (SelectedDrive == null && File.Exists(Path.Combine(drive.RootDirectory.FullName, Constants.MenuConfigTextFile)))
                     SelectedDrive = drive;
             }
 
-            //look for 01 folder
+            // Look for 01 folder.
             if (SelectedDrive == null)
             {
                 foreach (DriveInfo drive in list)
@@ -1727,7 +1745,7 @@ namespace GDMENUCardManager
                 return;
             }
 
-            // handle serial translations before proceeding
+            // Handle serial translations before proceeding.
             var translatedItems = selectedItems.Where(item => item.WasSerialTranslated).ToList();
             if (translatedItems.Count > 0)
             {
@@ -1750,7 +1768,7 @@ namespace GDMENUCardManager
             {
                 var folderPath = dialog.FolderPath?.Trim() ?? string.Empty;
 
-                // check if the new primary folder conflicts with any item's alt folders
+                // Check if the new primary folder conflicts with any item's alt folders.
                 if (!string.IsNullOrEmpty(folderPath))
                 {
                     var conflicting = selectedItems.Where(item =>
@@ -1902,7 +1920,7 @@ namespace GDMENUCardManager
         {
             if (e.EditAction == DataGridEditAction.Cancel)
             {
-                // Edit was cancelled, no undo needed
+                // Edit was canceled, no undo needed
                 _editingItem = null;
                 _editingPropertyName = null;
                 _editingOldValue = null;
@@ -1917,8 +1935,7 @@ namespace GDMENUCardManager
             var propertyName = _editingPropertyName;
             var oldValue = _editingOldValue;
 
-            // Try to get the new value directly from the editing element
-            // This is more reliable than waiting for binding to update
+            // Read the editing element directly, since the binding may not have updated yet.
             object newValue = null;
             if (e.EditingElement is TextBox textBox)
             {
@@ -1981,7 +1998,7 @@ namespace GDMENUCardManager
                     }
                 }
                 e.Cancel = true;
-                // keep editing state so the next commit attempt can validate
+                // Keep editing state so the next commit attempt can validate.
                 return;
             }
 
@@ -1997,16 +2014,16 @@ namespace GDMENUCardManager
 
                 if (normalized == null || normalized == oldRegion)
                 {
-                    // invalid or unchanged input, silently put the old value back
+                    // Invalid or unchanged input, silently put the old value back.
                     SetEditingTextBoxText(e.EditingElement, oldRegion ?? "");
                     item.Region = oldRegion;
                     return;
                 }
 
-                // push the normalized value so the binding commits it (e.g. "ej" becomes "JE")
+                // push the normalized value so the binding commits it (e.g., "ej" becomes "JE")
                 SetEditingTextBoxText(e.EditingElement, normalized);
 
-                // no undo entry if the previous value wasn't a usable region
+                // No undo entry if the previous value wasn't a usable region.
                 if (oldRegion != null && GdItem.NormalizeRegion(oldRegion) == oldRegion)
                 {
                     Manager.UndoManager.RecordChange(new PropertyEditOperation
@@ -2018,7 +2035,7 @@ namespace GDMENUCardManager
                     });
                 }
 
-                // image gets patched to match on save
+                // Image gets patched to match on save.
                 item.Region = normalized;
                 return;
             }
@@ -2082,7 +2099,6 @@ namespace GDMENUCardManager
             if (IsBusy)
                 return;
 
-            // Handle Ctrl+Z for Undo
             if (e.Key == Key.Z && Keyboard.Modifiers == ModifierKeys.Control)
             {
                 if (Manager.UndoManager.CanUndo)
@@ -2091,7 +2107,6 @@ namespace GDMENUCardManager
                     e.Handled = true;
                 }
             }
-            // Handle Ctrl+Y for Redo
             else if (e.Key == Key.Y && Keyboard.Modifiers == ModifierKeys.Control)
             {
                 if (Manager.UndoManager.CanRedo)
@@ -2426,7 +2441,7 @@ namespace GDMENUCardManager
 
         private void FolderComboBox_PreviewLostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
         {
-            // grab the raw text before the LostFocus binding strips non-ASCII via CleanFolderPath
+            // Grab the raw text before the LostFocus binding strips non-ASCII via CleanFolderPath.
             if (sender is ComboBox comboBox)
             {
                 _rawFolderText = comboBox.Text;
@@ -2501,9 +2516,7 @@ namespace GDMENUCardManager
             }
         }
 
-        /// <summary>
-        /// Finds the first child of the specified type in the visual tree.
-        /// </summary>
+        // Depth-first, so the nearest match in tree order wins.
         private static T FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
         {
             if (parent == null) return null;

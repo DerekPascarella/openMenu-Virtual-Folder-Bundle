@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "openmenu_settings.h"
 
 uint8_t* sf_region;
@@ -26,6 +28,13 @@ uint8_t* sf_serial_vmu;
 uint8_t* sf_serial_vmu_multislot;
 uint8_t* sf_music;
 uint8_t* sf_honor_defaults;
+uint8_t* sf_recently_played;
+uint8_t* sf_recent_games;
+uint8_t* sf_remember_last_game;
+uint8_t* sf_last_game;
+uint8_t* sf_last_game_product;
+uint8_t* sf_last_game_folder;
+uint8_t* sf_last_game_filter;
 
 void
 settings_sanitize() {
@@ -138,4 +147,25 @@ settings_sanitize() {
     if ((sf_honor_defaults[0] < HONOR_DEFAULTS_START) || (sf_honor_defaults[0] > HONOR_DEFAULTS_END)) {
         sf_honor_defaults[0] = HONOR_DEFAULTS_ON;
     }
+
+    if ((sf_recently_played[0] < RECENTLY_PLAYED_START) || (sf_recently_played[0] > RECENTLY_PLAYED_END)) {
+        sf_recently_played[0] = RECENTLY_PLAYED_OFF;
+    }
+
+    if ((sf_remember_last_game[0] < REMEMBER_LAST_GAME_START) || (sf_remember_last_game[0] > REMEMBER_LAST_GAME_END)) {
+        sf_remember_last_game[0] = REMEMBER_LAST_GAME_OFF;
+    }
+
+    /* Off means nothing is remembered, so turning it back on later starts
+     * fresh instead of jumping to a game from several sessions ago */
+    if (sf_remember_last_game[0] == REMEMBER_LAST_GAME_OFF) {
+        memset(sf_last_game, 0, sf_last_game_length);
+        memset(sf_last_game_product, 0, sf_last_game_product_length);
+        memset(sf_last_game_folder, 0, sf_last_game_folder_length);
+        memset(sf_last_game_filter, 0, sf_last_game_filter_length);
+    }
+
+    /* A config off an SD card lands here as raw bytes, so make sure the
+     * serial can still be treated as a string */
+    sf_last_game_product[sf_last_game_product_length - 1] = '\0';
 }

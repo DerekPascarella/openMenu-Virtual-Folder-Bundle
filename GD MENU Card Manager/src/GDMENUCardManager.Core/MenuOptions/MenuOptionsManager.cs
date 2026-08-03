@@ -272,7 +272,7 @@ namespace GDMENUCardManager.Core.MenuOptions
             }
             catch
             {
-                // an unreadable file behaves like a missing one
+                // An unreadable file behaves like a missing one.
                 return sections;
             }
 
@@ -301,7 +301,7 @@ namespace GDMENUCardManager.Core.MenuOptions
 
         private void WriteIni(MenuOptionsConfig cfg)
         {
-            // sections other than ours survive a rewrite untouched
+            // Sections other than ours survive a rewrite untouched.
             var foreign = ReadForeignSectionText();
 
             var sb = new StringBuilder();

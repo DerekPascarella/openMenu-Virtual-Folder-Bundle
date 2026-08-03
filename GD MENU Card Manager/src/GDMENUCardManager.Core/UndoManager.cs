@@ -8,15 +8,13 @@ using System.Runtime.CompilerServices;
 namespace GDMENUCardManager.Core
 {
     /// <summary>
-    /// Manages undo/redo operations for the application.
-    /// Supports up to 10 levels of undo/redo history.
+    /// Bounded history. The oldest entry is dropped past MaxHistorySize.
     /// </summary>
     public class UndoManager : INotifyPropertyChanged
     {
         private const int MaxHistorySize = 10;
 
-        // Using LinkedList for efficient add/remove from both ends
-        // Last item in list = most recent operation (top of stack)
+        // The last item is the most recent operation.
         private readonly LinkedList<UndoOperation> _undoStack = new LinkedList<UndoOperation>();
         private readonly LinkedList<UndoOperation> _redoStack = new LinkedList<UndoOperation>();
 
@@ -32,15 +30,12 @@ namespace GDMENUCardManager.Core
         public string RedoDescription => _redoStack.Count > 0 ? _redoStack.Last.Value.Description : "";
 
         /// <summary>
-        /// Records a new change that can be undone.
-        /// Clears any pending redo operations (new changes invalidate redo history).
-        /// Trims history to MaxHistorySize if needed.
+        /// Recording a change discards the redo stack.
         /// </summary>
         public void RecordChange(UndoOperation operation)
         {
             if (operation == null) return;
 
-            // Push to undo stack
             _undoStack.AddLast(operation);
 
             // Trim if exceeds max size (remove oldest from front)
@@ -49,20 +44,16 @@ namespace GDMENUCardManager.Core
                 _undoStack.RemoveFirst();
             }
 
-            // Clear the redo stack since new changes invalidate redo history.
+            // A new change invalidates the redo history.
             _redoStack.Clear();
 
             RaiseAllPropertyChanges();
         }
 
-        /// <summary>
-        /// Undoes the most recent change.
-        /// </summary>
         public void Undo()
         {
             if (_undoStack.Count == 0) return;
 
-            // Pop from undo stack
             var operation = _undoStack.Last.Value;
             _undoStack.RemoveLast();
 
@@ -81,14 +72,10 @@ namespace GDMENUCardManager.Core
             RaiseAllPropertyChanges();
         }
 
-        /// <summary>
-        /// Redoes the most recently undone change.
-        /// </summary>
         public void Redo()
         {
             if (_redoStack.Count == 0) return;
 
-            // Pop from redo stack
             var operation = _redoStack.Last.Value;
             _redoStack.RemoveLast();
 
@@ -108,8 +95,8 @@ namespace GDMENUCardManager.Core
         }
 
         /// <summary>
-        /// Clears all undo/redo history.
-        /// Call this when loading a new SD card.
+        /// Call when loading a new card. Operations hold GdItem references that do not survive a
+        /// reload.
         /// </summary>
         public void Clear()
         {
@@ -135,19 +122,13 @@ namespace GDMENUCardManager.Core
         }
     }
 
-    /// <summary>
-    /// Base class for all undoable operations.
-    /// </summary>
     public abstract class UndoOperation
     {
         /// <summary>
-        /// A human-readable description of what this operation does (for potential UI display).
+        /// Not currently surfaced in the UI.
         /// </summary>
         public abstract string Description { get; }
 
-        /// <summary>
-        /// Reverses the operation.
-        /// </summary>
         public abstract void Undo();
 
         /// <summary>
@@ -156,9 +137,6 @@ namespace GDMENUCardManager.Core
         public abstract void Redo();
     }
 
-    /// <summary>
-    /// Represents an undoable property edit on a GdItem.
-    /// </summary>
     public class PropertyEditOperation : UndoOperation
     {
         public GdItem Item { get; set; }
@@ -218,7 +196,7 @@ namespace GDMENUCardManager.Core
         public IconDatManager IconDat { get; set; }
 
         /// <summary>
-        /// Action to refresh artwork status on affected items after undo/redo.
+        /// Set by the caller. Undo and redo cannot repaint the list themselves.
         /// </summary>
         public Action<string> RefreshArtworkStatus { get; set; }
 
@@ -248,7 +226,6 @@ namespace GDMENUCardManager.Core
         {
             if (boxData == null)
             {
-                // Delete artwork
                 BoxDat?.DeleteEntryForSerial(Serial);
                 IconDat?.DeleteEntryForSerial(Serial);
             }
@@ -276,9 +253,6 @@ namespace GDMENUCardManager.Core
         public byte[] NewPvrData { get; set; }
         public FolderArtDatManager FolderArtDat { get; set; }
 
-        /// <summary>
-        /// Optional callback to refresh any open folder artwork UI after undo/redo.
-        /// </summary>
         public Action RefreshFolderArtStatus { get; set; }
 
         public override string Description

@@ -16,6 +16,7 @@
 #include <backend/gd_item.h>
 #include <backend/gd_list.h>
 
+#include "backend/last_game.h"
 #include "dc/input.h"
 #include "texture/txr_manager.h"
 #include "ui/animation.h"
@@ -846,12 +847,35 @@ handle_input_ui(enum control input) {
 
 /* Reset variables sensibly */
 FUNCTION(UI_NAME, setup) {
+    /* On the first boot setup this can drill into the category holding the
+     * game that was played last */
+    int restore_row = last_game_take_row();
+
     list_current = list_get();
     list_len = list_length();
 
     screen_column = screen_row = 0;
     current_starting_index = 0;
     draw_current = DRAW_UI;
+
+    /* Selection here is built from the page start plus the tile, so the row
+     * has to be split up. The page start moves a whole row at a time. */
+    if (restore_row > 0 && restore_row < list_len) {
+        int target_row = restore_row / COLUMNS;
+        int last_page_row = ((list_len - 1) / COLUMNS) - (ROWS - 1);
+        int first_row = target_row - (ROWS / 2);
+
+        if (first_row > last_page_row) {
+            first_row = last_page_row;
+        }
+        if (first_row < 0) {
+            first_row = 0;
+        }
+
+        current_starting_index = first_row * COLUMNS;
+        screen_row = target_row - first_row;
+        screen_column = restore_row % COLUMNS;
+    }
 
     navigate_timeout = 3;
 

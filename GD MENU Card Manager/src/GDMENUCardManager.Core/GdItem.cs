@@ -53,9 +53,9 @@ namespace GDMENUCardManager.Core
             {
                 var cleaned = Helper.StripNonPrintableAscii(CleanSerial(value));
 
-                // If setting to the same translated value, skip to preserve translation tracking.
-                // But if translation hasn't happened yet (WasSerialTranslated=false), allow re-processing
-                // with potentially new Ip context (date/name).
+                // Re-assigning the same value would clear the translation tracking, so bail out.
+                // Before the first translation there is nothing to protect, and Ip may since
+                // have arrived with the date and name the tables match on.
                 if (cleaned == _ProductNumber && WasSerialTranslated)
                     return;
 
@@ -68,12 +68,10 @@ namespace GDMENUCardManager.Core
                     if (_ProductNumber.Length > serialmaxlen)
                         _ProductNumber = _ProductNumber.Substring(0, serialmaxlen);
 
-                    // Store the cleaned serial before translation
                     string beforeTranslation = _ProductNumber;
 
-                    // Apply OpenMenu serial translation (Table 1 only, for UI and OPENMENU.INI).
-                    // Table 2 (artwork remap) is applied separately in BoxDatManager/IconDatManager
-                    // Use Ip context if available, with fallback to item.Name for the name check
+                    // Table 1 only. Table 2 is applied inside the DAT managers instead.
+                    // Falls back to Name when Ip has not been read yet.
                     string dateContext = Ip?.ReleaseDate ?? "";
                     string nameContext = Ip?.Name ?? Name ?? "";
                     _ProductNumber = SerialTranslator.TranslateSerial(_ProductNumber, dateContext, nameContext);
@@ -98,15 +96,8 @@ namespace GDMENUCardManager.Core
         /// </summary>
         public string OriginalSerial { get; private set; }
 
-        /// <summary>
-        /// True if the serial was automatically translated by Table 1.
-        /// </summary>
         public bool WasSerialTranslated { get; private set; }
 
-        /// <summary>
-        /// Reverts the serial to its original (pre-translation) value.
-        /// Only has effect if WasSerialTranslated is true.
-        /// </summary>
         public void RevertSerialTranslation()
         {
             if (WasSerialTranslated && OriginalSerial != null)
@@ -121,8 +112,7 @@ namespace GDMENUCardManager.Core
         }
 
         /// <summary>
-        /// Clears the translation tracking flags without changing the serial.
-        /// Call this after user acknowledges the translation.
+        /// Clears the tracking flags only. The serial keeps its translated value.
         /// </summary>
         public void AcknowledgeSerialTranslation()
         {
@@ -132,8 +122,8 @@ namespace GDMENUCardManager.Core
         }
 
         /// <summary>
-        /// Cleans a serial number by removing hyphens and taking only the part before any space.
-        /// This ensures consistency between serial.txt, OPENMENU.INI, and BOX.DAT lookups.
+        /// No hyphens, first token only. serial.txt, OPENMENU.INI and the DAT lookups all key on
+        /// this form.
         /// </summary>
         public static string CleanSerial(string serial)
         {
@@ -246,7 +236,7 @@ namespace GDMENUCardManager.Core
         }
 
         /// <summary>
-        /// Wrapper property for Ip.Disc to enable proper change notification.
+        /// Wraps Ip.Disc so the grid gets a change notification.
         /// </summary>
         public string Disc
         {
@@ -369,9 +359,6 @@ namespace GDMENUCardManager.Core
         // Artwork support
         internal static BoxDatManager BoxDatManagerInstance { get; set; }
 
-        /// <summary>
-        /// Returns true if the item is a menu disc (GDMENU or openMenu).
-        /// </summary>
         public bool IsMenuItem
         {
             get
@@ -381,9 +368,6 @@ namespace GDMENUCardManager.Core
             }
         }
 
-        /// <summary>
-        /// Returns true if artwork exists for this item's serial in BOX.DAT.
-        /// </summary>
         public bool HasArtwork
         {
             get
@@ -399,8 +383,7 @@ namespace GDMENUCardManager.Core
         }
 
         /// <summary>
-        /// Returns true if the Art column button should be enabled for this item.
-        /// True when: not a menu item AND valid serial.
+        /// False for menu discs and for items with no usable serial.
         /// </summary>
         public bool CanManageArtwork
         {
@@ -412,10 +395,6 @@ namespace GDMENUCardManager.Core
             }
         }
 
-        /// <summary>
-        /// Notify the UI that HasArtwork may have changed.
-        /// Call this after modifying artwork in BoxDatManager.
-        /// </summary>
         public void RefreshArtworkStatus()
         {
             RaisePropertyChanged(nameof(HasArtwork));
@@ -435,9 +414,6 @@ namespace GDMENUCardManager.Core
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
-        /// <summary>
-        /// Notifies the UI that the Ip property has changed (e.g., after modifying Ip.Disc).
-        /// </summary>
         public void NotifyIpChanged()
         {
             RaisePropertyChanged(nameof(Ip));

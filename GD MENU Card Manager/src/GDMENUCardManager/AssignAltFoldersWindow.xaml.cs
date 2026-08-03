@@ -79,7 +79,7 @@ namespace GDMENUCardManager
                 var path = entry.FolderPath?.Trim() ?? string.Empty;
                 if (string.IsNullOrEmpty(path)) return;
 
-                // check against primary folder
+                // Check against primary folder.
                 if (!string.IsNullOrEmpty(_primaryFolder) && path == _primaryFolder)
                 {
                     MessageBox.Show("This folder path is already assigned to this disc image.",
@@ -88,7 +88,7 @@ namespace GDMENUCardManager
                     return;
                 }
 
-                // check against other alt folder entries
+                // Check against other alt folder entries.
                 foreach (var other in AltFolders)
                 {
                     if (other != entry && (other.FolderPath?.Trim() ?? string.Empty) == path)

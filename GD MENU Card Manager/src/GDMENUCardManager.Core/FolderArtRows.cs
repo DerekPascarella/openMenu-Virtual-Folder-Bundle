@@ -4,9 +4,6 @@ using System.Runtime.CompilerServices;
 
 namespace GDMENUCardManager.Core
 {
-    /// <summary>
-    /// Row model for the folder artwork list.
-    /// </summary>
     public class FolderArtRow : INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler PropertyChanged;
@@ -14,7 +11,7 @@ namespace GDMENUCardManager.Core
         public string Path { get; }
         public int Depth { get; }
 
-        // leaf folder name, indented by depth
+        // Leaf folder name, indented by depth.
         public string Display { get; }
 
         private bool _HasArt;

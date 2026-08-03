@@ -15,7 +15,7 @@ namespace GDMENUCardManager.Core
 
     public class IconDatManager
     {
-        // ICON.DAT uses 128x128 PVRs (0x8020 bytes each).
+        // ICON.DAT holds 128x128 PVRs, 0x8020 bytes each.
         public const uint EntrySize = 0x8020;  // 32,800 bytes
         public const int HeaderSize = 16;
         public const int EntryIndexSize = 16;
@@ -71,14 +71,12 @@ namespace GDMENUCardManager.Core
                 using var fs = new FileStream(iconDatPath, FileMode.Open, FileAccess.Read);
                 using var reader = new BinaryReader(fs);
 
-                // Validate minimum size for header
                 if (fs.Length < HeaderSize)
                 {
                     LoadError = "File too small for header";
                     return;
                 }
 
-                // Read and validate magic header
                 byte[] magic = reader.ReadBytes(4);
                 if (magic[0] != 'D' || magic[1] != 'A' || magic[2] != 'T' || magic[3] != 0x01)
                 {
@@ -86,19 +84,16 @@ namespace GDMENUCardManager.Core
                     return;
                 }
 
-                // Read header fields
                 uint entrySize = reader.ReadUInt32();
                 uint fileCount = reader.ReadUInt32();
                 uint reserved = reader.ReadUInt32();
 
-                // Validate entry size
                 if (entrySize != EntrySize)
                 {
                     LoadError = $"Unexpected entry size 0x{entrySize:X} (expected 0x{EntrySize:X})";
                     return;
                 }
 
-                // Validate file size can contain all entries
                 long headerAndEntriesSize = HeaderSize + (fileCount * EntryIndexSize);
                 if (fs.Length < headerAndEntriesSize)
                 {
@@ -106,7 +101,6 @@ namespace GDMENUCardManager.Core
                     return;
                 }
 
-                // Read all entries
                 fs.Seek(HeaderSize, SeekOrigin.Begin);
                 for (int i = 0; i < fileCount; i++)
                 {
@@ -122,7 +116,6 @@ namespace GDMENUCardManager.Core
                         FileNumber = fileNumber
                     };
 
-                    // Calculate and validate data offset
                     long dataOffset = entrySize * fileNumber;
                     if (dataOffset + entrySize > fs.Length)
                     {
@@ -130,7 +123,6 @@ namespace GDMENUCardManager.Core
                         return;
                     }
 
-                    // Read entry data
                     long savedPos = fs.Position;
                     fs.Seek(dataOffset, SeekOrigin.Begin);
                     entry.Data = reader.ReadBytes((int)entrySize);
@@ -155,7 +147,6 @@ namespace GDMENUCardManager.Core
         /// </summary>
         public bool HasIconForSerial(string serial)
         {
-            // Apply Table 2 translation for artwork lookup
             var artworkSerial = SerialTranslator.TranslateForArtwork(serial);
             var normalized = NormalizeSerial(artworkSerial);
             if (string.IsNullOrEmpty(normalized))
@@ -169,7 +160,6 @@ namespace GDMENUCardManager.Core
         /// </summary>
         public byte[] GetPvrDataForSerial(string serial)
         {
-            // Apply Table 2 translation for artwork lookup
             var artworkSerial = SerialTranslator.TranslateForArtwork(serial);
             var normalized = NormalizeSerial(artworkSerial);
             if (string.IsNullOrEmpty(normalized))
@@ -186,7 +176,6 @@ namespace GDMENUCardManager.Core
         /// </summary>
         public void SetIconForSerial(string serial, byte[] pvrData)
         {
-            // Apply Table 2 translation for artwork storage
             var artworkSerial = SerialTranslator.TranslateForArtwork(serial);
             var normalized = NormalizeSerial(artworkSerial);
             if (string.IsNullOrEmpty(normalized))
@@ -200,12 +189,10 @@ namespace GDMENUCardManager.Core
 
             if (existingEntry != null)
             {
-                // Replace existing entry's data
                 existingEntry.Data = pvrData;
             }
             else
             {
-                // Add new entry
                 var newEntry = new IconDatEntry
                 {
                     Name = normalized,
@@ -225,7 +212,6 @@ namespace GDMENUCardManager.Core
         /// </summary>
         public void DeleteEntryForSerial(string serial)
         {
-            // Apply Table 2 translation for artwork deletion
             var artworkSerial = SerialTranslator.TranslateForArtwork(serial);
             var normalized = NormalizeSerial(artworkSerial);
             if (string.IsNullOrEmpty(normalized))
@@ -253,15 +239,11 @@ namespace GDMENUCardManager.Core
             using var fs = new FileStream(outputPath, FileMode.Create, FileAccess.Write);
             using var writer = new BinaryWriter(fs);
 
-            // Calculate starting file number to avoid index/data overlap
-            // Index area = HeaderSize + (entry_count * EntryIndexSize)
-            // First data offset = EntrySize * starting_file_num
-            // We need: EntrySize * starting_file_num >= HeaderSize + entry_count * EntryIndexSize
+            // The first data offset (EntrySize * fileNum) has to clear the header and index area.
             long indexAreaSize = HeaderSize + (_entries.Count * EntryIndexSize);
             uint startingFileNum = (uint)Math.Max(StartingFileNumber,
                 (int)Math.Ceiling((double)indexAreaSize / EntrySize));
 
-            // Write header
             writer.Write((byte)'D');
             writer.Write((byte)'A');
             writer.Write((byte)'T');
@@ -270,7 +252,6 @@ namespace GDMENUCardManager.Core
             writer.Write((uint)_entries.Count);
             writer.Write((uint)0);  // Reserved
 
-            // Assign file numbers and write entry index
             for (int i = 0; i < _entries.Count; i++)
             {
                 _entries[i].FileNumber = startingFileNum + (uint)i;
@@ -284,7 +265,6 @@ namespace GDMENUCardManager.Core
                 writer.Write(_entries[i].FileNumber);
             }
 
-            // Pad to first data offset if needed
             long firstDataOffset = EntrySize * startingFileNum;
             long currentPos = fs.Position;
             if (currentPos < firstDataOffset)
@@ -293,7 +273,6 @@ namespace GDMENUCardManager.Core
                 writer.Write(padding);
             }
 
-            // Write entry data
             for (int i = 0; i < _entries.Count; i++)
             {
                 long expectedOffset = EntrySize * _entries[i].FileNumber;
@@ -316,7 +295,6 @@ namespace GDMENUCardManager.Core
             string backupError = string.Empty;
             bool backupSuccess = true;
 
-            // Create backup
             try
             {
                 if (!Directory.Exists(backupFolder))
@@ -341,7 +319,6 @@ namespace GDMENUCardManager.Core
                 return (false, $"Failed to create backup: {backupError}");
             }
 
-            // Save new ICON.DAT
             try
             {
                 Save(iconDatPath);
@@ -397,7 +374,8 @@ namespace GDMENUCardManager.Core
         }
 
         /// <summary>
-        /// Generate ICON.DAT from BOX.DAT by downscaling all 256x256 PVRs to 128x128.
+        /// Downscales every BOX.DAT entry to 128x128. Entries that fail to decode are skipped
+        /// rather than aborting the run.
         /// </summary>
         public static void GenerateFromBoxDat(BoxDatManager boxDat, string outputPath)
         {

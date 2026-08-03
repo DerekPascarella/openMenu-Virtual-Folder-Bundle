@@ -11,9 +11,9 @@
 
 #include <uthash.h>
 
-// Disc serial will be the filename, e.g. T8119N.PVR
+/* Disc serial becomes the filename (e.g., T8119N.PVR). */
 /* Name, IP Serial, Disc Serial */
-// F355 Challenge: Passione Rossa, MK-0100, T-8119N
+/* F355 Challenge: Passione Rossa, MK-0100, T-8119N */
 
 enum REMAP_TYPE {
     REMAP_NONE = (0 << 0), // 0
@@ -47,9 +47,8 @@ static serial_remap serial_remap_members[] = {
     /* PAL Regional Duplicates */
     REMAP_ADD_BOTH("T13001D05", "T13001D"), /* Blue Stinger */
     REMAP_ADD_BOTH("T8111D58", "T8111D50"), /* ECW Hardcore Revolution */
-    // T9705D50	T9706D50	NBA Showtime: NBA on NBC, Incorrect IP.BIN
-    // T7003D	  T7005D	  Plasma Sword: Nightmare of Bilstein, Incorrect
-    // IP.BIN
+    /* T9705D50 -> T9706D50  NBA Showtime: NBA on NBC, incorrect IP.BIN.
+     * T7003D   -> T7005D    Plasma Sword: Nightmare of Bilstein, incorrect IP.BIN. */
     REMAP_ADD_BOTH("T45001D09", "T45001D05"), /* Tom Clancy's Rainbow Six */
     REMAP_ADD_BOTH("T45001D18", "T45001D05"), /* Tom Clancy's Rainbow Six */
     REMAP_ADD_BOTH("T45002D09", "T45002D05"), /* Tom Clancy's Rainbow Six: Rogue Spear */

@@ -31,15 +31,14 @@ static uint8_t sd_partition_type;
 static SD_STATUS sd_cached_status = SD_STATUS_NOT_PRESENT;
 static uint32_t sd_cached_version = 0;
 
-/* variable table - must match registration order in setup_savefile() (openmenu_savefile.c);
- * add one entry per new setting */
+/* One entry per setting, in the same order as the crayon registrations in
+ * setup_savefile(). A mismatch here silently corrupts every saved setting. */
 typedef struct sd_var_entry {
     uint8_t* var_ptr;       /* Pointer to sf_* variable */
     size_t size;            /* Size in bytes */
     uint32_t introduced_in; /* SFV_* version when added */
 } sd_var_entry_t;
 
-/* Note: Order must match crayon variable registration order in openmenu_savefile.c */
 static sd_var_entry_t sd_variables[] = {
     {NULL, 1, SFV_INITIAL},              /* sf_region */
     {NULL, 1, SFV_INITIAL},              /* sf_aspect */
@@ -67,10 +66,17 @@ static sd_var_entry_t sd_variables[] = {
     {NULL, 1, SFV_FOLDER_ART},           /* sf_folder_art */
     {NULL, 1, SFV_MUSIC},                /* sf_music */
     {NULL, 1, SFV_HONOR_DEFAULTS},       /* sf_honor_defaults */
+    {NULL, 1, SFV_RECENTLY_PLAYED},      /* sf_recently_played */
+    {NULL, 400, SFV_RECENTLY_PLAYED},    /* sf_recent_games (100 slots x 4 bytes) */
+    {NULL, 1, SFV_REMEMBER_LAST_GAME},   /* sf_remember_last_game */
+    {NULL, 4, SFV_REMEMBER_LAST_GAME},   /* sf_last_game (4 x uint8) */
+    {NULL, 12, SFV_REMEMBER_LAST_GAME},  /* sf_last_game_product */
+    {NULL, 4, SFV_REMEMBER_LAST_GAME},   /* sf_last_game_folder (4 x uint8) */
+    {NULL, 4, SFV_REMEMBER_LAST_GAME},   /* sf_last_game_filter (4 x uint8) */
 };
 #define SD_VAR_COUNT (sizeof(sd_variables) / sizeof(sd_variables[0]))
 
-/* Initialize variable pointers - called once during sd_savefile_init */
+/* Called once from sd_savefile_init. */
 static void
 sd_init_var_pointers(void) {
     sd_variables[0].var_ptr = sf_region;
@@ -99,6 +105,13 @@ sd_init_var_pointers(void) {
     sd_variables[23].var_ptr = sf_folder_art;
     sd_variables[24].var_ptr = sf_music;
     sd_variables[25].var_ptr = sf_honor_defaults;
+    sd_variables[26].var_ptr = sf_recently_played;
+    sd_variables[27].var_ptr = sf_recent_games;
+    sd_variables[28].var_ptr = sf_remember_last_game;
+    sd_variables[29].var_ptr = sf_last_game;
+    sd_variables[30].var_ptr = sf_last_game_product;
+    sd_variables[31].var_ptr = sf_last_game_folder;
+    sd_variables[32].var_ptr = sf_last_game_filter;
 }
 
 /* Calculate total data size for current version */
@@ -134,7 +147,7 @@ calculate_checksum(const uint8_t* data, size_t len) {
     return sum;
 }
 
-/* Helper to create directory if it doesn't exist */
+/* Returns 0 when the directory already exists. */
 static int
 ensure_directory_exists(const char* path) {
     struct stat st;
@@ -152,16 +165,13 @@ sd_savefile_init(void) {
         return sd_mounted ? 0 : -1;
     }
 
-    /* Initialize variable pointers */
     sd_init_var_pointers();
 
-    /* Initialize FAT filesystem module */
     if (fs_fat_init() != 0) {
         sd_cached_status = SD_STATUS_NOT_PRESENT;
         return -1;
     }
 
-    /* Initialize SD card driver */
     if (sd_init() != 0) {
         fs_fat_shutdown();
         sd_cached_status = SD_STATUS_NOT_PRESENT;
@@ -170,7 +180,6 @@ sd_savefile_init(void) {
 
     sd_initialized = true;
 
-    /* Get block device for first partition */
     if (sd_blockdev_for_partition(0, &sd_dev, &sd_partition_type) != 0) {
         sd_shutdown();
         fs_fat_shutdown();
@@ -179,7 +188,6 @@ sd_savefile_init(void) {
         return -1;
     }
 
-    /* Mount FAT filesystem */
     ret = fs_fat_mount(SD_MOUNT_PATH, &sd_dev, FS_FAT_MOUNT_READWRITE);
     if (ret != 0) {
         sd_shutdown();
@@ -191,7 +199,6 @@ sd_savefile_init(void) {
 
     sd_mounted = true;
 
-    /* Refresh status to check for config file */
     sd_savefile_refresh_status();
 
     return 0;
@@ -405,6 +412,17 @@ sd_savefile_load(void) {
         /* Reset obsoleted sf_bios_3d for pre-SFV_EXIT_BIOS saves */
         if (header.version < SFV_EXIT_BIOS) {
             sf_bios_3d[0] = BIOS_3D_STANDARD;
+        }
+
+        /* A config written before the setting existed says nothing about
+         * it, so drop whatever this session left in memory instead of
+         * carrying it into the loaded config */
+        if (header.version < SFV_REMEMBER_LAST_GAME) {
+            sf_remember_last_game[0] = REMEMBER_LAST_GAME_OFF;
+            memset(sf_last_game, 0, sf_last_game_length);
+            memset(sf_last_game_product, 0, sf_last_game_product_length);
+            memset(sf_last_game_folder, 0, sf_last_game_folder_length);
+            memset(sf_last_game_filter, 0, sf_last_game_filter_length);
         }
 
         /* Let settings_sanitize() handle defaults for any new variables */

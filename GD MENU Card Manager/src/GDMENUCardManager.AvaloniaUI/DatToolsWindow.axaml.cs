@@ -162,7 +162,6 @@ namespace GDMENUCardManager
 
             bool overwriteExisting = RadioImportAll?.IsChecked == true;
 
-            // Check DAT files are writable before proceeding
             if (!await EnsureDatFilesWritableWithDialog())
                 return;
 
@@ -312,7 +311,6 @@ namespace GDMENUCardManager
             if (confirmResult != "Clear All")
                 return;
 
-            // Check DAT files are writable before proceeding
             if (!await EnsureDatFilesWritableWithDialog())
                 return;
 
@@ -381,7 +379,6 @@ namespace GDMENUCardManager
             if (confirmResult != "Continue")
                 return;
 
-            // Check DAT files are writable before proceeding
             if (!await EnsureDatFilesWritableWithDialog())
                 return;
 
@@ -456,7 +453,7 @@ namespace GDMENUCardManager
 
                 var dialog = new LockedFilesDialog(lockedFiles);
                 await dialog.ShowDialog(this);
-                if (!dialog.Result) return false; // user cancelled
+                if (!dialog.Result) return false; // user canceled
             }
         }
 

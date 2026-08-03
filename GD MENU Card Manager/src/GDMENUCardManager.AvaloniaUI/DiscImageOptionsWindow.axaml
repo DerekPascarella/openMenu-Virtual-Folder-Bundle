@@ -12,8 +12,39 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Card Boxes - Vertically Stacked -->
         <StackPanel Grid.Row="0" Orientation="Vertical" HorizontalAlignment="Stretch">
+
+            <!-- GDI Shrink Card -->
+            <HeaderedContentControl Margin="0 0 0 10">
+                <HeaderedContentControl.Header>
+                    <TextBlock Text="GDI Shrink" FontWeight="Bold"/>
+                </HeaderedContentControl.Header>
+                <StackPanel Margin="8">
+                    <TextBlock Text="Games use less space on SD card, not recommended" TextWrapping="Wrap"
+                               Foreground="Gray" FontSize="11" Margin="0 0 0 10"/>
+                    <CheckBox x:Name="ChkEnableGDIShrink" IsChecked="{Binding EnableGDIShrink, Mode=TwoWay}"
+                              ToolTip.Tip="Shrink GDI images as games are added to the list">
+                        <TextBlock Text="Apply to newly added games"/>
+                    </CheckBox>
+                    <CheckBox IsChecked="{Binding EnableGDIShrinkExisting, Mode=TwoWay}" Margin="0 5 0 0"
+                              ToolTip.Tip="Shrink GDI games already on the SD card">
+                        <TextBlock Text="Apply to existing games"/>
+                    </CheckBox>
+                    <Separator Margin="0 8"/>
+                    <CheckBox IsEnabled="{Binding #ChkEnableGDIShrink.IsChecked}"
+                              IsChecked="{Binding ShrinkCompressedChecked, Mode=TwoWay}"
+                              ToolTip.Tip="Also apply GDI shrink to games added from compressed archives">
+                        <TextBlock Text="Also shrink compressed" FontSize="11"/>
+                    </CheckBox>
+                    <CheckBox Margin="0 3 0 0"
+                              IsVisible="{Binding HaveGDIShrinkBlacklist, Mode=OneWay}"
+                              IsEnabled="{Binding ShrinkBlacklistEnabled, Mode=OneWay}"
+                              IsChecked="{Binding ShrinkBlacklistChecked, Mode=TwoWay}"
+                              ToolTip.Tip="Skip games known to have problems when shrunk">
+                        <TextBlock Text="Use blacklist (recommended)" FontSize="11"/>
+                    </CheckBox>
+                </StackPanel>
+            </HeaderedContentControl>
 
             <!-- VGA Patch Card -->
             <HeaderedContentControl Margin="0 0 0 10">
@@ -21,7 +52,7 @@
                     <TextBlock Text="VGA Patch" FontWeight="Bold"/>
                 </HeaderedContentControl.Header>
                 <StackPanel Margin="8">
-                    <TextBlock Text="Force VGA flag after &quot;Exit to BIOS&quot; from openMenu" TextWrapping="Wrap"
+                    <TextBlock Text="Only needed if booting games after &quot;Exit to BIOS&quot; from openMenu" TextWrapping="Wrap"
                                Foreground="Gray" FontSize="11" Margin="0 0 0 10"/>
                     <CheckBox x:Name="ChkEnableVgaPatch" IsChecked="{Binding EnableVgaPatch}"
                               ToolTip.Tip="Apply the VGA patch to games as they're added to the list">
@@ -40,7 +71,7 @@
                     <TextBlock Text="Region-Free Patch" FontWeight="Bold"/>
                 </HeaderedContentControl.Header>
                 <StackPanel Margin="8">
-                    <TextBlock Text="Boot out-of-region games after &quot;Exit to BIOS&quot; from openMenu" TextWrapping="Wrap"
+                    <TextBlock Text="Only needed if booting out-of-region games after &quot;Exit to BIOS&quot; from openMenu" TextWrapping="Wrap"
                                Foreground="Gray" FontSize="11" Margin="0 0 0 10"/>
                     <CheckBox x:Name="ChkEnableRegionPatch" IsChecked="{Binding EnableRegionPatch}"
                               ToolTip.Tip="Apply the region-free patch to games as they're added to the list">
@@ -56,8 +87,8 @@
 
         <!-- Save Button -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 5 0 0">
-            <Button Content="Save" Width="80" Padding="15,8" Click="SaveButton_Click"
-                    ToolTip.Tip="Save VGA and Region-Free patch preferences"/>
+            <Button Content="Save" Width="80" Padding="15,8" Click="SaveButton_Click" IsDefault="True"
+                    ToolTip.Tip="Save GDI Shrink, VGA, and Region-Free patch preferences"/>
         </StackPanel>
     </Grid>
 </Window>

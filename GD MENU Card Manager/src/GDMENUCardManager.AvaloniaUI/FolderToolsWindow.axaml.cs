@@ -17,8 +17,8 @@ namespace GDMENUCardManager
 {
     public class FolderToolsWindow : Window, INotifyPropertyChanged
     {
-        // in-process format so we can hand the node itself to the drop side without it
-        // ever going near the system clipboard
+        // In-process format so we can hand the node itself to the drop side without it
+        // ever going near the system clipboard.
         private static readonly DataFormat<FolderTreeNode> NodeFormat =
             DataFormat.CreateInProcessFormat<FolderTreeNode>("gdmcm-folder-tree-node");
         // macOS drops the in-process format from the drag before it hands it to the OS and
@@ -467,8 +467,8 @@ namespace GDMENUCardManager
 
             _draggedNode = _clickedNode;
 
-            // the drag takes over the DataTransfer from here, so we leave it alone and let
-            // Avalonia dispose it when the drag ends
+            // The drag takes over the DataTransfer from here, so we leave it alone and let
+            // Avalonia dispose it when the drag ends.
             var data = new DataTransfer();
             data.Add(DataTransferItem.Create(NodeFormat, _draggedNode));
             data.Add(DataTransferItem.Create(NodeMarkerFormat, new byte[] { 1 }));

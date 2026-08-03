@@ -1,0 +1,27 @@
+root = true
+
+# Line endings only. dotnet format reads this on every build, so the rules below
+# are what normalize the tree. Nothing here touches indentation or spacing.
+
+[*.{cs,xaml,axaml}]
+end_of_line = lf
+
+# cmd.exe can mis-parse labels and goto in an LF batch file.
+[*.{bat,cmd}]
+end_of_line = crlf
+
+[*.sh]
+end_of_line = lf
+
+# Vendored sources, left alone so diffs against upstream stay readable.
+[src/GDMENUCardManager.Core/Aaru/**]
+end_of_line = unset
+
+[src/GDMENUCardManager.Core/DiscUtils/**]
+end_of_line = unset
+
+[src/GDMENUCardManager.Core/PuyoTools/**]
+end_of_line = unset
+
+[src/GDMENUCardManager/SevenZip/**]
+end_of_line = unset

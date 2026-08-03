@@ -10,9 +10,6 @@ using GongSolutions.Wpf.DragDrop.Utilities;
 
 namespace GDMENUCardManager
 {
-    /// <summary>
-    /// Result of a drag-drop operation for undo tracking.
-    /// </summary>
     internal class DropResult
     {
         public bool IsReorder { get; set; }

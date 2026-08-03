@@ -107,6 +107,72 @@ extern uint8_t* sf_honor_defaults;
 #define sf_honor_defaults_type   CRAYON_TYPE_UINT8
 #define sf_honor_defaults_length 1
 
+extern uint8_t* sf_recently_played;
+#define sf_recently_played_type   CRAYON_TYPE_UINT8
+#define sf_recently_played_length 1
+
+/* Read and write the four byte values that are stored as bytes. Keeping
+ * them out of the uint32 block matters because a save holds every uint32
+ * ahead of every byte, so a wider uint32 block shifts the settings out
+ * from under an older build reading the same save. */
+static inline unsigned int
+sf_u32_read(const uint8_t* bytes) {
+    return ((unsigned int)bytes[0]) | ((unsigned int)bytes[1] << 8) | ((unsigned int)bytes[2] << 16)
+           | ((unsigned int)bytes[3] << 24);
+}
+
+static inline void
+sf_u32_write(uint8_t* bytes, unsigned int value) {
+    bytes[0] = (uint8_t)(value & 0xFF);
+    bytes[1] = (uint8_t)((value >> 8) & 0xFF);
+    bytes[2] = (uint8_t)((value >> 16) & 0xFF);
+    bytes[3] = (uint8_t)((value >> 24) & 0xFF);
+}
+
+/* Launch history as game hashes, newest first, zero means empty slot.
+ * More slots than the largest display option so entries for games that
+ * are missing from the current card still leave enough visible ones. */
+#define sf_recent_games_slots 100
+extern uint8_t* sf_recent_games;
+#define sf_recent_games_type   CRAYON_TYPE_UINT8
+#define sf_recent_games_length (sf_recent_games_slots * 4)
+
+static inline unsigned int
+sf_recent_games_get(int slot) {
+    return sf_u32_read(&sf_recent_games[slot * 4]);
+}
+
+static inline void
+sf_recent_games_set(int slot, unsigned int hash) {
+    sf_u32_write(&sf_recent_games[slot * 4], hash);
+}
+
+extern uint8_t* sf_remember_last_game;
+#define sf_remember_last_game_type   CRAYON_TYPE_UINT8
+#define sf_remember_last_game_length 1
+
+/* Where the cursor goes on the next boot. The hash uses the same identity
+ * as the launch history, the serial covers cards rebuilt with different
+ * titles, and the last two record the view it came from. A zero hash
+ * means nothing is remembered. The three numbers are kept as bytes for
+ * the reason given above sf_u32_read. */
+extern uint8_t* sf_last_game;
+#define sf_last_game_type   CRAYON_TYPE_UINT8
+#define sf_last_game_length 4
+
+extern uint8_t* sf_last_game_product;
+#define sf_last_game_product_type   CRAYON_TYPE_UINT8
+#define sf_last_game_product_length 12
+
+extern uint8_t* sf_last_game_folder;
+#define sf_last_game_folder_type   CRAYON_TYPE_UINT8
+#define sf_last_game_folder_length 4
+
+/* Category type in the low byte, category number in the next one */
+extern uint8_t* sf_last_game_filter;
+#define sf_last_game_filter_type   CRAYON_TYPE_UINT8
+#define sf_last_game_filter_length 4
+
 enum savefile_version {
     SFV_INITIAL = 1,
     SFV_BIOS_3D,
@@ -127,6 +193,8 @@ enum savefile_version {
     SFV_FOLDER_ART,
     SFV_MUSIC,
     SFV_HONOR_DEFAULTS,
+    SFV_RECENTLY_PLAYED,
+    SFV_REMEMBER_LAST_GAME,
     SFV_LATEST_PLUS_ONE // DON'T REMOVE
 };
 
@@ -286,6 +354,27 @@ typedef enum CFG_FOLDERS_ITEM_DETAILS {
     FOLDERS_ITEM_DETAILS_END = FOLDERS_ITEM_DETAILS_ON
 } CFG_FOLDERS_ITEM_DETAILS;
 
+typedef enum CFG_RECENTLY_PLAYED {
+    RECENTLY_PLAYED_START = 0,
+    RECENTLY_PLAYED_OFF = RECENTLY_PLAYED_START,
+    RECENTLY_PLAYED_10,
+    RECENTLY_PLAYED_20,
+    RECENTLY_PLAYED_30,
+    RECENTLY_PLAYED_40,
+    RECENTLY_PLAYED_50,
+    RECENTLY_PLAYED_END = RECENTLY_PLAYED_50
+} CFG_RECENTLY_PLAYED;
+
+/* Display cap for the current setting, 10 through 50 */
+#define RECENTLY_PLAYED_DISPLAY_MAX(setting) ((int)(setting) * 10)
+
+typedef enum CFG_REMEMBER_LAST_GAME {
+    REMEMBER_LAST_GAME_START = 0,
+    REMEMBER_LAST_GAME_OFF = REMEMBER_LAST_GAME_START,
+    REMEMBER_LAST_GAME_ON,
+    REMEMBER_LAST_GAME_END = REMEMBER_LAST_GAME_ON
+} CFG_REMEMBER_LAST_GAME;
+
 typedef enum CFG_CLOCK {
     CLOCK_START = 0,
     CLOCK_12HOUR = CLOCK_START,
@@ -361,7 +450,8 @@ enum draw_state {
     DRAW_PSX_LAUNCHER,
     DRAW_SAVELOAD,
     DRAW_COMPACTION_TEST,
-    DRAW_SERIAL_VMU
+    DRAW_SERIAL_VMU,
+    DRAW_RECENT_MANAGE
 };
 
 /* COMPACTION_TEST_END */

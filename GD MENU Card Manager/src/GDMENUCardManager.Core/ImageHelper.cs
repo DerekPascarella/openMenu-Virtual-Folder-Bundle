@@ -44,7 +44,7 @@ namespace GDMENUCardManager.Core
             IpBin ip = null;
             string itemImageFile = null;
 
-            //is uncompressed?
+            // Is uncompressed?
             foreach (var file in files)
             {
                 var fileExt = Path.GetExtension(file).ToLower();
@@ -55,7 +55,7 @@ namespace GDMENUCardManager.Core
                 }
             }
 
-            //is compressed?
+            // Is compressed?
             if (itemImageFile == null && files.Any(Helper.CompressedFileExpression))
             {
                 string compressedFile = files.First(Helper.CompressedFileExpression);
@@ -112,15 +112,13 @@ namespace GDMENUCardManager.Core
                 LegacyRedumpGdiDetector.IsLegacyRedumpGdi(itemImageFile))
                 throw new UnsupportedDiscFormatException(LegacyRedumpGdiDetector.ShortMessage);
 
-            // Special handling for CUE/BIN format (only for uncompressed files)
-            // Compressed CUE/BIN will be handled during extraction in Manager.cs
+            // Compressed CUE/BIN is handled later, during extraction in Manager.cs.
             if (item.FileFormat == FileFormat.Uncompressed &&
                 Path.GetExtension(itemImageFile).Equals(".cue", StringComparison.OrdinalIgnoreCase))
             {
                 var cueParser = new CueSheetParser();
                 cueParser.Parse(itemImageFile);
 
-                // Check if there's a data track and try to read Dreamcast IP.BIN
                 var dataTrack = cueParser.GetPrimaryDataTrack();
                 if (dataTrack != null)
                     ip = cueParser.TryParseIpBin();
@@ -147,7 +145,7 @@ namespace GDMENUCardManager.Core
                         var binPath = Path.Combine(cueParser.CueDirectory, dataTrack.BinFilename);
                         if (File.Exists(binPath) && IsPlayStationDisc(binPath))
                         {
-                            // it's a PSX disc, try to get serial from SYSTEM.CNF
+                            // It's a PSX disc, try to get serial from SYSTEM.CNF.
                             var serial = TryExtractPlayStationSerial(binPath);
 
                             ip = new IpBin
@@ -188,7 +186,7 @@ namespace GDMENUCardManager.Core
                         }
                     }
 
-                    // not PSX, not Dreamcast
+                    // Not PSX, not Dreamcast.
                     if (ip == null)
                     {
                         ip = new IpBin
@@ -210,7 +208,6 @@ namespace GDMENUCardManager.Core
                         item.ImageFiles.Add(binFile);
                 }
 
-                // Calculate total size of CUE + all BIN files
                 long totalSize = new FileInfo(itemImageFile).Length;
                 totalSize += cueParser.GetTotalBinSize();
                 item.Length = ByteSizeLib.ByteSize.FromBytes(totalSize);
@@ -304,7 +301,7 @@ namespace GDMENUCardManager.Core
                                 }
                                 else
                                 {
-                                    //it's a ps1 disc?
+                                    // It's a ps1 disc?
                                     if (opticalImage.Info.MediaType == MediaType.CDROMXA && opticalImage.Partitions.Any())
                                     {
                                         partition = opticalImage.Partitions.First();
@@ -312,7 +309,7 @@ namespace GDMENUCardManager.Core
                                         ISO9660.DecodedVolumeDescriptor? pvd;
                                         if (ISO9660.GetDecodedPVD(opticalImage, partition, out pvd) == Aaru.CommonTypes.Structs.Errno.NoError && pvd.Value.ApplicationIdentifier == "PLAYSTATION" || pvd.Value.SystemIdentifier == "PLAYSTATION")
                                         {
-                                            //it's a ps1 disc!
+                                            // It's a ps1 disc!
 
                                             var systemcnf = ImageHelper.extractFileFromPartition(opticalImage, partition, "SYSTEM.CNF");
                                             if (systemcnf == null) //could not open SYSTEM.CNF file
@@ -519,7 +516,7 @@ namespace GDMENUCardManager.Core
         {
             var str = Encoding.ASCII.GetString(bytearray).Trim();
 
-            //handle null terminated string
+            // Handle null terminated string.
             int index = str.IndexOf('\0');
             if (index > -1)
                 str = str.Substring(0, index).Trim();
@@ -528,12 +525,10 @@ namespace GDMENUCardManager.Core
 
 
         /// <summary>
-        /// Parses IP.BIN directly from the disc image file on-the-fly.
-        /// Returns a fresh IpBin object without modifying any cached data.
+        /// Reads from the image every time. Does not touch the cached Ip on the item.
         /// </summary>
         public static async Task<IpBin> GetIpBinFromImage(string itemImageFile)
         {
-            // Special handling for Redump CUE/BIN format
             if (Path.GetExtension(itemImageFile).Equals(".cue", StringComparison.OrdinalIgnoreCase))
             {
                 try
@@ -639,7 +634,7 @@ namespace GDMENUCardManager.Core
             }
         }
 
-        //returns null if file not exists on image. throw on any error
+        // Returns null if file not exists on image. Throw on any error.
         public static async Task<byte[]> GetGdText(string itemImageFile)
         {
             var filtersList = new FiltersList();
@@ -710,6 +705,25 @@ namespace GDMENUCardManager.Core
             }
         }
 
+        //true when GetGdText can read this item as-is. compressed and unconverted images only become
+        // Readable after Save Changes turns them into one of the supported formats on the sd card.
+        public static bool CanExtractGdText(GdItem item)
+        {
+            if (item == null || item.FileFormat != FileFormat.Uncompressed || item.DiscType != "Game" || string.IsNullOrEmpty(item.ImageFile))
+                return false;
+
+            switch (Path.GetExtension(item.ImageFile).ToLower())
+            {
+                case ".gdi":
+                case ".cdi":
+                case ".mds":
+                case ".ccd":
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
         private static byte[] extractFileFromPartition(IOpticalMediaImage opticalImage, Partition partition, string fileName)
         {
             var iso = new ISO9660();
@@ -725,7 +739,7 @@ namespace GDMENUCardManager.Core
 
                 if (iso.Stat(fileName, out var stat) == Aaru.CommonTypes.Structs.Errno.NoError && stat.Length > 0)
                 {
-                    //file exists
+                    // File exists.
                     var buff = new byte[stat.Length];
                     iso.Read(fileName, 0, stat.Length, ref buff);
                     return buff;
@@ -856,9 +870,8 @@ namespace GDMENUCardManager.Core
             return item;
         }
 
-        /// <summary>
-        /// Scans a raw BIN file for the "CD001" + "PLAYSTATION" PVD pattern.
-        /// </summary>
+        // Scans up to 50 MB for the CD001 + PLAYSTATION PVD pattern, since the PVD is
+        // not at a fixed sector in every dump.
         private static bool IsPlayStationDisc(string dataFilePath)
         {
             const long searchLimit = 50L * 1024 * 1024;
@@ -898,17 +911,14 @@ namespace GDMENUCardManager.Core
             return false;
         }
 
-        /// <summary>
-        /// Parses ISO9660 from a raw BIN file to read SYSTEM.CNF and extract the PSX serial.
-        /// Returns null if not found.
-        /// </summary>
+        // Minimal ISO9660 walk of PVD, root directory and SYSTEM.CNF, because Aaru cannot
+        // open a bare .bin without its cue.
         private static string TryExtractPlayStationSerial(string dataFilePath)
         {
             try
             {
                 using var fs = new FileStream(dataFilePath, FileMode.Open, FileAccess.Read, FileShare.Read);
 
-                // Check for CD sync pattern to detect raw sectors
                 var syncCheck = new byte[12];
                 fs.Read(syncCheck, 0, 12);
                 bool isRawSector = syncCheck[0] == 0x00 && syncCheck[1] == 0xFF && syncCheck[2] == 0xFF &&
@@ -919,7 +929,7 @@ namespace GDMENUCardManager.Core
                 if (isRawSector)
                 {
                     sectorSize = 2352;
-                    // mode byte at offset 15
+                    // Mode byte at offset 15.
                     fs.Position = 15;
                     int mode = fs.ReadByte();
                     dataOffset = (mode == 2) ? 24 : 16;
@@ -970,11 +980,11 @@ namespace GDMENUCardManager.Core
                     if (nameLen >= 10 && pos + 33 + nameLen <= rootData.Length)
                     {
                         var name = Encoding.ASCII.GetString(rootData, pos + 33, nameLen);
-                        // filenames may have ";1" version suffix
+                        // Filenames may have ";1" version suffix.
                         if (name.Equals("SYSTEM.CNF;1", StringComparison.OrdinalIgnoreCase) ||
                             name.Equals("SYSTEM.CNF", StringComparison.OrdinalIgnoreCase))
                         {
-                            // read the file content
+                            // Read the file content.
                             int fileSector = BitConverter.ToInt32(rootData, pos + 2);
                             int fileLength = BitConverter.ToInt32(rootData, pos + 10);
                             if (fileLength > 4096) fileLength = 4096; // sanity cap
@@ -994,7 +1004,7 @@ namespace GDMENUCardManager.Core
                             if (string.IsNullOrEmpty(firstLine))
                                 return null;
 
-                            // parse serial from boot path
+                            // Parse serial from boot path.
                             var serial = firstLine.Substring(firstLine.LastIndexOf('\\') + 1);
                             var lastIndex = serial.LastIndexOf(';');
                             if (lastIndex != -1)
@@ -1056,49 +1066,49 @@ namespace GDMENUCardManager.Core
             begin = stream.Position;
             int c;
 
-            //read byte by byte
+            // Read byte by byte.
             while ((c = stream.ReadByte()) != -1)
             {
-                //check if data in array matches
+                // Check if data in array matches.
                 if ((char)c == search[position])
                 {
                     //if charater matches first character of 
-                    //seek string, store it for later
+                    // Seek string, store it for later.
                     if (stored == -1 && position > 0 && (char)c == search[0])
                     {
                         stored = stream.Position;
                     }
 
-                    //check if we're done
+                    // Check if we're done.
                     if (position + 1 == search.Length)
                     {
-                        //correct position for array lenth
+                        // Correct position for array lenth.
                         result = stream.Position - search.Length;
                         //set position in stream
                         stream.Position = result;
                         break;
                     }
 
-                    //advance position in the array
+                    // Advance position in the array.
                     position++;
                 }
-                //no match, check if we have a stored position
+                // No match, check if we have a stored position.
                 else if (stored > -1)
                 {
-                    //go to stored position + 1
+                    // Go to stored position + 1.
                     stream.Position = stored + 1;
                     position = 1;
                     stored = -1; //reset stored position!
                 }
-                //no match, no stored position, reset array
-                //position and continue reading
+                // No match, no stored position, reset array
+                //position and continue reading.
                 else
                 {
                     position = 0;
                 }
             }
 
-            //reset stream position if no match has been found
+            // Reset stream position if no match has been found.
             if (result == -1)
             {
                 stream.Position = begin;

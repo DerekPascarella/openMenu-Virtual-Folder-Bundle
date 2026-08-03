@@ -18,7 +18,6 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Card Boxes - Vertically Stacked -->
         <StackPanel Grid.Row="0" Orientation="Vertical" HorizontalAlignment="Stretch">
 
             <!-- GDI Shrink Card -->
@@ -27,7 +26,7 @@
                     <TextBlock Text="GDI Shrink" FontWeight="Bold"/>
                 </GroupBox.Header>
                 <StackPanel Margin="8">
-                    <TextBlock Text="Games use less space on SD card" TextWrapping="Wrap"
+                    <TextBlock Text="Games use less space on SD card, not recommended" TextWrapping="Wrap"
                                Foreground="Gray" FontSize="11" Margin="0 0 0 10"/>
                     <CheckBox x:Name="ChkEnableGDIShrink" IsChecked="{Binding EnableGDIShrink, Mode=TwoWay}"
                               ToolTip="Shrink GDI images as games are added to the list">
@@ -75,7 +74,7 @@
                     <TextBlock Text="VGA Patch" FontWeight="Bold"/>
                 </GroupBox.Header>
                 <StackPanel Margin="8">
-                    <TextBlock Text="Force VGA flag after &quot;Exit to BIOS&quot; from openMenu" TextWrapping="Wrap"
+                    <TextBlock Text="Only needed if booting games after &quot;Exit to BIOS&quot; from openMenu" TextWrapping="Wrap"
                                Foreground="Gray" FontSize="11" Margin="0 0 0 10"/>
                     <CheckBox x:Name="ChkEnableVgaPatch" IsChecked="{Binding EnableVgaPatch, Mode=TwoWay}"
                               ToolTip="Apply the VGA patch to games as they're added to the list">
@@ -94,7 +93,7 @@
                     <TextBlock Text="Region-Free Patch" FontWeight="Bold"/>
                 </GroupBox.Header>
                 <StackPanel Margin="8">
-                    <TextBlock Text="Boot out-of-region games after &quot;Exit to BIOS&quot; from openMenu" TextWrapping="Wrap"
+                    <TextBlock Text="Only needed if booting out-of-region games after &quot;Exit to BIOS&quot; from openMenu" TextWrapping="Wrap"
                                Foreground="Gray" FontSize="11" Margin="0 0 0 10"/>
                     <CheckBox x:Name="ChkEnableRegionPatch" IsChecked="{Binding EnableRegionPatch, Mode=TwoWay}"
                               ToolTip="Apply the region-free patch to games as they're added to the list">

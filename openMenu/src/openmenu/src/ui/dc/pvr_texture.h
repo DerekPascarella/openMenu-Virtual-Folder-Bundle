@@ -29,3 +29,7 @@ extern pvr_ptr_t load_pvr_from_buffer(const void* input, uint32_t* w, uint32_t* 
 /* base method */
 extern pvr_ptr_t load_pvr_from_buffer_to_buffer(const void* input, uint32_t* w, uint32_t* h, uint32_t* txrFormat,
                                                 void* buffer);
+
+/* Reads and parses a PVR into the internal RAM buffer without uploading.
+   Returns a pointer to the pixel data or NULL if it isn't a readable PVR. */
+extern void* load_pvr_to_ram(const char* filename, uint32_t* w, uint32_t* h, uint8_t* pixfmt, uint8_t* datafmt);

@@ -6,9 +6,6 @@ using System.Text;
 
 namespace GDMENUCardManager.Core
 {
-    /// <summary>
-    /// Represents a track in a CUE sheet.
-    /// </summary>
     public class CueTrack
     {
         public int TrackNumber { get; set; }
@@ -23,9 +20,6 @@ namespace GDMENUCardManager.Core
         public bool IsHighDensityArea => Comments.Any(c => c.Contains("HIGH-DENSITY AREA", StringComparison.OrdinalIgnoreCase));
     }
 
-    /// <summary>
-    /// Simple CUE sheet parser for Redump format disc images.
-    /// </summary>
     public class CueSheetParser
     {
         public const int SectorSize = 2352;
@@ -38,7 +32,7 @@ namespace GDMENUCardManager.Core
         public bool IsCdRom => !IsGdRom;
 
         /// <summary>
-        /// Parse a CUE file.
+        /// Populates Tracks and IsGdRom. Throws if the file is missing.
         /// </summary>
         public void Parse(string cuePath)
         {
@@ -108,13 +102,10 @@ namespace GDMENUCardManager.Core
                 }
             }
 
-            // Determine if this is a GD-ROM (has HIGH-DENSITY AREA comment)
             IsGdRom = Tracks.Any(t => t.IsHighDensityArea);
         }
 
-        /// <summary>
-        /// Split a CUE line, handling quoted strings.
-        /// </summary>
+        // Splits on spaces, but a quoted filename stays one token.
         private string[] SplitCueLine(string line)
         {
             var parts = new List<string>();
@@ -147,9 +138,6 @@ namespace GDMENUCardManager.Core
             return parts.ToArray();
         }
 
-        /// <summary>
-        /// Parse MSF (MM:SS:FF) timestamp to total frames.
-        /// </summary>
         private int ParseMsfToFrames(string msf)
         {
             var parts = msf.Split(':');
@@ -165,13 +153,12 @@ namespace GDMENUCardManager.Core
         }
 
         /// <summary>
-        /// Get the first data track (for CD-ROM) or the HD area data track (for GD-ROM).
+        /// The HD-area data track on a GD-ROM, otherwise the first data track.
         /// </summary>
         public CueTrack GetPrimaryDataTrack()
         {
             if (IsGdRom)
             {
-                // For GD-ROM, find the first data track after HIGH-DENSITY AREA marker
                 return Tracks.FirstOrDefault(t => t.IsHighDensityArea && t.IsData)
                     ?? Tracks.FirstOrDefault(t => t.IsData);
             }
@@ -186,8 +173,8 @@ namespace GDMENUCardManager.Core
         private static readonly byte[] DreamcastSignature = Encoding.ASCII.GetBytes("SEGA SEGAKATANA SEGA ENTERPRISES");
 
         /// <summary>
-        /// Read IP.BIN data from the primary data track.
-        /// Searches for the Dreamcast "SEGA SEGAKATANA" signature.
+        /// Scans the first 100 sectors for the SEGA SEGAKATANA signature rather than trusting a
+        /// fixed offset, since sector formats vary.
         /// </summary>
         public byte[] ReadIpBin()
         {
@@ -201,8 +188,7 @@ namespace GDMENUCardManager.Core
 
             using var fs = new FileStream(binPath, FileMode.Open, FileAccess.Read);
 
-            // Search for the Dreamcast signature in the first few sectors
-            // The signature can be at different offsets depending on sector format
+            // Offset varies by sector format, so search rather than seek.
             long signatureOffset = FindSignature(fs, DreamcastSignature, Math.Min(fs.Length, SectorSize * 100));
 
             if (signatureOffset < 0)
@@ -220,9 +206,6 @@ namespace GDMENUCardManager.Core
             return buffer;
         }
 
-        /// <summary>
-        /// Search for a byte signature in a stream.
-        /// </summary>
         private static long FindSignature(Stream stream, byte[] signature, long maxSearchLength)
         {
             stream.Seek(0, SeekOrigin.Begin);
@@ -240,7 +223,6 @@ namespace GDMENUCardManager.Core
                     matchIndex++;
                     if (matchIndex == signature.Length)
                     {
-                        // Found the signature, return position of its start
                         return position - signature.Length + 1;
                     }
                 }
@@ -256,9 +238,6 @@ namespace GDMENUCardManager.Core
             return -1; // Not found
         }
 
-        /// <summary>
-        /// Try to parse IP.BIN and create an IpBin object.
-        /// </summary>
         public IpBin TryParseIpBin()
         {
             try
@@ -272,9 +251,6 @@ namespace GDMENUCardManager.Core
             }
         }
 
-        /// <summary>
-        /// Get total size of all BIN files referenced by this CUE sheet.
-        /// </summary>
         public long GetTotalBinSize()
         {
             long total = 0;

@@ -5,10 +5,7 @@ using System.Windows.Data;
 
 namespace GDMENUCardManager.Converter
 {
-    /// <summary>
-    /// Converts bool to Visibility.Visible or Visibility.Hidden.
-    /// Unlike Collapsed, Hidden reserves the space in the layout.
-    /// </summary>
+    // Hidden rather than Collapsed, so the layout slot is preserved.
     class BoolToVisibleOrHiddenConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)

@@ -28,12 +28,12 @@ vbl_allinfo_callback(struct maple_state_str*, maple_frame_t* frm) {
 /* Send a ALLINFO command for the given port/unit */
 static int
 send_allinfo(maple_device_t* dev) {
-    // Reserve access; if we don't get it, forget about it
+    /* Reserve access. If it is not granted, give up rather than wait. */
     if (maple_frame_lock(&dev->frame) < 0) {
         return -1;
     }
 
-    // Setup our autodetect frame to probe at a new device
+    /* Set up the autodetect frame to probe a new device. */
     maple_frame_init(&dev->frame);
     dev->frame.cmd = MAPLE_COMMAND_ALLINFO;
     dev->frame.dst_port = dev->port;

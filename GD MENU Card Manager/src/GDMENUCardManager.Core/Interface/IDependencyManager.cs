@@ -6,7 +6,7 @@ namespace GDMENUCardManager.Core.Interface
 {
     public interface IDependencyManager
     {
-        public GdItem[] GdiShrinkWindowShowDialog(System.Collections.Generic.IEnumerable<GdItem> items, string title = null);
+        public ValueTask<GdItem[]> GdiShrinkWindowShowDialog(System.Collections.Generic.IEnumerable<GdItem> items, string title = null);
         public IProgressWindow CreateAndShowProgressWindow();
         public ValueTask<bool> ShowYesNoDialog(string caption, string text);
 
@@ -76,5 +76,9 @@ namespace GDMENUCardManager.Core.Interface
         public int TotalItems { get; set; }
         public int ProcessedItems { get; set; }
         public string TextContent { get; set; }
+        /// <summary>
+        /// Set false to show real progress from TotalItems and ProcessedItems.
+        /// </summary>
+        public bool IsIndeterminate { get; set; }
     }
 }

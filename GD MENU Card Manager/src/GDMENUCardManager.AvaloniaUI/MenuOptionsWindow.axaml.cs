@@ -38,7 +38,7 @@ namespace GDMENUCardManager
 
         private MenuStyle _style = MenuStyle.Folders;
 
-        // manage radio state in code, the group unchecking clobbers the IsChecked binding
+        // Manage radio state in code, the group unchecking clobbers the IsChecked binding.
         private RadioButton _radioFolders;
         private RadioButton _radioScroll;
         private RadioButton _radioGrid3;
@@ -182,7 +182,7 @@ namespace GDMENUCardManager
                     },
                     new FilePickerFileType("All Files")
                     {
-                        // use "*.*" here, a plain "*" ends up matching nothing on macOS
+                        // Use "*.*" here, a plain "*" ends up matching nothing on macOS.
                         Patterns = new List<string> { "*.*" },
                         AppleUniformTypeIdentifiers = new List<string> { "public.item" }
                     }

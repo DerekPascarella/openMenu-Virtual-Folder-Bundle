@@ -31,11 +31,11 @@
 
     <!-- Buttons -->
     <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 15 0 0">
-      <Button Content="Skip This Version" Click="SkipButton_Click" Width="120" Padding="15,8" Margin="0 0 10 0"
+      <Button Content="Skip This Version" Click="SkipButton_Click" MinWidth="120" Padding="15,8" Margin="0 0 10 0"
               ToolTip.Tip="Ignore this version and don't ask again until the next release"/>
-      <Button Content="Remind Me Later" Click="RemindButton_Click" Width="120" Padding="15,8" Margin="0 0 10 0"
+      <Button Content="Remind Me Later" Click="RemindButton_Click" MinWidth="120" Padding="15,8" Margin="0 0 10 0"
               ToolTip.Tip="Close and be reminded the next time the application starts"/>
-      <Button Content="Update Now" Click="UpdateButton_Click" Width="90" Padding="15,8" IsDefault="True"
+      <Button Content="Update Now" Click="UpdateButton_Click" MinWidth="120" Padding="15,8" IsDefault="True"
               ToolTip.Tip="Download and install the update"/>
     </StackPanel>
   </Grid>

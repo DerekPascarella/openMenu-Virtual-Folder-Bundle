@@ -185,6 +185,28 @@ load_pvr(const char* filename, uint32_t* w, uint32_t* h, uint32_t* txrFormat) {
     return load_pvr_from_buffer(_internal_buf, w, h, txrFormat);
 }
 
+void*
+load_pvr_to_ram(const char* filename, uint32_t* w, uint32_t* h, uint8_t* pixfmt, uint8_t* datafmt) {
+    unsigned char* texBuf = pvr_get_internal_buffer();
+    if (!texBuf) {
+        return NULL;
+    }
+
+    pvr_read_to_internal(filename);
+
+    /* A failed read leaves the zeroed header behind and fails this check */
+    if (strncmp((char*)texBuf + (PVR_HDR_SIZE / 2), "PVRT", 4) != 0) {
+        return NULL;
+    }
+
+    *pixfmt = texBuf[PVR_HDR_SIZE - 8];
+    *datafmt = texBuf[PVR_HDR_SIZE - 7];
+    *w = texBuf[PVR_HDR_SIZE - 4] | texBuf[PVR_HDR_SIZE - 3] << 8;
+    *h = texBuf[PVR_HDR_SIZE - 2] | texBuf[PVR_HDR_SIZE - 1] << 8;
+
+    return texBuf + PVR_HDR_SIZE;
+}
+
 pvr_ptr_t
 load_pvr_to_buffer(const char* filename, uint32_t* w, uint32_t* h, uint32_t* txrFormat, void* buffer) {
     pvr_read_to_internal(filename);

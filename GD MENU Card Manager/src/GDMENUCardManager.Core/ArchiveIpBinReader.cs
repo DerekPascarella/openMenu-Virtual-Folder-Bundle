@@ -16,6 +16,10 @@ namespace GDMENUCardManager.Core
         private const int GdiTextReadBytes = 16 * 1024;
         private const int HighDensityAreaLba = 45000;
 
+        /// <summary>
+        /// Reads IP.BIN from inside an archive without extracting it. Null when the archive holds
+        /// no readable data track.
+        /// </summary>
         public static async Task<IpBin> TryReadAsync(
             string archivePath,
             Dictionary<string, long> archiveContents)

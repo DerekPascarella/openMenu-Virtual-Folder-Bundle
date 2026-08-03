@@ -18,6 +18,7 @@
 #include <backend/gd_item.h>
 #include <backend/gd_list.h>
 
+#include "backend/last_game.h"
 #include "dc/input.h"
 #include "texture/txr_manager.h"
 #include "ui/animation.h"
@@ -838,10 +839,15 @@ handle_input_ui(enum control input) {
 }
 
 FUNCTION(UI_NAME, setup) {
+    /* On the first boot setup this can drill into the category holding the
+     * game that was played last */
+    int restore_row = last_game_take_row();
+
     list_current = list_get();
     list_len = list_length();
 
-    current_selected_item = 0;
+    /* The carousel works this out for itself, so the row is all it needs */
+    current_selected_item = (restore_row > 0 && restore_row < list_len) ? restore_row : 0;
     frames_focused = 0;
     draw_current = DRAW_UI;
 

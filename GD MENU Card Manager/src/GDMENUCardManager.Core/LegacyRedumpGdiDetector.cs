@@ -115,11 +115,15 @@ namespace GDMENUCardManager.Core
             var track1 = default(GdiTrackLine);
             var track2 = default(GdiTrackLine);
             bool hasTrack1 = false, hasTrack2 = false;
+            bool hasAudioTrackFile = false;
 
             foreach (var line in lines)
             {
                 if (!TryParseTrackLine(line, out var track))
                     continue;
+
+                if (Path.GetExtension(track.FileName).Equals(".raw", StringComparison.OrdinalIgnoreCase))
+                    hasAudioTrackFile = true;
 
                 if (track.TrackNumber == 1)
                 {
@@ -131,10 +135,12 @@ namespace GDMENUCardManager.Core
                     track2 = track;
                     hasTrack2 = true;
                 }
-
-                if (hasTrack1 && hasTrack2)
-                    break;
             }
+
+            // The old format names every track .bin. A set with .raw audio tracks
+            // came from somewhere else, whatever its track layout looks like.
+            if (hasAudioTrackFile)
+                return false;
 
             if (!hasTrack1 || !hasTrack2 || track1.SectorSize <= 0)
                 return false;

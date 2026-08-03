@@ -23,6 +23,31 @@ typedef struct gd_item {
     char type[8];
 } gd_item;
 
+/* Identity hash for the recently played history. Built from serial, title,
+ * and disc number so it survives SD card reordering. Zero is reserved to
+ * mark empty history slots, so a real hash of zero is nudged to one. */
+static inline unsigned int
+gd_item_recent_hash(const struct gd_item* item) {
+    unsigned int h = 2166136261u;
+    const char* fields[3];
+    fields[0] = item->product;
+    fields[1] = item->name;
+    fields[2] = item->disc;
+    for (int f = 0; f < 3; f++) {
+        const char* p = fields[f];
+        while (*p) {
+            h ^= (unsigned char)*p++;
+            h *= 16777619u;
+        }
+        /* absorb a zero byte between fields so "ab" + "c" and "a" + "bc" differ */
+        h *= 16777619u;
+    }
+    if (h == 0) {
+        h = 1;
+    }
+    return h;
+}
+
 /* Helper functions to parse disc field "N/M" format (supports 1-10) */
 static inline int
 gd_item_disc_num(const char* disc) {

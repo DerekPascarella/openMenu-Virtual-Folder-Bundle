@@ -49,6 +49,15 @@ namespace GDMENUCardManager
         }
 
 
+        // Endless scrolling bar by default.
+        private bool _IsIndeterminate = true;
+        public bool IsIndeterminate
+        {
+            get { return _IsIndeterminate; }
+            set { _IsIndeterminate = value; RaisePropertyChanged(); }
+        }
+
+
         public ProgressWindow()
         {
             InitializeComponent();

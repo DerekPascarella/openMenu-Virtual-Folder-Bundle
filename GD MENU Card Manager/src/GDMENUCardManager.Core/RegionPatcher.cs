@@ -7,9 +7,6 @@ using System.Threading.Tasks;
 
 namespace GDMENUCardManager.Core
 {
-    /// <summary>
-    /// Result of a patching operation.
-    /// </summary>
     public class PatchResult
     {
         public bool Success { get; set; }
@@ -20,13 +17,9 @@ namespace GDMENUCardManager.Core
         public List<string> Details { get; } = new List<string>();
     }
 
-    /// <summary>
-    /// Provides region-free and VGA patching for Dreamcast disc images.
-    /// </summary>
     public static class RegionPatcher
     {
-        // Search pattern for locating IP.BIN header (for region flag and VGA flag)
-        // "SEGA SEGAKATANA " (16 bytes)
+        // "SEGA SEGAKATANA ", 16 bytes. The anchor for both flag offsets below.
         private static readonly byte[] IpBinHeaderPattern = new byte[]
         {
             0x53, 0x45, 0x47, 0x41, 0x20, 0x53, 0x45, 0x47,
@@ -88,9 +81,6 @@ namespace GDMENUCardManager.Core
             };
         }
 
-        /// <summary>
-        /// Copies a string to a byte array, padding with spaces to reach the target length.
-        /// </summary>
         private static void CopyPaddedString(string str, byte[] dest, ref int offset, int targetLength)
         {
             var bytes = Encoding.ASCII.GetBytes(str);
@@ -104,25 +94,18 @@ namespace GDMENUCardManager.Core
         }
 
         /// <summary>
-        /// Patch a disc image with region-free and/or VGA patches.
-        /// Supports GDI and CDI formats.
+        /// Region-free convenience overload, equivalent to passing "JUE".
         /// </summary>
-        /// <param name="imagePath">Path to the disc image file (.gdi or .cdi)</param>
-        /// <param name="patchRegion">Whether to apply region-free patch</param>
-        /// <param name="patchVga">Whether to apply VGA patch</param>
-        /// <returns>Result of the patching operation</returns>
         public static Task<PatchResult> PatchImageAsync(string imagePath, bool patchRegion, bool patchVga)
         {
             return PatchImageAsync(imagePath, patchRegion ? "JUE" : null, patchVga);
         }
 
         /// <summary>
-        /// Patch a disc image to a specific region combination and/or apply the VGA patch.
+        /// Patches in place. There is no backup and no undo.
         /// </summary>
-        /// <param name="imagePath">Path to the disc image file (.gdi or .cdi)</param>
-        /// <param name="region">Target regions ("J", "U", "E" or a combination), or null to skip region patching</param>
-        /// <param name="patchVga">Whether to apply VGA patch</param>
-        /// <returns>Result of the patching operation</returns>
+        /// <param name="region">"J", "U", "E" or any combination. Null skips region
+        /// patching.</param>
         public static async Task<PatchResult> PatchImageAsync(string imagePath, string region, bool patchVga)
         {
             var result = new PatchResult { Success = true };
@@ -147,7 +130,7 @@ namespace GDMENUCardManager.Core
                 }
                 else
                 {
-                    // For other formats (mds, ccd), try to find the associated data file
+                    // MDS and CCD keep their data in a sidecar file, so patch that instead.
                     var dataFile = FindDataFile(imagePath);
                     if (dataFile != null)
                     {
@@ -169,9 +152,6 @@ namespace GDMENUCardManager.Core
             return result;
         }
 
-        /// <summary>
-        /// Patch a GDI disc image by parsing the .gdi file and patching all data tracks.
-        /// </summary>
         private static async Task PatchGdiAsync(string gdiPath, string region, bool patchVga, PatchResult result)
         {
             var baseFolder = Path.GetDirectoryName(gdiPath);
@@ -198,9 +178,6 @@ namespace GDMENUCardManager.Core
             }
         }
 
-        /// <summary>
-        /// Parse a GDI file and return a list of data track filenames (.bin or .iso).
-        /// </summary>
         private static async Task<List<string>> ParseGdiFileAsync(string gdiPath)
         {
             var dataTracks = new List<string>();
@@ -208,7 +185,6 @@ namespace GDMENUCardManager.Core
             var lines = await Task.Run(() => File.ReadAllLines(gdiPath));
             foreach (var line in lines)
             {
-                // Match lines referencing BIN or ISO data tracks
                 var parts = line.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
                 foreach (var part in parts)
                 {
@@ -224,10 +200,7 @@ namespace GDMENUCardManager.Core
             return dataTracks;
         }
 
-        /// <summary>
-        /// Patch a single binary file (data track or CDI).
-        /// Uses optimized single-pass search for all patterns.
-        /// </summary>
+        // One pass finds every pattern, because a GD-ROM track can be gigabytes.
         private static async Task PatchSingleFileAsync(string filePath, string region, bool patchVga, PatchResult result)
         {
             await Task.Run(() =>
@@ -255,7 +228,6 @@ namespace GDMENUCardManager.Core
                     result.Details.Add($"  Found {regionBlockStarts.Count} region string block(s)");
                 }
 
-                // Nothing to patch?
                 if (ipBinHeaders.Count == 0 && regionBlockStarts.Count == 0)
                     return;
 
@@ -358,9 +330,7 @@ namespace GDMENUCardManager.Core
             0x0E, 0xA0, 0x09, 0x00
         };
 
-        /// <summary>
-        /// Search for patterns using chunked sequential file reading.
-        /// </summary>
+        // Files up to 256 MB are read whole. Larger ones stream in 16 MB chunks.
         private static (List<long> ipBinHeaders, HashSet<long> regionBlockStarts) FindAllPatternsInSinglePass(string filePath, bool searchRegionStrings)
         {
             var ipBinHeaders = new List<long>();
@@ -369,7 +339,6 @@ namespace GDMENUCardManager.Core
             var fileInfo = new FileInfo(filePath);
             long fileSize = fileInfo.Length;
 
-            // For files under 256MB, read entire file into memory for fastest search
             if (fileSize <= 256 * 1024 * 1024)
             {
                 byte[] fileData = File.ReadAllBytes(filePath);
@@ -412,19 +381,15 @@ namespace GDMENUCardManager.Core
                 }
             }
 
-            // Remove duplicates (from overlap regions)
+            // Chunk overlap can report the same hit twice.
             return (ipBinHeaders.Distinct().ToList(), new HashSet<long>(regionBlockStarts));
         }
 
-        /// <summary>
-        /// Search for all patterns in a buffer.
-        /// </summary>
         private static void SearchAllPatterns(byte[] buffer, int length, long baseOffset,
             List<long> ipBinHeaders, List<long> regionBlockStarts, bool searchRegionStrings)
         {
             var span = new ReadOnlySpan<byte>(buffer, 0, length);
 
-            // Search for IP.BIN headers
             int pos = 0;
             while (pos <= length - IpBinHeaderPattern.Length)
             {
@@ -448,9 +413,6 @@ namespace GDMENUCardManager.Core
             }
         }
 
-        /// <summary>
-        /// Find the associated data file for MDS or CCD formats.
-        /// </summary>
         private static string FindDataFile(string imagePath)
         {
             var extension = Path.GetExtension(imagePath).ToLowerInvariant();
@@ -480,9 +442,6 @@ namespace GDMENUCardManager.Core
             return null;
         }
 
-        /// <summary>
-        /// Check if an image can be patched (is it a supported format).
-        /// </summary>
         public static bool CanPatch(string imagePath)
         {
             if (string.IsNullOrEmpty(imagePath))

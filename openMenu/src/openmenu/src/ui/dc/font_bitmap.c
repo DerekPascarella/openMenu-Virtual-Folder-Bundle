@@ -9,19 +9,23 @@
 
 #include <dc/pvr.h>
 
+#include <stdlib.h>
+
 #include <dbgprint.h>
+#include "font_smooth.h"
 #include "ui/draw_prototypes.h"
 
 typedef struct bitmap_font {
     int char_width;
     int char_height;
+    int cell_pitch;
     image texture;
 } bitmap_font;
 
 static bitmap_font font;
 static uint32_t font_color;
 
-#define FONT_PERROW(font) (font.texture.width / font.char_width)
+#define FONT_PERROW(font) (font.texture.width / font.cell_pitch)
 #define BUFFER_MAX_CHARS  (128)
 
 #ifdef KOS_SPRITE
@@ -39,11 +43,47 @@ static int charbuffered;
 int
 font_bmp_init(const char* filename, int char_width, int char_height) {
     unsigned int temp = texman_create();
-    draw_load_texture_buffer(filename, &font.texture, texman_get_tex_data(temp));
-    texman_reserve_memory(font.texture.width, font.texture.height, 2 /* 16Bit */);
 
     font.char_height = char_height;
     font.char_width = char_width;
+    font.cell_pitch = char_width;
+
+    uint32_t w, h;
+    uint8_t pixfmt, datafmt;
+    void* ram = load_pvr_to_ram(filename, &w, &h, &pixfmt, &datafmt);
+
+    if (ram && font_smooth_eligible(pixfmt, datafmt, w, h, char_width, char_height)) {
+        /* Respace the glyphs with transparent gutters so bilinear sampling
+           during smooth scrolling never reads a neighboring glyph */
+        uint16_t* packed = malloc(w * 2 * h * sizeof(uint16_t));
+        if (packed && font_smooth_repack(ram, w, h, datafmt, char_width, char_height, packed) == 0) {
+            pvr_txr_load(packed, texman_get_tex_data(temp), w * 2 * h * 2);
+            free(packed);
+
+            uint32_t color = PVR_TXRFMT_ARGB1555;
+            if (pixfmt == FONT_PVR_PIX_RGB565) {
+                color = PVR_TXRFMT_RGB565;
+            } else if (pixfmt == FONT_PVR_PIX_ARGB4444) {
+                color = PVR_TXRFMT_ARGB4444;
+            }
+
+            font.texture.width = w * 2;
+            font.texture.height = h;
+            font.texture.format = color | PVR_TXRFMT_NONTWIDDLED;
+            font.texture.texture = texman_get_tex_data(temp);
+            font.cell_pitch = char_width * 2;
+            texman_reserve_memory(font.texture.width, font.texture.height, 2 /* 16Bit */);
+
+            font_color = 0xFFFFFFFF; // White
+
+            return 0;
+        }
+        free(packed);
+    }
+
+    /* Anything unusual loads exactly the way it always has */
+    draw_load_texture_buffer(filename, &font.texture, texman_get_tex_data(temp));
+    texman_reserve_memory(font.texture.width, font.texture.height, 2 /* 16Bit */);
 
     font_color = 0xFFFFFFFF; // White
 
@@ -88,30 +128,10 @@ font_bmp_set_color_components(int r, int g, int b, int a) {
     font_color = PVR_PACK_ARGB(a, r, g, b);
 }
 
-/* Draws a font letter using two triangle strips */
+/* Emits one glyph quad with explicit screen and texel extents */
 static void
-font_bmp_draw_char(int x, int y, unsigned char ch) {
-    const int index = ch - 32;
-    const int ix = (index % FONT_PERROW(font)) * font.char_width;
-    const int iy = (index / FONT_PERROW(font)) * font.char_height;
-
-    /* Upper left */
-    const float x1 = x;
-    const float y1 = y;
-    const float u1 = ix * 1.0f / font.texture.width;
-    const float v1 = iy * 1.0f / font.texture.height;
-
-    /* Lower right */
-    const float x2 = x1 + font.char_width;
-    const float y2 = y1 + font.char_height;
-    const float u2 = (ix + font.char_width) * 1.0f / font.texture.width;
-    const float v2 = (iy + font.char_height) * 1.0f / font.texture.height;
-
+font_bmp_emit(float x1, float y1, float x2, float y2, float u1, float v1, float u2, float v2) {
     const float z = z_get();
-
-    if (index == -1) {
-        return;
-    }
 
 #ifdef KOS_SPRITE
     pvr_sprite_txr_t vert = {
@@ -183,6 +203,24 @@ font_bmp_draw_char(int x, int y, unsigned char ch) {
     charbuffered += VERT_PER_CHAR;
 }
 
+/* Draws a font letter using two triangle strips */
+static void
+font_bmp_draw_char(int x, int y, unsigned char ch) {
+    const int index = ch - 32;
+
+    if (index < 0) {
+        return;
+    }
+
+    const int ix = (index % FONT_PERROW(font)) * font.cell_pitch;
+    const int iy = (index / FONT_PERROW(font)) * font.char_height;
+
+    font_bmp_emit((float)x, (float)y, (float)(x + font.char_width), (float)(y + font.char_height),
+                  ix * 1.0f / font.texture.width, iy * 1.0f / font.texture.height,
+                  (ix + font.char_width) * 1.0f / font.texture.width,
+                  (iy + font.char_height) * 1.0f / font.texture.height);
+}
+
 static void
 _font_bmp_draw_string(int x1, int y1, const char* str) {
     z_inc();
@@ -206,6 +244,43 @@ font_bmp_draw_sub_wrap(int x1, int y1, int width, const char* str) {
 void
 font_bmp_draw_main(int x1, int y1, const char* str) {
     _font_bmp_draw_string(x1, y1, str);
+}
+
+/* Draws a string clipped to a pixel window, shifted left by scroll_px.
+   Fractional offsets land between pixels which is what makes the marquee
+   glide instead of step. */
+void
+font_bmp_draw_window(int x, int y, int window_w, float scroll_px, const char* str) {
+    z_inc();
+    charbuffered = 0;
+
+    const float win_x1 = (float)x;
+    const float win_x2 = (float)(x + window_w);
+    const float texw = (float)font.texture.width;
+    const float texh = (float)font.texture.height;
+
+    for (int i = 0; str[i] && charbuffered < BUFFER_MAX_CHARS * VERT_PER_CHAR; i++) {
+        const int index = (unsigned char)str[i] - 32;
+        if (index < 0) {
+            continue;
+        }
+
+        float gx = (float)x + (float)(i * font.char_width) - scroll_px;
+        float x1, x2, t1, t2;
+        if (!font_smooth_clip(gx, font.char_width, win_x1, win_x2, &x1, &x2, &t1, &t2)) {
+            continue;
+        }
+
+        const int ix = (index % FONT_PERROW(font)) * font.cell_pitch;
+        const int iy = (index / FONT_PERROW(font)) * font.char_height;
+
+        font_bmp_emit(x1, (float)y, x2, (float)(y + font.char_height), ((float)ix + t1) / texw, (float)iy / texh,
+                      ((float)ix + t2) / texw, (float)(iy + font.char_height) / texh);
+    }
+
+    if (charbuffered) {
+        pvr_prim(charbuf, charbuffered * sizeof(charbuf[0]));
+    }
 }
 
 void

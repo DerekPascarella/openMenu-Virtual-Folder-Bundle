@@ -86,7 +86,7 @@ namespace GDMENUCardManager.Core
         public static async Task CopyDirectoryAsync(string sourceDirName, string destDirName,
             System.Collections.Generic.HashSet<string> excludeFiles = null)
         {
-            // Get the subdirectories for the specified directory.
+            // Sourced from the MSDN CopyDirectory sample.
             DirectoryInfo dir = new DirectoryInfo(sourceDirName);
 
             if (!dir.Exists)
@@ -111,9 +111,8 @@ namespace GDMENUCardManager.Core
         }
 
         /// <summary>
-        /// Attempts to make a file or directory writable by removing read-only attributes.
-        /// Works cross-platform: uses FileAttributes on Windows, chmod on Unix.
-        /// Returns true if successful or path was already writable.
+        /// Best-effort. Returns true when the path is already writable or does not exist, so a true
+        /// result is not proof a write will succeed.
         /// </summary>
         public static bool TryMakeWritable(string path)
         {
@@ -124,7 +123,6 @@ namespace GDMENUCardManager.Core
                     var attributes = File.GetAttributes(path);
                     if ((attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
                     {
-                        // Try to remove read-only attribute (works on Windows)
                         File.SetAttributes(path, attributes & ~FileAttributes.ReadOnly);
                     }
 
@@ -158,9 +156,6 @@ namespace GDMENUCardManager.Core
             }
         }
 
-        /// <summary>
-        /// Attempts to add write permission using chmod on Unix systems.
-        /// </summary>
         private static void TryChmodWritable(string path)
         {
             try
@@ -185,15 +180,11 @@ namespace GDMENUCardManager.Core
             }
         }
 
-        /// <summary>
-        /// Attempts to make all files in a directory writable recursively.
-        /// </summary>
         public static void TryMakeDirectoryWritable(string directoryPath)
         {
             if (!Directory.Exists(directoryPath))
                 return;
 
-            // Make the directory itself writable
             TryMakeWritable(directoryPath);
 
             try
@@ -217,9 +208,8 @@ namespace GDMENUCardManager.Core
         }
 
         /// <summary>
-        /// Checks if a file can be opened with write access.
-        /// Automatically attempts to make the file writable if it's read-only.
-        /// Returns null if accessible, or an error message if not.
+        /// Null means accessible. Has a side effect: clears the read-only attribute if it finds
+        /// one.
         /// </summary>
         public static string CheckFileAccessibility(string filePath)
         {
@@ -228,7 +218,6 @@ namespace GDMENUCardManager.Core
                 if (!File.Exists(filePath))
                     return null; // File doesn't exist, so it's not locked
 
-                // First attempt
                 try
                 {
                     using (var fs = new FileStream(filePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None))
@@ -266,20 +255,17 @@ namespace GDMENUCardManager.Core
         }
 
         /// <summary>
-        /// Checks if a directory can be renamed (which means it can be moved/deleted).
-        /// Automatically attempts to make the directory writable if it's read-only.
-        /// Returns null if accessible, or an error message if locked.
+        /// Probes by renaming the directory and renaming it back. Null means accessible.
         /// </summary>
         public static string CheckDirectoryCanBeRenamed(string directoryPath)
         {
             if (!Directory.Exists(directoryPath))
                 return null;
 
-            // Try to rename the directory to a temporary name and back
-            // This detects if another process has the directory open (e.g., cmd, explorer)
+            // A rename fails while another process holds the directory open (e.g., a shell
+            // sitting in it or an Explorer window).
             var tempName = directoryPath + "_accessibility_check_" + Guid.NewGuid().ToString("N");
 
-            // First attempt
             try
             {
                 Directory.Move(directoryPath, tempName);
@@ -331,11 +317,6 @@ namespace GDMENUCardManager.Core
             }
         }
 
-        /// <summary>
-        /// Checks if all files in a directory can be accessed with write permissions,
-        /// and if the directory itself can be renamed/deleted.
-        /// Returns a dictionary of inaccessible paths and their error messages.
-        /// </summary>
         public static Dictionary<string, string> CheckDirectoryAccessibility(string directoryPath)
         {
             var lockedFiles = new Dictionary<string, string>();
@@ -353,7 +334,6 @@ namespace GDMENUCardManager.Core
 
             try
             {
-                // Check all files in the directory
                 foreach (var file in Directory.GetFiles(directoryPath, "*", SearchOption.AllDirectories))
                 {
                     var error = CheckFileAccessibility(file);
@@ -377,8 +357,8 @@ namespace GDMENUCardManager.Core
         }
 
         /// <summary>
-        /// Checks accessibility for multiple paths (files and directories).
-        /// Returns a dictionary of inaccessible paths and their error messages.
+        /// Only inaccessible paths appear in the result. An empty dictionary means everything is
+        /// writable.
         /// </summary>
         public static async Task<Dictionary<string, string>> CheckPathsAccessibilityAsync(IEnumerable<string> paths)
         {
@@ -442,7 +422,7 @@ namespace GDMENUCardManager.Core
 
         public static string RemoveDiacritics(string text)
         {
-            //from https://stackoverflow.com/questions/249087/how-do-i-remove-diacritics-accents-from-a-string-in-net
+            // From https://stackoverflow.com/questions/249087/how-do-i-remove-diacritics-accents-from-a-string-in-net.
 
             var normalizedString = text.Normalize(NormalizationForm.FormD);
             var stringBuilder = new StringBuilder();
@@ -475,10 +455,6 @@ namespace GDMENUCardManager.Core
 
         internal static System.Func<string, bool> CompressedFileExpression;// = new System.Func<string, bool>(x => x.EndsWith(".7z", StringComparison.InvariantCultureIgnoreCase) || x.EndsWith(".rar", StringComparison.InvariantCultureIgnoreCase) || x.EndsWith(".zip", StringComparison.InvariantCultureIgnoreCase));
 
-        /// <summary>
-        /// Gets the total size of all files in a directory and its subdirectories.
-        /// Returns 0 if the directory doesn't exist.
-        /// </summary>
         public static long GetDirectorySize(string directoryPath)
         {
             if (!Directory.Exists(directoryPath))
@@ -496,8 +472,7 @@ namespace GDMENUCardManager.Core
         }
 
         /// <summary>
-        /// Formats a byte count as a human-readable string (e.g., "1.5 GB").
-        /// Negative values are handled by showing the absolute value with a negative sign.
+        /// Binary units. KB is 1024 bytes, not 1000.
         /// </summary>
         public static string FormatBytes(long bytes)
         {
@@ -516,11 +491,11 @@ namespace GDMENUCardManager.Core
         }
 
         /// <summary>
-        /// Checks if an IOException is due to disk full (no space left on device).
+        /// Checks Win32 error codes first, then falls back to message matching on other platforms,
+        /// so this is best-effort off Windows.
         /// </summary>
         public static bool IsDiskFullException(IOException ex)
         {
-            // Windows error codes
             const int ERROR_DISK_FULL = 0x70;        // 112
             const int ERROR_HANDLE_DISK_FULL = 0x27; // 39
 

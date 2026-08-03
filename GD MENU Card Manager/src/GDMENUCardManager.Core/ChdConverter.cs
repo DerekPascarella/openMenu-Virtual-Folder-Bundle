@@ -7,9 +7,8 @@ using System.Threading.Tasks;
 namespace GDMENUCardManager.Core
 {
     /// <summary>
-    /// Converts CHD disc images to GDI (GD-ROM) or CUE/BIN (CD-ROM) format.
-    /// GD-ROM CHDs are converted directly to GDI for GDEMU.
-    /// CD-ROM CHDs are converted to CUE/BIN, then fed to Redump2CdiConverter for CDI output.
+    /// GD-ROM CHDs go straight to GDI. CD-ROM CHDs go to CUE/BIN, which Redump2CdiConverter then
+    /// turns into a CDI.
     /// </summary>
     public static class ChdConverter
     {
@@ -18,9 +17,6 @@ namespace GDMENUCardManager.Core
         private const int SectorsPerBatch = 256; // ~588KB per batch
         private const int TrackPadding = 4; // chdman aligns each track to 4-frame boundaries
 
-        /// <summary>
-        /// Convert a GD-ROM CHD to GDI format.
-        /// </summary>
         public static async Task<(bool Success, string Message)> ConvertToGdi(
             string chdPath,
             string outputDirectory,
@@ -52,7 +48,7 @@ namespace GDMENUCardManager.Core
 
                     var track = chd.Tracks[t];
 
-                    // Account for pregap in LBA but skip pregap data in output
+                    // Pregap counts toward the LBA but its sectors are not written out.
                     currentLba += track.Pregap;
                     chdSectorOffset += track.Pregap;
 
@@ -65,15 +61,13 @@ namespace GDMENUCardManager.Core
                     int trackType = track.IsAudio ? 0 : 4;
                     gdiContent.AppendLine($"{track.TrackNumber} {currentLba} {trackType} {SectorSize} {outputFilename} 0");
 
-                    // Extract track data frames from CHD.
-                    // FRAMES in CHD metadata includes PAD, so subtract PAD to get actual content.
+                    // FRAMES includes PAD, so subtract it to get the real content length.
                     int dataFrames = track.Frames - track.Pad;
                     await Task.Run(() => ExtractTrackData(chd, chdSectorOffset, dataFrames, outputPath,
                         swapAudio && track.IsAudio, cancellationToken), cancellationToken);
 
-                    // Advance LBA by the full track span (FRAMES includes PAD, which
-                    // fills the gap to the next track on the disc layout).
-                    // Advance CHD offset by FRAMES + alignment to 4-frame boundary.
+                    // LBA advances by the full span, pad included, because the pad fills the
+                    // gap to the next track. The CHD offset also skips the 4-frame alignment.
                     currentLba += track.Frames;
                     chdSectorOffset += track.Frames + GetExtraFrames(track.Frames);
 
@@ -105,10 +99,6 @@ namespace GDMENUCardManager.Core
             }
         }
 
-        /// <summary>
-        /// Convert a CD-ROM CHD to CUE/BIN format.
-        /// The resulting CUE/BIN can then be converted to CDI via Redump2CdiConverter.
-        /// </summary>
         public static async Task<(bool Success, string Message, string CuePath)> ConvertToCueBin(
             string chdPath,
             string outputDirectory,
@@ -137,7 +127,6 @@ namespace GDMENUCardManager.Core
                     string binFilename = $"Track {track.TrackNumber:D2}.bin";
                     string binPath = Path.Combine(outputDirectory, binFilename);
 
-                    // Map CHD track type to CUE track type
                     string cueTrackType = track.IsAudio ? "AUDIO" : "MODE1/2352";
 
                     cueContent.AppendLine($"FILE \"{binFilename}\" BINARY");
@@ -148,20 +137,17 @@ namespace GDMENUCardManager.Core
 
                     if (track.Pregap > 0 && track.TrackNumber > 1)
                     {
-                        // Add PREGAP directive for non-first tracks
                         cueContent.AppendLine($"    PREGAP {FramesToMsf(track.Pregap)}");
                     }
 
                     cueContent.AppendLine($"    INDEX 01 00:00:00");
 
-                    // Extract track data frames from CHD.
-                    // FRAMES in CHD metadata includes PAD, so subtract PAD to get actual content.
+                    // FRAMES includes PAD, so subtract it to get the real content length.
                     int dataFrames = track.Frames - track.Pad;
                     await Task.Run(() => ExtractTrackData(chd, chdSectorOffset, dataFrames, binPath,
                         swapAudio && track.IsAudio, cancellationToken), cancellationToken);
 
-                    // Advance past data frames + alignment padding in CHD stream.
-                    // chdman rounds FRAMES (which includes PAD) to a 4-frame boundary.
+                    // chdman rounds FRAMES, pad included, up to a 4-frame boundary.
                     chdSectorOffset += track.Frames + GetExtraFrames(track.Frames);
 
                     processedTracks++;
@@ -185,9 +171,6 @@ namespace GDMENUCardManager.Core
             }
         }
 
-        /// <summary>
-        /// Check if a CHD file contains a GD-ROM image.
-        /// </summary>
         public static bool IsGdRomChd(string chdPath)
         {
             try
@@ -201,9 +184,7 @@ namespace GDMENUCardManager.Core
             }
         }
 
-        /// <summary>
-        /// Extract track data from CHD to a file, reading in batches for memory efficiency.
-        /// </summary>
+        // Batched so a full GD-ROM track never has to be held in memory at once.
         private static void ExtractTrackData(
             ChdReader chd,
             long startSector,
@@ -235,10 +216,7 @@ namespace GDMENUCardManager.Core
             }
         }
 
-        /// <summary>
-        /// Byte-swap 16-bit audio samples (big-endian to little-endian).
-        /// CHD v5+ stores audio big-endian. BIN/RAW files expect little-endian.
-        /// </summary>
+        // CHD v5 and later store audio big-endian, but BIN/RAW want little-endian.
         private static void SwapAudioEndianness(byte[] data)
         {
             for (int i = 0; i < data.Length - 1; i += 2)
@@ -249,19 +227,12 @@ namespace GDMENUCardManager.Core
             }
         }
 
-        /// <summary>
-        /// Calculate the extra zero-filled alignment frames chdman appends
-        /// after a track to round up to a 4-frame boundary.
-        /// </summary>
+        // Extra frames chdman appends to round a track up to a 4-frame boundary.
         private static int GetExtraFrames(int totalFrames)
         {
             return ((totalFrames + TrackPadding - 1) / TrackPadding) * TrackPadding - totalFrames;
         }
 
-        /// <summary>
-        /// Convert frame count to CUE MSF format (MM:SS:FF).
-        /// 75 frames per second, 60 seconds per minute.
-        /// </summary>
         private static string FramesToMsf(int frames)
         {
             int minutes = frames / (75 * 60);

@@ -13,10 +13,9 @@
 /* Missing on sh-elf-gcc 9.1 ? */
 char* strdup(const char* s);
 
-// this is an example of how to do a LRU cache in C using uthash
-// http://uthash.sourceforge.net/
-// by Jehiah Czebotar 2011 - jehiah@gmail.com
-// this code is in the public domain http://unlicense.org/
+/* LRU cache in C using uthash, by Jehiah Czebotar 2011 <jehiah@gmail.com>.
+ * http://uthash.sourceforge.net/
+ * Public domain, http://unlicense.org/ */
 
 void
 cache_set_size(cache_instance* cache, int size) {
@@ -46,7 +45,7 @@ find_in_cache(cache_instance* cache, const char* key) {
     }
     HASH_FIND_STR(cache->cache, key, entry);
     if (entry) {
-        // remove it (so the subsequent add will throw it on the front of the list)
+        /* Remove it, so the add below puts it back on the front of the list. */
         if (entry != cache->cache) {
             HASH_DELETE(hh, cache->cache, entry);
             HASH_ADD_STR(cache->cache, key, entry);
@@ -80,11 +79,10 @@ add_to_cache(cache_instance* cache, const char* key, int value) {
     new_entry = entry;
     HASH_ADD_STR(cache->cache, key, entry);
 
-    // prune the cache to cache_max_size
+    /* Prune the cache down to cache_max_size. */
     if (HASH_COUNT(cache->cache) > cache->cache_max_size) {
         HASH_ITER(hh, cache->cache, entry, tmp_entry) {
-            // prune the first entry (loop is based on insertion order so this deletes
-            // the oldest item)
+            /* The loop runs in insertion order, so the first entry is the oldest. */
             HASH_DELETE(hh, cache->cache, entry);
             DBG_PRINT("-del_from_cache( %s )\n", key);
             if (cache->callback_del) {
@@ -106,7 +104,7 @@ void
 empty_cache(cache_instance* cache) {
     struct CacheEntry *entry, *tmp_entry;
     HASH_ITER(hh, cache->cache, entry, tmp_entry) {
-        // prune all entries
+        /* Prune every entry. */
         HASH_DELETE(hh, cache->cache, entry);
         DBG_PRINT("-del_from_cache( %s )\n", key);
         if (cache->callback_del) {

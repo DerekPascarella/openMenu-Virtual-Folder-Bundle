@@ -19,6 +19,14 @@ if %ERRORLEVEL% neq 0 (
     pause
     exit /b 1
 )
+
+REM Normalize XAML line endings (dotnet format only handles C#).
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0normalize-xaml.ps1"
+if %ERRORLEVEL% neq 0 (
+    echo ERROR: XAML normalization failed
+    pause
+    exit /b 1
+)
 echo.
 
 REM Clean previous build
@@ -43,7 +51,7 @@ echo Copying additional files...
 
 REM Copy tools directory from Core project
 xcopy /E /I /Y src\GDMENUCardManager.Core\tools "%OUTPUT_DIR%\tools\"
-REM never ship user-generated menu options files
+REM Never ship user-generated menu options files.
 del /Q "%OUTPUT_DIR%\tools\openMenu\menu_data\DEFAULTS.INI" "%OUTPUT_DIR%\tools\openMenu\menu_data\BGM.ADP" 2>nul
 
 REM Copy redump2cdi tool for CUE/BIN conversion

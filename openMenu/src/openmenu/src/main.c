@@ -32,6 +32,7 @@
 #include <openmenu_savefile.h>
 #include <openmenu_settings.h>
 #include "backend/gdemu_sdk.h"
+#include "backend/last_game.h"
 #include "ui/common.h"
 #include "ui/dc/input.h"
 #include "ui/dc/pvr_texture.h"
@@ -62,34 +63,31 @@ show_loading_screen(void) {
     uint32_t width, height, format;
     pvr_ptr_t texture;
 
-    /* Load the loading screen texture */
     texture = load_pvr("FONT/LOADING.PVR", &width, &height, &format);
     if (!texture) {
-        /* Failed to load - just skip the loading screen */
+        /* No loading screen is not worth failing the boot over. */
         return;
     }
 
-    /* Calculate centered position (640x480 screen, 128x128 image) */
+    /* Centered on a 640x480 screen. */
     const float x1 = (640.0f - (float)width) / 2.0f;
     const float y1 = (480.0f - (float)height) / 2.0f;
     const float x2 = x1 + (float)width;
     const float y2 = y1 + (float)height;
     const float z = 1.0f;
 
-    /* Render one frame with the loading texture */
     pvr_wait_ready();
     pvr_scene_begin();
 
     pvr_list_begin(PVR_LIST_OP_POLY);
 
-    /* Set up textured polygon */
     pvr_poly_cxt_t cxt;
     pvr_poly_hdr_t hdr;
     pvr_poly_cxt_txr(&cxt, PVR_LIST_OP_POLY, format, width, height, texture, PVR_FILTER_BILINEAR);
     pvr_poly_compile(&hdr, &cxt);
     pvr_prim(&hdr, sizeof(hdr));
 
-    /* Draw quad vertices (triangle strip order) */
+    /* Triangle strip order. */
     pvr_vertex_t vert;
 
     vert.flags = PVR_CMD_VERTEX;
@@ -124,7 +122,7 @@ show_loading_screen(void) {
     pvr_list_finish();
     pvr_scene_finish();
 
-    /* Free the texture - we don't need it after this */
+    /* The loading screen is never drawn again, so give the VRAM straight back. */
     pvr_mem_free(texture);
 }
 
@@ -189,7 +187,6 @@ ui_set_choice(int choice) {
     current_ui_draw_TR = ui_choices[choice].drawTR;
     current_ui_handle_input = ui_choices[choice].handle_input;
 
-    /* Call init & setup */
     (*current_ui_init)();
     (*current_ui_setup)();
 }
@@ -282,7 +279,6 @@ static int
 init() {
     int ret = 0;
 
-    /* Load settings */
     savefile_init();
 
     ret += txr_create_small_pool();
@@ -320,6 +316,9 @@ init() {
 
     /* setup internal memory zones */
     draw_init();
+
+    /* The UI setup coming up is the one allowed to jump to the last game */
+    last_game_arm();
 
     /* Load UI */
     ui_set_choice(sf_ui[0]);
@@ -484,7 +483,7 @@ translate_input(void) {
         uint8_t mods = INPT_KeyboardModifiers();
         bool shift_held = (mods & KBD_MOD_LSHIFT) || (mods & KBD_MOD_RSHIFT);
 
-        /* Arrow keys → D-Pad (always active, even with Shift) */
+        /* Arrow keys -> D-Pad (always active, even with Shift) */
         if (INPT_KeyboardButton(KBD_KEY_LEFT)) {
             return LEFT;
         }
@@ -499,7 +498,7 @@ translate_input(void) {
         }
 
         if (!shift_held) {
-            /* Letter keys → button mappings (disabled when Shift held for quick-jump) */
+            /* Letter keys -> button mappings (disabled when Shift held for quick-jump) */
             if (INPT_KeyboardButtonPress(KBD_KEY_Z)) {
                 return A;
             }
@@ -520,7 +519,7 @@ translate_input(void) {
             }
         }
 
-        /* Non-letter keys → button mappings (always active, not quick-jump targets) */
+        /* Non-letter keys -> button mappings (always active, not quick-jump targets) */
         if (INPT_KeyboardButtonPress(KBD_KEY_SPACE)) {
             return A;
         }
@@ -662,6 +661,9 @@ exit_to_bios_ex(int do_mount, int do_send_id) {
     /* Folders have disc="DIR" and product[0]='F' */
     if (item && strncmp(item->disc, "DIR", 3) != 0 && item->product[0] != 'F') {
         if (do_mount) {
+            /* Mounting to play counts as a launch for the history */
+            launch_history_record(item);
+
             /* Mount the disc image */
             gdemu_set_img_num((uint16_t)item->slot_num);
 

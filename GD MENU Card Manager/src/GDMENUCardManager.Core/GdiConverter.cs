@@ -10,8 +10,8 @@ using System.Threading.Tasks;
 namespace GDMENUCardManager.Core
 {
     /// <summary>
-    /// Converts Redump GD-ROM CUE/BIN format to GDI format.
-    /// Based on convertredumptogdi logic.
+    /// Port of convertredumptogdi. The "numN in original" notes below refer to variables in that
+    /// tool.
     /// </summary>
     public static class GdiConverter
     {
@@ -19,13 +19,9 @@ namespace GDMENUCardManager.Core
         private const int HighDensityAreaLba = 45000;
 
         /// <summary>
-        /// Convert a GD-ROM CUE/BIN to GDI format.
+        /// Writes track files plus disc.gdi into outputDirectory.
         /// </summary>
-        /// <param name="cuePath">Path to the CUE file</param>
-        /// <param name="outputDirectory">Directory to write GDI files to</param>
-        /// <param name="progress">Optional progress callback (0-100)</param>
-        /// <param name="cancellationToken">Optional cancellation token</param>
-        /// <returns>Success status and error message if failed</returns>
+        /// <param name="progress">Reported as 0-100.</param>
         public static Task<(bool Success, string Message)> ConvertToGdi(
             string cuePath,
             string outputDirectory,
@@ -46,7 +42,7 @@ namespace GDMENUCardManager.Core
         {
             try
             {
-                // Parse the CUE file using our enhanced parser that tracks index count
+                // Local parser, because CueSheetParser does not keep per-track index counts.
                 var cueData = ParseCueFile(cuePath);
 
                 if (cueData.Tracks.Count == 0)
@@ -54,14 +50,12 @@ namespace GDMENUCardManager.Core
                     return (false, "No tracks found in CUE file");
                 }
 
-                // Check if this is a GD-ROM (has HIGH-DENSITY AREA comment)
                 bool isGdRom = cueData.Tracks.Any(t => t.Comments.Contains("HIGH-DENSITY AREA"));
                 if (!isGdRom)
                 {
                     return (false, "This is not a GD-ROM CUE/BIN. Use redump2cdi for CD-ROM images.");
                 }
 
-                // Create output directory if it doesn't exist
                 if (!Directory.Exists(outputDirectory))
                     Directory.CreateDirectory(outputDirectory);
 
@@ -93,15 +87,14 @@ namespace GDMENUCardManager.Core
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    // Get the source BIN file path
                     string sourceBinPath = Path.Combine(cueData.Directory, track.DataFilename);
                     if (!File.Exists(sourceBinPath))
                     {
                         return (false, $"BIN file not found: {track.DataFilename}");
                     }
 
-                    // Determine output filename: track0X.bin for data, track0X.raw for audio
-                    // Original format string "track0{0}.{1}" literally puts "0" before the track number.
+                    // The original's format string "track0{0}.{1}" puts a literal 0 before the
+                    // track number, so track 10 became track010.bin. D2 reproduces that.
                     string extension = track.IsAudio ? "raw" : "bin";
                     string outputFilename = $"track{track.TrackNumber:D2}.{extension}";
                     string outputPath = Path.Combine(outputDirectory, outputFilename);
@@ -156,26 +149,24 @@ namespace GDMENUCardManager.Core
                         }
                     }
 
-                    // Original logic: if track has only one index, copy entire file
-                    // If track has multiple indices (INDEX 00 and INDEX 01), skip to INDEX 01 position
+                    // One index means copy the file whole. Two means skip to INDEX 01.
                     bool hasOnlyOneIndex = track.Indices.Count == 1;  // num2 != 0 in original
 
                     if (hasOnlyOneIndex)
                     {
-                        // Copy entire file
                         await CopyFileAsync(sourceBinPath, outputPath, cancellationToken);
                         var fileInfo = new FileInfo(sourceBinPath);
                         sectorCount = (int)(fileInfo.Length / SectorSize);
                     }
                     else
                     {
-                        // Has pregap, so get INDEX 01 position and skip to it.
-                        // Original uses track.Indices[1] which is the second index (INDEX 01)
+                        // The original indexes Indices[1] positionally. This looks up INDEX 01
+                        // by number instead, which is equivalent for well-formed cues.
                         var index01 = track.Indices.FirstOrDefault(i => i.Number == 1);
                         int framesToSkip = index01?.TotalFrames ?? 0;
 
                         sectorCount = await CopyFileWithOffsetAsync(sourceBinPath, outputPath, framesToSkip, cancellationToken);
-                        currentLba += framesToSkip;  // Add skipped frames to LBA
+                        currentLba += framesToSkip;
                     }
 
                     // GDI line format: track# LBA type 2352 filename offset
@@ -183,7 +174,7 @@ namespace GDMENUCardManager.Core
                     int trackType = track.IsAudio ? 0 : 4;
                     gdiContent.AppendLine($"{track.TrackNumber} {currentLba} {trackType} 2352 {outputFilename} 0");
 
-                    // Add sector count AFTER writing the line (matching original)
+                    // Sector count is added after the line is written, matching the original.
                     currentLba += sectorCount;
 
                     // Check for HIGH-DENSITY AREA marker AFTER adding sector count (matching original)
@@ -196,7 +187,6 @@ namespace GDMENUCardManager.Core
                     progress?.Report((processedTracks * 100) / trackCount);
                 }
 
-                // Write disc.gdi file
                 string gdiPath = Path.Combine(outputDirectory, "disc.gdi");
                 await File.WriteAllTextAsync(gdiPath, gdiContent.ToString(), cancellationToken);
 
@@ -212,9 +202,7 @@ namespace GDMENUCardManager.Core
             }
         }
 
-        /// <summary>
-        /// Parse CUE file with full index tracking (matching CueSharp behavior).
-        /// </summary>
+        // Full index tracking, which CueSharp does and CueSheetParser does not.
         private static CueData ParseCueFile(string cuePath)
         {
             var cueData = new CueData
@@ -287,9 +275,7 @@ namespace GDMENUCardManager.Core
             return cueData;
         }
 
-        /// <summary>
-        /// Split a CUE line, handling quoted strings.
-        /// </summary>
+        // Splits on spaces, but a quoted filename stays one token.
         private static string[] SplitCueLine(string line)
         {
             var parts = new List<string>();
@@ -322,9 +308,6 @@ namespace GDMENUCardManager.Core
             return parts.ToArray();
         }
 
-        /// <summary>
-        /// Parse MSF (MM:SS:FF) timestamp to total frames.
-        /// </summary>
         private static int ParseMsfToFrames(string msf)
         {
             var parts = msf.Split(':');
@@ -339,9 +322,6 @@ namespace GDMENUCardManager.Core
             return (minutes * 60 * 75) + (seconds * 75) + frames;
         }
 
-        /// <summary>
-        /// Copy a file asynchronously.
-        /// </summary>
         private static async Task CopyFileAsync(string source, string destination, CancellationToken cancellationToken)
         {
             const int bufferSize = 81920; // 80KB buffer
@@ -351,10 +331,7 @@ namespace GDMENUCardManager.Core
             await sourceStream.CopyToAsync(destStream, bufferSize, cancellationToken);
         }
 
-        /// <summary>
-        /// Copy a file with an offset (skip frames from start).
-        /// Returns the number of sectors written.
-        /// </summary>
+        // Offset is in frames, not bytes. Returns sectors written.
         private static async Task<int> CopyFileWithOffsetAsync(string source, string destination, int framesToSkip, CancellationToken cancellationToken)
         {
             const int bufferSize = 81920; // 80KB buffer
@@ -374,9 +351,6 @@ namespace GDMENUCardManager.Core
             return sectorsToWrite;
         }
 
-        /// <summary>
-        /// Check if a CUE file represents a GD-ROM image.
-        /// </summary>
         public static bool IsGdRomCue(string cuePath)
         {
             try

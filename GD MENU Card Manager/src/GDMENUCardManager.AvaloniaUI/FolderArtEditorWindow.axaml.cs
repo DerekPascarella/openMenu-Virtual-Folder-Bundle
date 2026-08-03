@@ -370,7 +370,7 @@ namespace GDMENUCardManager
             }
             catch (InvalidOperationException ex)
             {
-                // hash collision, show the message
+                // Hash collision, show the message.
                 await MessageBoxManager.GetMessageBoxStandard("Error", ex.Message,
                     icon: MsBox.Avalonia.Enums.Icon.Error).ShowWindowDialogAsync(this);
             }

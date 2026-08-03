@@ -162,9 +162,6 @@ namespace GDMENUCardManager.Core
             return track;
         }
 
-        /// <summary>
-        /// Read a single 2352-byte sector from the CHD at the given absolute sector index.
-        /// </summary>
         public byte[] ReadSector(long sectorIndex)
         {
             int framesPerHunk = (int)(Header.HunkBytes / ChdFrameSize);
@@ -189,8 +186,7 @@ namespace GDMENUCardManager.Core
         }
 
         /// <summary>
-        /// Read a range of sectors efficiently, reusing the hunk buffer.
-        /// Returns raw 2352-byte sector data concatenated.
+        /// Sectors are returned concatenated, 2352 bytes each, subcode stripped.
         /// </summary>
         public byte[] ReadSectors(long startSector, int count)
         {
@@ -226,10 +222,8 @@ namespace GDMENUCardManager.Core
         }
 
         /// <summary>
-        /// Extract the IP.BIN data from the appropriate data track.
-        /// For GD-ROM: first data track in the high-density area (TrackNumber >= 3).
-        /// For CD-ROM: first data track.
-        /// Returns raw 2352-byte sector data.
+        /// Reads the raw 2352-byte sector holding IP.BIN. Caller has to skip the 16-byte MODE1
+        /// header itself.
         /// </summary>
         public byte[] GetIpBin()
         {
@@ -243,9 +237,8 @@ namespace GDMENUCardManager.Core
 
             if (IsGdRom)
             {
-                // For GD-ROM, IP.BIN is at the start of the high-density area (track 3+).
-                // chdman pads each track to a 4-frame boundary with zero-filled sectors
-                // that ARE stored in the CHD data stream, so we must account for them.
+                // IP.BIN sits at the start of the high-density area, track 3 or later. The
+                // 4-frame alignment padding is stored in the stream, so it has to be counted.
                 foreach (var track in Tracks)
                 {
                     if (track.IsData && track.TrackNumber >= 3)
@@ -258,7 +251,6 @@ namespace GDMENUCardManager.Core
             }
             else
             {
-                // For CD-ROM, IP.BIN is in the first data track.
                 foreach (var track in Tracks)
                 {
                     if (track.IsData)
@@ -272,21 +264,13 @@ namespace GDMENUCardManager.Core
             throw new Exception("No data track found in CHD file");
         }
 
-        /// <summary>
-        /// Calculate the number of extra zero-filled alignment frames chdman appends
-        /// after a track to round up to a TrackPadding (4) frame boundary.
-        /// These frames ARE stored in the CHD data stream.
-        /// </summary>
+        // Extra frames chdman appends to round a track up to a 4-frame boundary. They are
+        // stored in the stream, so every offset calculation has to include them.
         private static int GetExtraFrames(int frames)
         {
             return ((frames + TrackPadding - 1) / TrackPadding) * TrackPadding - frames;
         }
 
-        /// <summary>
-        /// Calculate the absolute sector offset for the start of a given track's data.
-        /// Each track's allocation in the CHD includes its FRAMES (which includes PAD)
-        /// plus extra alignment frames (chdman pads to 4-frame boundaries).
-        /// </summary>
         public long GetTrackDataStartSector(int trackIndex)
         {
             long currentSector = 0;

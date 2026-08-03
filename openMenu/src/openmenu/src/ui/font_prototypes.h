@@ -39,6 +39,7 @@ void font_bmp_set_color(uint32_t color);
 void font_bmp_set_color_components(int r, int g, int b, int a);
 
 void font_bmp_draw_main(int x, int y, const char* str);
+void font_bmp_draw_window(int x, int y, int window_w, float scroll_px, const char* str);
 void font_bmp_draw_sub(int x, int y, const char* str);
 void font_bmp_draw_sub_wrap(int x, int y, const char* str, int width);
 void font_bmp_draw_auto_size(int x, int y, const char* str, int width);

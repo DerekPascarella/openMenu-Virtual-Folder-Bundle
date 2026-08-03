@@ -1,7 +1,7 @@
 #!/bin/bash
 # Creates a proper macOS .app bundle from dotnet publish output
 # Usage: ./create-macos-bundle.sh <publish_output_dir> <version> <output_dir> [arch]
-# arch defaults to "x64" if not specified
+# Arch defaults to "x64" if not specified.
 
 set -e
 

@@ -18,15 +18,21 @@ namespace GDMENUCardManager.Core
 
     // Loads the compact TOSEC DC blob into memory on first use, then serves
     // O(1) lookups by Track 1 CRC32. Aggregates all 31 DC DATs (JP/US/PAL
-    // games, demos, applications, dev builds, homebrew, multimedia, samplers).
+    // Games, demos, applications, dev builds, homebrew, multimedia, samplers).
     // A missing or unreadable blob disables the TOSEC path. Conversion falls
     // back to the standard strip-path behavior.
+    /// <summary>
+    /// Per-track CRC32, MD5 and size from the TOSEC DAT, keyed by the track 1 CRC32.
+    /// </summary>
     public static class TosecDatLookup
     {
         private static readonly object _initLock = new object();
         private static Dictionary<uint, TosecDiscEntry> _byT1Crc;
         private static bool _initialized;
 
+        /// <summary>
+        /// Null is normal and simply disables byte-exact reconstruction.
+        /// </summary>
         public static TosecDiscEntry LookupByT1Crc32(uint t1Crc32)
         {
             EnsureLoaded();

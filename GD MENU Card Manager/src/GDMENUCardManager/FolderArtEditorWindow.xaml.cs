@@ -309,7 +309,7 @@ namespace GDMENUCardManager
             }
             catch (InvalidOperationException ex)
             {
-                // hash collision, show the message
+                // Hash collision, show the message.
                 MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
             catch

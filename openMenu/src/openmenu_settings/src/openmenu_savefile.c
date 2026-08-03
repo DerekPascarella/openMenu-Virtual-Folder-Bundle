@@ -101,14 +101,20 @@ savefile_defaults() {
     sf_serial_vmu_multislot[0] = SERIAL_VMU_MULTISLOT_OFF;
     sf_music[0] = MUSIC_ON;
     sf_honor_defaults[0] = HONOR_DEFAULTS_ON;
+    sf_recently_played[0] = RECENTLY_PLAYED_OFF;
+    memset(sf_recent_games, 0, sf_recent_games_length);
+    sf_remember_last_game[0] = REMEMBER_LAST_GAME_OFF;
+    memset(sf_last_game, 0, sf_last_game_length);
+    memset(sf_last_game_product, 0, sf_last_game_product_length);
+    memset(sf_last_game_folder, 0, sf_last_game_folder_length);
+    memset(sf_last_game_filter, 0, sf_last_game_filter_length);
 }
 
-// THIS IS USED BY THE CRAYON SAVEFILE DESERIALISER WHEN LOADING A SAVE FROM AN OLDER VERSION
-// THERE IS NO NEED TO CALL THIS MANUALLY
+/* Called by crayon_savefile_deserialise_savedata() when loading a save written
+ * by an older version. Never call this directly. */
 int8_t
 update_savefile(void** loaded_variables, crayon_savefile_version_t loaded_version,
                 crayon_savefile_version_t latest_version) {
-    /* Track if any migration occurred */
     if (loaded_version < latest_version) {
         savefile_was_migrated = true;
     }
@@ -167,6 +173,17 @@ update_savefile(void** loaded_variables, crayon_savefile_version_t loaded_versio
     if (loaded_version < SFV_HONOR_DEFAULTS) {
         sf_honor_defaults[0] = HONOR_DEFAULTS_ON;
     }
+    if (loaded_version < SFV_RECENTLY_PLAYED) {
+        sf_recently_played[0] = RECENTLY_PLAYED_OFF;
+        memset(sf_recent_games, 0, sf_recent_games_length);
+    }
+    if (loaded_version < SFV_REMEMBER_LAST_GAME) {
+        sf_remember_last_game[0] = REMEMBER_LAST_GAME_OFF;
+        memset(sf_last_game, 0, sf_last_game_length);
+        memset(sf_last_game_product, 0, sf_last_game_product_length);
+        memset(sf_last_game_folder, 0, sf_last_game_folder_length);
+        memset(sf_last_game_filter, 0, sf_last_game_filter_length);
+    }
     return 0;
 }
 
@@ -178,8 +195,8 @@ setup_savefile_internal(crayon_savefile_details_t* details, bool skip_vmu_lcd) {
 #if defined(_arch_pc)
     crayon_savefile_set_base_path("saves/");
 #else
-    crayon_savefile_set_base_path(NULL); // Dreamcast ignores the parameter anyways
-    // (Assumes "/vmu/") so it's still fine to do the method above for all platforms
+    crayon_savefile_set_base_path(NULL); /* Dreamcast ignores the parameter and assumes
+                                          * "/vmu/", so this is fine on every platform. */
 #endif
     error =
         crayon_savefile_init_savefile_details(details, "OPENMENU.SYS", SFV_CURRENT, savefile_defaults, update_savefile);
@@ -250,6 +267,20 @@ setup_savefile_internal(crayon_savefile_details_t* details, bool skip_vmu_lcd) {
     crayon_savefile_add_variable(details, &sf_music, sf_music_type, sf_music_length, SFV_MUSIC, VAR_STILL_PRESENT);
     crayon_savefile_add_variable(details, &sf_honor_defaults, sf_honor_defaults_type, sf_honor_defaults_length,
                                  SFV_HONOR_DEFAULTS, VAR_STILL_PRESENT);
+    crayon_savefile_add_variable(details, &sf_recently_played, sf_recently_played_type, sf_recently_played_length,
+                                 SFV_RECENTLY_PLAYED, VAR_STILL_PRESENT);
+    crayon_savefile_add_variable(details, &sf_recent_games, sf_recent_games_type, sf_recent_games_length,
+                                 SFV_RECENTLY_PLAYED, VAR_STILL_PRESENT);
+    crayon_savefile_add_variable(details, &sf_remember_last_game, sf_remember_last_game_type,
+                                 sf_remember_last_game_length, SFV_REMEMBER_LAST_GAME, VAR_STILL_PRESENT);
+    crayon_savefile_add_variable(details, &sf_last_game, sf_last_game_type, sf_last_game_length, SFV_REMEMBER_LAST_GAME,
+                                 VAR_STILL_PRESENT);
+    crayon_savefile_add_variable(details, &sf_last_game_product, sf_last_game_product_type, sf_last_game_product_length,
+                                 SFV_REMEMBER_LAST_GAME, VAR_STILL_PRESENT);
+    crayon_savefile_add_variable(details, &sf_last_game_folder, sf_last_game_folder_type, sf_last_game_folder_length,
+                                 SFV_REMEMBER_LAST_GAME, VAR_STILL_PRESENT);
+    crayon_savefile_add_variable(details, &sf_last_game_filter, sf_last_game_filter_type, sf_last_game_filter_length,
+                                 SFV_REMEMBER_LAST_GAME, VAR_STILL_PRESENT);
 
     if (crayon_savefile_solidify(details)) {
         return 1;
@@ -298,7 +329,7 @@ savefile_init() {
     /* DEBUG: Dark Magenta (128,0,128) = after sd_savefile_init */
     DFLASH_SF(128, 0, 128);
 
-    /* Try SD card first (higher priority) */
+    /* SD wins over VMU when both hold a save. */
     if (sd_savefile_available()) {
         SD_STATUS status = sd_savefile_get_status();
         if (status == SD_STATUS_READY || status == SD_STATUS_OLD || status == SD_STATUS_FUTURE) {
@@ -329,7 +360,7 @@ savefile_init() {
         }
     }
 
-    /* SD not available or no valid SD save - fall back to VMU */
+    /* No usable SD save, so fall back to the VMU. */
     /* DEBUG: Dark Red (128,0,0) = before has_any_vmu */
     DFLASH_SF(128, 0, 0);
 
@@ -347,22 +378,18 @@ savefile_init() {
         /* DEBUG: Bright Pink (255,128,128) = before find_first_valid_savefile_device */
         DFLASH_SF(255, 128, 128);
 
-        /* Find VMU device */
         int8_t device_res = find_first_valid_savefile_device(&savefile_details);
 
         /* DEBUG: Light Green (128,255,128) = after find_first_valid_savefile_device */
         DFLASH_SF(128, 255, 128);
 
         if (!setup_res && !device_res) {
-            /* Found a valid VMU device - try to load from it */
             savefile_was_migrated = false;
             int8_t load_res = crayon_savefile_load_savedata(&savefile_details);
 
             if (load_res == 0) {
-                /* Successfully loaded from VMU */
                 settings_sanitize();
 
-                /* Remember which device we loaded from at startup */
                 startup_device_id = savefile_details.save_device_id;
 
                 /* Only auto-save if migration from older version occurred */
@@ -421,7 +448,6 @@ savefile_init() {
     }
 #endif
 
-    /* No valid save found anywhere - use defaults */
     savefile_defaults();
     settings_sanitize();
 }
@@ -447,17 +473,17 @@ vmu_beep(int8_t save_device_id, uint32_t beep) {
 
     vec2_s8_t port_and_slot = crayon_peripheral_dreamcast_get_port_and_slot(save_device_id);
 
-    // Invalid controller/port
+    /* Invalid controller or port. */
     if (port_and_slot.x < 0) {
         return -1;
     }
 
-    // Make sure there's a device in the port/slot
+    /* Make sure a device is actually in that port and slot. */
     if (!((vmu = maple_enum_dev(port_and_slot.x, port_and_slot.y)))) {
         return -1;
     }
 
-    // Check the device is valid and it has a certain function
+    /* The device has to be valid and expose the function being asked for. */
     if (!vmu->valid) {
         return -1;
     }
@@ -469,7 +495,7 @@ vmu_beep(int8_t save_device_id, uint32_t beep) {
 }
 
 #if defined(_arch_dreamcast) && OPENMENU_ICONS
-/* Thread function to restore VMU icon after delay */
+/* Restores the VMU icon after the launch animation has had time to finish. */
 static void*
 vmu_icon_restore_thread(void* param) {
     (void)param;

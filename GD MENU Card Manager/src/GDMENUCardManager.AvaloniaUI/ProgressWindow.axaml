@@ -13,7 +13,10 @@
       <RowDefinition Height="20"/>
       <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
-    <ProgressBar Grid.Row="0" IsIndeterminate="True"/>
+    <ProgressBar Grid.Row="0" Minimum="0"
+                 IsIndeterminate="{Binding Path=IsIndeterminate, Mode=OneWay}"
+                 Maximum="{Binding Path=TotalItems, Mode=OneWay}"
+                 Value="{Binding Path=ProcessedItems, Mode=OneWay}"/>
     <Label Grid.Row="1" Margin="0,0,0,6" Content="{Binding Path=TextContent, Mode=OneWay}"/>
   </Grid>
 

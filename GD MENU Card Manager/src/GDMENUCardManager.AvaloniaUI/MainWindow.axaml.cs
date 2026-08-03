@@ -149,6 +149,63 @@ namespace GDMENUCardManager
             set { Manager.EnableRegionPatchExisting = value; RaisePropertyChanged(); }
         }
 
+        private bool _HaveGDIShrinkBlacklist;
+        public bool HaveGDIShrinkBlacklist
+        {
+            get { return _HaveGDIShrinkBlacklist; }
+            set { _HaveGDIShrinkBlacklist = value; RaisePropertyChanged(); }
+        }
+
+        public bool EnableGDIShrink
+        {
+            get { return Manager.EnableGDIShrink; }
+            set { Manager.EnableGDIShrink = value; RaisePropertyChanged(); RaiseShrinkSubOptions(); }
+        }
+
+        public bool EnableGDIShrinkExisting
+        {
+            get { return Manager.EnableGDIShrinkExisting; }
+            set { Manager.EnableGDIShrinkExisting = value; RaisePropertyChanged(); RaiseShrinkSubOptions(); }
+        }
+
+        public bool EnableGDIShrinkCompressed
+        {
+            get { return Manager.EnableGDIShrinkCompressed; }
+            set { Manager.EnableGDIShrinkCompressed = value; RaisePropertyChanged(); RaiseShrinkSubOptions(); }
+        }
+
+        public bool EnableGDIShrinkBlackList
+        {
+            get { return Manager.EnableGDIShrinkBlackList; }
+            set { Manager.EnableGDIShrinkBlackList = value; RaisePropertyChanged(); RaiseShrinkSubOptions(); }
+        }
+
+        // The sub options read as unchecked while the option they depend on is
+        // off, and write only their own stored value.
+        public bool ShrinkCompressedChecked
+        {
+            get { return Manager.EnableGDIShrinkCompressed && Manager.EnableGDIShrink; }
+            set { EnableGDIShrinkCompressed = value; }
+        }
+
+        public bool ShrinkBlacklistChecked
+        {
+            get { return Manager.EnableGDIShrinkBlackList && ShrinkBlacklistEnabled; }
+            set { EnableGDIShrinkBlackList = value; }
+        }
+
+        public bool ShrinkBlacklistEnabled
+        {
+            get { return Manager.EnableGDIShrink || Manager.EnableGDIShrinkExisting; }
+        }
+
+        private void RaiseShrinkSubOptions()
+        {
+            RaisePropertyChanged(nameof(ShrinkCompressedChecked));
+            RaisePropertyChanged(nameof(ShrinkBlacklistChecked));
+            RaisePropertyChanged(nameof(ShrinkBlacklistEnabled));
+        }
+
         public bool EnableVgaPatch
         {
             get { return Manager.EnableVgaPatch; }
@@ -175,11 +232,11 @@ namespace GDMENUCardManager
         Border DropLine;
         Button ButtonSort;
 
-        // where a drop will land, worked out while the drag hovers and used when it lands.
+        // Where a drop will land, worked out while the drag hovers and used when it lands.
         // -1 means we have not settled on a spot yet.
         private int _pendingDropIndex = -1;
 
-        // row reorder drag state. the dragged items ride in _rowDragItems since source
+        // Row reorder drag state. The dragged items ride in _rowDragItems since source
         // and target are the same window, the marker format is there because macOS
         // refuses a drag that declares no types at all.
         private static readonly DataFormat<byte[]> RowDragFormat =
@@ -224,8 +281,8 @@ namespace GDMENUCardManager
             {
                 await CheckConfigWritability();
 
-                // on macOS, copy BOX.DAT, ICON.DAT, META.DAT from the bundle into
-                // ~/Library/Application Support/GDMENUCardManager/menu_data/ before anything loads
+                // On macOS, copy BOX.DAT, ICON.DAT, META.DAT from the bundle into
+                // ~/Library/Application Support/GDMENUCardManager/menu_data/ before anything loads.
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)
                     && MacOsDataMigration.NeedsFirstTimeDatSetup())
                 {
@@ -272,7 +329,7 @@ namespace GDMENUCardManager
             Manager.ItemList.CollectionChanged += ItemList_CollectionChanged;
             Manager.MenuKindChanged += Manager_MenuKindChanged;
 
-            //config parsing. all settings are optional and must reverse to default values if missing
+            // Config parsing. All settings are optional and must reverse to default values if missing.
             bool.TryParse(ConfigurationManager.AppSettings["ShowAllDrives"], out showAllDrives);
             bool.TryParse(ConfigurationManager.AppSettings["Debug"], out Manager.debugEnabled);
             if (bool.TryParse(ConfigurationManager.AppSettings["UseBinaryString"], out bool useBinaryString))
@@ -287,6 +344,7 @@ namespace GDMENUCardManager
                 Manager.EnableLockCheck = lockCheck;
 
             // Disc Image Options
+            HaveGDIShrinkBlacklist = File.Exists(Constants.GdiShrinkBlacklistFile);
             if (bool.TryParse(ConfigurationManager.AppSettings["EnableGDIShrink"], out bool gdiShrink))
                 Manager.EnableGDIShrink = gdiShrink;
             if (bool.TryParse(ConfigurationManager.AppSettings["EnableGDIShrinkCompressed"], out bool gdiShrinkCompressed))
@@ -346,8 +404,8 @@ namespace GDMENUCardManager
         {
             _blockContextMenu = false;
 
-            // a left press on a row may turn into a reorder drag, remember it until the
-            // pointer has moved far enough to count as one
+            // A left press on a row may turn into a reorder drag, remember it until the
+            // pointer has moved far enough to count as one.
             if (e.GetCurrentPoint(dg1).Properties.IsLeftButtonPressed)
             {
                 var pressSource = e.Source as Avalonia.Controls.Control;
@@ -384,7 +442,7 @@ namespace GDMENUCardManager
                 source = source.Parent as Avalonia.Controls.Control;
             }
 
-            // block context menu on menu entry (folder 01)
+            // Block context menu on menu entry (folder 01).
             if (clickedItem?.SdNumber == 1)
             {
                 _blockContextMenu = true;
@@ -392,9 +450,8 @@ namespace GDMENUCardManager
                 return;
             }
 
-            // Determine if multiple items will be selected after this click
-            // If clicked item is already in selection, use current selection count (excluding menu entry)
-            // If not, it will become a single selection
+            // Clicking an already-selected row keeps the multi-selection. Anything else
+            // collapses it to one.
             int count;
             if (dg1.SelectedItems.Contains(clickedItem))
             {
@@ -472,7 +529,7 @@ namespace GDMENUCardManager
 
         private void DataGrid_PointerReleased(object sender, Avalonia.Input.PointerReleasedEventArgs e)
         {
-            // released without crossing the drag threshold, so no reorder drag
+            // Released without crossing the drag threshold, so no reorder drag.
             _rowDragTrigger = null;
             _rowDragPressedItem = null;
 
@@ -504,14 +561,14 @@ namespace GDMENUCardManager
                 Math.Abs(current.Y - _rowDragStartPoint.Y) < 4)
                 return;
 
-            // dragging a row that is part of the selection moves the whole selection
+            // Dragging a row that is part of the selection moves the whole selection.
             var items = new List<GdItem>();
             if (dg1.SelectedItems != null && dg1.SelectedItems.Contains(_rowDragPressedItem) && dg1.SelectedItems.Count > 1)
                 items.AddRange(dg1.SelectedItems.OfType<GdItem>().OrderBy(x => Manager.ItemList.IndexOf(x)));
             else
                 items.Add(_rowDragPressedItem);
 
-            // the menu entry stays in slot 0, it does not get dragged
+            // The menu entry stays in slot 0, it does not get dragged.
             if (items.Count == 0 || items.Any(IsMenuEntry))
             {
                 _rowDragTrigger = null;
@@ -534,7 +591,7 @@ namespace GDMENUCardManager
             }
             catch (Exception)
             {
-                // a failed platform drag just cancels the move
+                // A failed platform drag just cancels the move.
             }
 
             _rowDragItems = null;
@@ -570,8 +627,8 @@ namespace GDMENUCardManager
                 if (MenuKindSelected == MenuKind.openMenu)
                 {
                     folderColumn.IsVisible = true;
-                    // setting the same star width back does nothing when the column was
-                    // hidden, so bounce it through Auto first to force the widths to redo
+                    // Setting the same star width back does nothing when the column was
+                    // hidden, so bounce it through Auto first to force the widths to redo.
                     folderColumn.Width = DataGridLength.Auto;
                     folderColumn.Width = new DataGridLength(1, DataGridLengthUnitType.Star);
                 }
@@ -697,7 +754,7 @@ namespace GDMENUCardManager
         {
             if (e.EditAction == DataGridEditAction.Cancel)
             {
-                // Edit was cancelled, no undo needed
+                // Edit was canceled, no undo needed
                 _editingItem = null;
                 _editingPropertyName = null;
                 _editingOldValue = null;
@@ -712,8 +769,7 @@ namespace GDMENUCardManager
             var propertyName = _editingPropertyName;
             var oldValue = _editingOldValue;
 
-            // Try to get the new value directly from the editing element
-            // This is more reliable than waiting for binding to update
+            // Read the editing element directly, since the binding may not have updated yet.
             object newValue = null;
             if (e.EditingElement is TextBox textBox)
             {
@@ -759,7 +815,7 @@ namespace GDMENUCardManager
                 // Revert the property in case binding already updated it
                 RevertProperty(item, propertyName, oldValue);
                 e.Cancel = true;
-                // keep editing state so the next commit attempt can validate
+                // Keep editing state so the next commit attempt can validate.
                 Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
                 {
                     await MessageBoxManager.GetMessageBoxStandard("Information",
@@ -781,16 +837,16 @@ namespace GDMENUCardManager
 
                 if (normalized == null || normalized == oldRegion)
                 {
-                    // invalid or unchanged input, silently put the old value back
+                    // Invalid or unchanged input, silently put the old value back.
                     SetEditingTextBoxText(e.EditingElement, oldRegion ?? "");
                     item.Region = oldRegion;
                     return;
                 }
 
-                // push the normalized value so the binding commits it (e.g. "ej" becomes "JE")
+                // push the normalized value so the binding commits it (e.g., "ej" becomes "JE")
                 SetEditingTextBoxText(e.EditingElement, normalized);
 
-                // no undo entry if the previous value wasn't a usable region
+                // No undo entry if the previous value wasn't a usable region.
                 if (oldRegion != null && GdItem.NormalizeRegion(oldRegion) == oldRegion)
                 {
                     Manager.UndoManager.RecordChange(new PropertyEditOperation
@@ -802,7 +858,7 @@ namespace GDMENUCardManager
                     });
                 }
 
-                // image gets patched to match on save
+                // Image gets patched to match on save.
                 item.Region = normalized;
                 return;
             }
@@ -815,7 +871,7 @@ namespace GDMENUCardManager
             // Only record if we got a new value and it's different from old
             if (newValue != null && !Equals(oldValue, newValue))
             {
-                // check if Folder edit conflicts with an alt folder
+                // Check if Folder edit conflicts with an alt folder.
                 if (propertyName == nameof(GdItem.Folder) && newValue is string newFolder)
                 {
                     var trimmed = newFolder.Trim();
@@ -1008,7 +1064,7 @@ namespace GDMENUCardManager
                     }
                     else
                     {
-                        // quit
+                        // Quit.
                         Close();
                         return;
                     }
@@ -1052,6 +1108,7 @@ namespace GDMENUCardManager
             var progressWindow = new ProgressWindow();
             progressWindow.Title = "Scanning Disc Images";
             progressWindow.TotalItems = items.Count;
+            progressWindow.IsIndeterminate = false;
             progressWindow.Show();
 
             var progress = new Progress<(int current, int total, string name)>(p =>
@@ -1280,7 +1337,7 @@ namespace GDMENUCardManager
                         return;
                     }
 
-                    // reset disc to 1/1 for items without serial
+                    // Reset disc to 1/1 for items without serial.
                     ResetDiscValuesForItemsWithoutSerial();
                 }
 
@@ -1540,7 +1597,7 @@ namespace GDMENUCardManager
             {
                 var config = ConfigurationManager.OpenExeConfiguration(System.Configuration.ConfigurationUserLevel.None);
 
-                // no RestoreBounds available, so save the current bounds
+                // No RestoreBounds available, so save the current bounds.
                 SetOrAddSetting(config, "WindowLeft", Position.X.ToString());
                 SetOrAddSetting(config, "WindowTop", Position.Y.ToString());
                 SetOrAddSetting(config, "WindowWidth", Width.ToString());
@@ -1567,7 +1624,7 @@ namespace GDMENUCardManager
             {
                 try
                 {
-                    // reorder drop. remove the dragged rows, walking the target index back
+                    // Reorder drop. Remove the dragged rows, walking the target index back.
                     // for each one that sat above it, then put them back at the target spot.
                     int moveIndex = pending >= 0 ? pending : DefaultDropIndex();
                     moveIndex = Math.Min(moveIndex, Manager.ItemList.Count);
@@ -1611,7 +1668,7 @@ namespace GDMENUCardManager
 
             if (e.DataTransfer.Contains(DataFormat.File))
             {
-                // land the drop where the guide line settled during the drag. the drop
+                // Land the drop where the guide line settled during the drag. The drop
                 // event position is not trustworthy on some setups, the hover position is.
                 int insertIndex = pending >= 0 ? pending : DefaultDropIndex();
                 insertIndex = Math.Min(insertIndex, Manager.ItemList.Count);
@@ -1623,7 +1680,7 @@ namespace GDMENUCardManager
 
                 try
                 {
-                    // dropped files arrive as storage items, take the real path off each
+                    // Dropped files arrive as storage items, take the real path off each.
                     var droppedItems = e.DataTransfer.TryGetFiles() ?? Array.Empty<IStorageItem>();
                     foreach (var storageItem in droppedItems)
                     {
@@ -1679,7 +1736,7 @@ namespace GDMENUCardManager
             }
         }
 
-        // the menu disc must stay in slot 0, so everything that protects that slot goes
+        // The menu disc must stay in slot 0, so everything that protects that slot goes
         // through this. IsMenuItem alone is not enough, it reads Ip which stays null for
         // lazy loaded items until a metadata scan runs, so check the cached name and the
         // folder number too, same as the context menu block.
@@ -1694,7 +1751,7 @@ namespace GDMENUCardManager
             return item.SdNumber == 1;
         }
 
-        // fallback spot when the pointer is not over a row. anything we can't place
+        // Fallback spot when the pointer is not over a row. Anything we can't place
         // goes to the end of the list.
         private int DefaultDropIndex()
         {
@@ -1736,10 +1793,10 @@ namespace GDMENUCardManager
             HideDropLine();
         }
 
-        // finds the row under the pointer and where an item would go. upper half of a row
-        // means above it, lower half below. the menu entry keeps slot 0, so a drop meant
+        // Finds the row under the pointer and where an item would go. Upper half of a row
+        // means above it, lower half below. The menu entry keeps slot 0, so a drop meant.
         // for the very top lands just under it instead. pointing at the open space under
-        // the last row means after that row. returns null when off the rows.
+        // The last row means after that row. Returns null when off the rows.
         private (DataGridRow Row, bool Below, int InsertIndex)? HitTestDropRow(DragEventArgs e)
         {
             try
@@ -1758,8 +1815,8 @@ namespace GDMENUCardManager
 
                 foreach (var row in dg1.GetVisualDescendants().OfType<DataGridRow>())
                 {
-                    // recycled rows from a previous card load stay parked in the visual
-                    // tree, invisible, holding items that are no longer in the list. they
+                    // Recycled rows from a previous card load stay parked in the visual
+                    // tree, invisible, holding items that are no longer in the list. They
                     // tile the empty area below the live rows, so they must not count as
                     // drop targets or as the bottom row.
                     if (!row.IsVisible)
@@ -1801,10 +1858,10 @@ namespace GDMENUCardManager
                     return (row, below, Math.Min(insertIndex, list.Count));
                 }
 
-                // pointer is somewhere under the rows, in the grid's empty space or past
+                // Pointer is somewhere under the rows, in the grid's empty space or past
                 // the bottom of the grid itself, both read as plain white space to the
-                // user. land the drop after the lowest row, which can only be the last
-                // item since rows fill the view when scrolled mid list. no lower bound
+                // user. Land the drop after the lowest row, which can only be the last
+                // item since rows fill the view when scrolled mid list. No lower bound
                 // on y, anything below the last row within the grid's width means append.
                 if (bottomRow != null && y >= bottomEdge &&
                     pos.X >= 0 && pos.X < dg1.Bounds.Width)
@@ -1949,7 +2006,7 @@ namespace GDMENUCardManager
                 if (item == null || !item.CanManageArtwork)
                     return;
 
-                // handle serial translation before opening artwork window
+                // Handle serial translation before opening artwork window.
                 if (item.WasSerialTranslated)
                 {
                     _handlingSerialTranslation = true;
@@ -2113,7 +2170,7 @@ namespace GDMENUCardManager
 
                 if (window.FolderMappings != null)
                 {
-                    // snapshot before applying
+                    // Snapshot before applying.
                     var snapshots = Manager.ItemList.Select(i => new BatchFolderRenameOperation.ItemSnapshot
                     {
                         Item = i,
@@ -2128,7 +2185,7 @@ namespace GDMENUCardManager
 
                     if (updatedCount > 0 || conflictsRemoved > 0)
                     {
-                        // fill in new values and filter to only changed items
+                        // Fill in new values and filter to only changed items.
                         var undoOp = new BatchFolderRenameOperation();
                         foreach (var s in snapshots)
                         {
@@ -2193,7 +2250,27 @@ namespace GDMENUCardManager
                 Manager.sdPath = null;
                 Manager.ItemList.Clear();
             }
+
+            var previousDrive = SelectedDrive;
             FillDriveList(true);
+
+            // Swapping cards in the same reader keeps the mount point. The refreshed
+            // list is identical, leaving no selection change to trigger a reload.
+            if (SelectedDrive != null && ReferenceEquals(SelectedDrive, previousDrive)
+                && DriveList.Contains(SelectedDrive))
+            {
+                // DriveInfo raises no change notification. Swapping in fresh instances
+                // is what makes the bound volume labels read the card in the reader now.
+                var selectedIndex = DriveList.IndexOf(SelectedDrive);
+                var scanned = DriveInfo.GetDrives();
+                for (int i = 0; i < DriveList.Count; i++)
+                {
+                    var match = scanned.FirstOrDefault(x => x.Name == DriveList[i].Name);
+                    if (match != null)
+                        DriveList[i] = match;
+                }
+                SelectedDrive = DriveList[selectedIndex];
+            }
         }
 
         private async void ButtonBrowseSdPath_Click(object sender, RoutedEventArgs e)
@@ -2251,8 +2328,8 @@ namespace GDMENUCardManager
 
                 DriveList.Clear();
             }
-            //fill drive list and try to find drive with gdemu contents
-            //look for GDEMU.INI file
+            // Fill drive list and try to find drive with gdemu contents
+            //look for GDEMU.INI file.
             foreach (DriveInfo drive in list)
             {
                 try
@@ -2264,7 +2341,7 @@ namespace GDMENUCardManager
                 catch { }
             }
 
-            //look for 01 folder
+            // Look for 01 folder.
             if (SelectedDrive == null)
             {
                 foreach (DriveInfo drive in list)
@@ -2281,7 +2358,7 @@ namespace GDMENUCardManager
                 }
             }
 
-            //look for /media mount
+            // Look for /media mount.
             if (SelectedDrive == null)
             {
                 foreach (DriveInfo drive in list)
@@ -2552,7 +2629,7 @@ namespace GDMENUCardManager
                 return;
             }
 
-            // handle serial translations before proceeding
+            // Handle serial translations before proceeding.
             var translatedItems = selectedItems.Where(item => item.WasSerialTranslated).ToList();
             if (translatedItems.Count > 0)
             {
@@ -2575,7 +2652,7 @@ namespace GDMENUCardManager
             {
                 var folderPath = dialog.FolderPath?.Trim() ?? string.Empty;
 
-                // check if the new primary folder conflicts with any item's alt folders
+                // Check if the new primary folder conflicts with any item's alt folders.
                 if (!string.IsNullOrEmpty(folderPath))
                 {
                     var conflicting = selectedItems.Where(item =>
@@ -2702,7 +2779,6 @@ namespace GDMENUCardManager
             if (IsBusy)
                 return;
 
-            // Handle Ctrl+Z for Undo
             if (e.Key == Key.Z && e.KeyModifiers == KeyModifiers.Control)
             {
                 if (Manager.UndoManager.CanUndo)
@@ -2711,7 +2787,6 @@ namespace GDMENUCardManager
                     e.Handled = true;
                 }
             }
-            // Handle Ctrl+Y for Redo
             else if (e.Key == Key.Y && e.KeyModifiers == KeyModifiers.Control)
             {
                 if (Manager.UndoManager.CanRedo)
@@ -2878,7 +2953,6 @@ namespace GDMENUCardManager
             foreach (var item in selectedItems)
                 Manager.ItemList.Insert(moveTo++, item);
 
-            // Record undo operation
             Manager.UndoManager.RecordChange(new ListReorderOperation("Move Up")
             {
                 ItemList = Manager.ItemList,
@@ -2918,7 +2992,6 @@ namespace GDMENUCardManager
             foreach (var item in selectedItems)
                 Manager.ItemList.Insert(moveTo++, item);
 
-            // Record undo operation
             Manager.UndoManager.RecordChange(new ListReorderOperation("Move Down")
             {
                 ItemList = Manager.ItemList,

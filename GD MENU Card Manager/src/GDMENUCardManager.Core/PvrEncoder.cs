@@ -27,12 +27,14 @@ namespace GDMENUCardManager.Core
         public const int TotalHeaderSize = GbixHeaderSize + PvrtHeaderSize;  // 32 bytes
 
         // PVRT format constants
+        private const byte PixelFormatArgb1555 = 0x00;
         private const byte PixelFormatRgb565 = 0x01;
+        private const byte PixelFormatArgb4444 = 0x02;
         private const byte DataFormatSquareTwiddled = 0x01;
 
         /// <summary>
-        /// Encode an image file to 256x256 PVR format for BOX.DAT (RGB565 TWIDDLED, Global Index 1001).
-        /// Supports PNG, JPEG, GIF, WebP, BMP, TIFF, TGA.
+        /// Resizes to 256x256 without preserving aspect ratio. Pixel format is chosen from the
+        /// image's alpha channel.
         /// </summary>
         public static byte[] EncodeFromFile(string imagePath)
         {
@@ -41,8 +43,8 @@ namespace GDMENUCardManager.Core
         }
 
         /// <summary>
-        /// Encode an image file to 128x128 PVR format for ICON.DAT (RGB565 TWIDDLED, Global Index 1001).
-        /// Supports PNG, JPEG, GIF, WebP, BMP, TIFF, TGA.
+        /// Resizes to 128x128 without preserving aspect ratio. Pixel format is chosen from the
+        /// image's alpha channel.
         /// </summary>
         public static byte[] EncodeIconFromFile(string imagePath)
         {
@@ -50,9 +52,6 @@ namespace GDMENUCardManager.Core
             return EncodeFromImage(image, IconWidth, IconHeight);
         }
 
-        /// <summary>
-        /// Encode a stream to 256x256 PVR format for BOX.DAT (RGB565 TWIDDLED, Global Index 1001).
-        /// </summary>
         public static byte[] EncodeFromStream(Stream stream)
         {
             using var image = Image.Load<Bgra32>(stream);
@@ -60,7 +59,7 @@ namespace GDMENUCardManager.Core
         }
 
         /// <summary>
-        /// Encode a stream to 128x128 PVR format for ICON.DAT (RGB565 TWIDDLED, Global Index 1001).
+        /// Encode a stream to 128x128 PVR format for ICON.DAT (TWIDDLED, Global Index 1001).
         /// </summary>
         public static byte[] EncodeIconFromStream(Stream stream)
         {
@@ -69,12 +68,26 @@ namespace GDMENUCardManager.Core
         }
 
         /// <summary>
-        /// Encode an ImageSharp image to PVR format at specified dimensions.
+        /// For pixels already decoded (e.g., re-encoding an existing DAT entry).
         /// </summary>
+        public static byte[] EncodeFromPixels(byte[] bgraPixels, int width, int height)
+        {
+            using var image = Image.LoadPixelData<Bgra32>(bgraPixels, width, height);
+            return EncodeFromImage(image, TextureWidth, TextureHeight);
+        }
+
+        public static byte[] EncodeIconFromPixels(byte[] bgraPixels, int width, int height)
+        {
+            using var image = Image.LoadPixelData<Bgra32>(bgraPixels, width, height);
+            return EncodeFromImage(image, IconWidth, IconHeight);
+        }
+
         private static byte[] EncodeFromImage(Image<Bgra32> image, int targetWidth, int targetHeight)
         {
-            // Resize to target dimensions (force, ignoring aspect ratio)
+            // Forced resize. Aspect ratio is deliberately not preserved.
             image.Mutate(ctx => ctx.Resize(targetWidth, targetHeight));
+
+            byte pixelFormat = ChoosePixelFormat(image, targetWidth, targetHeight);
 
             // Extract pixel data in linear order
             var pixelData = new ushort[targetWidth * targetHeight];
@@ -86,7 +99,12 @@ namespace GDMENUCardManager.Core
                     for (int x = 0; x < targetWidth; x++)
                     {
                         var pixel = rowSpan[x];
-                        pixelData[y * targetWidth + x] = Bgra32ToRgb565(pixel);
+                        pixelData[y * targetWidth + x] = pixelFormat switch
+                        {
+                            PixelFormatArgb1555 => Bgra32ToArgb1555(pixel),
+                            PixelFormatArgb4444 => Bgra32ToArgb4444(pixel),
+                            _ => Bgra32ToRgb565(pixel)
+                        };
                     }
                 }
             });
@@ -95,12 +113,44 @@ namespace GDMENUCardManager.Core
             var twiddledData = TwiddleTexture(pixelData, targetWidth, targetHeight);
 
             // Build the PVR file
-            return BuildPvrFile(twiddledData, targetWidth, targetHeight);
+            return BuildPvrFile(twiddledData, targetWidth, targetHeight, pixelFormat);
         }
 
         /// <summary>
-        /// Convert BGRA32 to RGB565.
+        /// Pick the PVR pixel format that best fits the image's alpha channel.
+        /// Fully opaque images get RGB565, on/off alpha gets ARGB1555 and partial alpha gets ARGB4444.
+        /// openMenu reads the format byte from each DAT entry so all three are safe to emit.
         /// </summary>
+        private static byte ChoosePixelFormat(Image<Bgra32> image, int width, int height)
+        {
+            bool hasTransparency = false;
+            bool hasPartialAlpha = false;
+
+            image.ProcessPixelRows(accessor =>
+            {
+                for (int y = 0; y < height; y++)
+                {
+                    var rowSpan = accessor.GetRowSpan(y);
+                    for (int x = 0; x < width; x++)
+                    {
+                        byte a = rowSpan[x].A;
+                        if (a == 255)
+                            continue;
+                        hasTransparency = true;
+                        if (a != 0)
+                        {
+                            hasPartialAlpha = true;
+                            return;
+                        }
+                    }
+                }
+            });
+
+            if (!hasTransparency)
+                return PixelFormatRgb565;
+            return hasPartialAlpha ? PixelFormatArgb4444 : PixelFormatArgb1555;
+        }
+
         private static ushort Bgra32ToRgb565(Bgra32 pixel)
         {
             // RGB565: RRRR_RGGG_GGGB_BBBB
@@ -111,8 +161,31 @@ namespace GDMENUCardManager.Core
         }
 
         /// <summary>
-        /// Twiddle (Morton code) pixel data for square textures.
+        /// Convert BGRA32 to ARGB1555.
         /// </summary>
+        private static ushort Bgra32ToArgb1555(Bgra32 pixel)
+        {
+            // ARGB1555: A_RRRRR_GGGGG_BBBBB
+            int a = pixel.A >= 128 ? 1 : 0;  // 1 bit
+            int r = (pixel.R >> 3) & 0x1F;   // 5 bits
+            int g = (pixel.G >> 3) & 0x1F;   // 5 bits
+            int b = (pixel.B >> 3) & 0x1F;   // 5 bits
+            return (ushort)((a << 15) | (r << 10) | (g << 5) | b);
+        }
+
+        /// <summary>
+        /// Convert BGRA32 to ARGB4444.
+        /// </summary>
+        private static ushort Bgra32ToArgb4444(Bgra32 pixel)
+        {
+            // ARGB4444: AAAA_RRRR_GGGG_BBBB
+            int a = (pixel.A >> 4) & 0xF;  // 4 bits
+            int r = (pixel.R >> 4) & 0xF;  // 4 bits
+            int g = (pixel.G >> 4) & 0xF;  // 4 bits
+            int b = (pixel.B >> 4) & 0xF;  // 4 bits
+            return (ushort)((a << 12) | (r << 8) | (g << 4) | b);
+        }
+
         private static ushort[] TwiddleTexture(ushort[] linearData, int width, int height)
         {
             var twiddled = new ushort[width * height];
@@ -129,19 +202,13 @@ namespace GDMENUCardManager.Core
             return twiddled;
         }
 
-        /// <summary>
-        /// Calculate Morton code (Z-order curve) for given x, y coordinates.
-        /// </summary>
         private static int GetMortonIndex(int x, int y)
         {
             // Interleave bits: x in odd positions, y in even positions (Dreamcast PVR standard)
             return (int)(Part1By1(x) << 1 | Part1By1(y));
         }
 
-        /// <summary>
-        /// Insert a 0 bit between each of the 16 low bits of x.
-        /// Example: ABCDEFGH -> 0A0B0C0D0E0F0G0H
-        /// </summary>
+        // Spreads a zero bit between each of the low 16 bits, so abcd becomes 0a0b0c0d.
         private static uint Part1By1(int n)
         {
             uint x = (uint)n;
@@ -152,10 +219,7 @@ namespace GDMENUCardManager.Core
             return x;
         }
 
-        /// <summary>
-        /// Build the complete PVR file with headers.
-        /// </summary>
-        private static byte[] BuildPvrFile(ushort[] twiddledData, int width, int height)
+        private static byte[] BuildPvrFile(ushort[] twiddledData, int width, int height, byte pixelFormat)
         {
             int pixelDataSize = width * height * 2;
             int totalSize = TotalHeaderSize + pixelDataSize;
@@ -179,7 +243,7 @@ namespace GDMENUCardManager.Core
             writer.Write((byte)'R');
             writer.Write((byte)'T');
             writer.Write((uint)(pixelDataSize + 8));  // Data size (pixel data + 8 for format info)
-            writer.Write(PixelFormatRgb565);          // Pixel format (1 byte)
+            writer.Write(pixelFormat);                // Pixel format (1 byte)
             writer.Write(DataFormatSquareTwiddled);   // Data format (1 byte)
             writer.Write((ushort)0);                   // Padding
             writer.Write((ushort)width);               // Width
@@ -195,9 +259,8 @@ namespace GDMENUCardManager.Core
         }
 
         /// <summary>
-        /// Decode PVR data to BGRA32 pixel array.
-        /// Supports both 256x256 (BOX.DAT) and 128x128 (ICON.DAT) PVRs.
-        /// Returns (pixelData, width, height) or null if invalid.
+        /// Handles only the square twiddled formats this encoder emits, at 256x256 or 128x128.
+        /// Returns null for anything else.
         /// </summary>
         public static (byte[] pixels, int width, int height)? DecodePvr(byte[] pvrData)
         {
@@ -207,7 +270,6 @@ namespace GDMENUCardManager.Core
             using var ms = new MemoryStream(pvrData);
             using var reader = new BinaryReader(ms);
 
-            // Verify GBIX header
             if (reader.ReadByte() != 'G' ||
                 reader.ReadByte() != 'B' ||
                 reader.ReadByte() != 'I' ||
@@ -232,7 +294,10 @@ namespace GDMENUCardManager.Core
             ushort width = reader.ReadUInt16();
             ushort height = reader.ReadUInt16();
 
-            if (pixelFormat != PixelFormatRgb565 || dataFormat != DataFormatSquareTwiddled)
+            bool isKnownPixelFormat = pixelFormat == PixelFormatRgb565 ||
+                                      pixelFormat == PixelFormatArgb1555 ||
+                                      pixelFormat == PixelFormatArgb4444;
+            if (!isKnownPixelFormat || dataFormat != DataFormatSquareTwiddled)
                 return null;
 
             // Validate supported dimensions (256x256 for BOX or 128x128 for ICON)
@@ -261,29 +326,51 @@ namespace GDMENUCardManager.Core
             var pixels = new byte[width * height * 4];
             for (int i = 0; i < linearData.Length; i++)
             {
-                var rgb565 = linearData[i];
-                int r = ((rgb565 >> 11) & 0x1F) << 3;
-                int g = ((rgb565 >> 5) & 0x3F) << 2;
-                int b = (rgb565 & 0x1F) << 3;
+                var value = linearData[i];
+                int a, r, g, b;
 
-                // Expand lower bits for better color reproduction
-                r |= (r >> 5);
-                g |= (g >> 6);
-                b |= (b >> 5);
+                switch (pixelFormat)
+                {
+                    case PixelFormatArgb1555:
+                        a = (value & 0x8000) != 0 ? 255 : 0;
+                        r = ((value >> 10) & 0x1F) << 3;
+                        g = ((value >> 5) & 0x1F) << 3;
+                        b = (value & 0x1F) << 3;
+
+                        // Replicate the high bits into the low ones so white stays white.
+                        r |= (r >> 5);
+                        g |= (g >> 5);
+                        b |= (b >> 5);
+                        break;
+                    case PixelFormatArgb4444:
+                        a = ((value >> 12) & 0xF) * 17;
+                        r = ((value >> 8) & 0xF) * 17;
+                        g = ((value >> 4) & 0xF) * 17;
+                        b = (value & 0xF) * 17;
+                        break;
+                    default:
+                        a = 255;
+                        r = ((value >> 11) & 0x1F) << 3;
+                        g = ((value >> 5) & 0x3F) << 2;
+                        b = (value & 0x1F) << 3;
+
+                        // Replicate the high bits into the low ones so white stays white.
+                        r |= (r >> 5);
+                        g |= (g >> 6);
+                        b |= (b >> 5);
+                        break;
+                }
 
                 int offset = i * 4;
                 pixels[offset + 0] = (byte)b;      // B
                 pixels[offset + 1] = (byte)g;      // G
                 pixels[offset + 2] = (byte)r;      // R
-                pixels[offset + 3] = 255;          // A
+                pixels[offset + 3] = (byte)a;      // A
             }
 
             return (pixels, width, height);
         }
 
-        /// <summary>
-        /// Untwiddle pixel data from Morton code to linear.
-        /// </summary>
         private static ushort[] UntwiddleTexture(ushort[] twiddledData, int width, int height)
         {
             var linear = new ushort[width * height];
@@ -300,10 +387,6 @@ namespace GDMENUCardManager.Core
             return linear;
         }
 
-        /// <summary>
-        /// Decode PVR data and save as PNG to the specified path.
-        /// Returns true if successful, false otherwise.
-        /// </summary>
         public static bool SavePvrAsPng(byte[] pvrData, string outputPath)
         {
             var decoded = DecodePvr(pvrData);
@@ -317,10 +400,6 @@ namespace GDMENUCardManager.Core
             return true;
         }
 
-        /// <summary>
-        /// Decode PVR data and return as PNG byte array.
-        /// Returns null if decoding fails.
-        /// </summary>
         public static byte[] ConvertPvrToPngBytes(byte[] pvrData)
         {
             var decoded = DecodePvr(pvrData);
@@ -336,8 +415,8 @@ namespace GDMENUCardManager.Core
         }
 
         /// <summary>
-        /// Downscale a 256x256 BOX.DAT PVR entry to 128x128 ICON.DAT format.
-        /// Returns null if the input is not a valid 256x256 PVR.
+        /// Round-trips through decode and re-encode, so the icon's pixel format is re-chosen and
+        /// may differ from the source entry's.
         /// </summary>
         public static byte[] DownscaleBoxPvrToIcon(byte[] boxPvrData)
         {
@@ -347,7 +426,6 @@ namespace GDMENUCardManager.Core
 
             var (pixels, width, height) = decoded.Value;
 
-            // Only support downscaling from 256x256
             if (width != TextureWidth || height != TextureHeight)
                 return null;
 

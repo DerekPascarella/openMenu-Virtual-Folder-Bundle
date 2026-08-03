@@ -21,6 +21,7 @@ void popup_setup(enum draw_state* state, struct theme_color* _colors, int* timeo
 void exit_menu_setup(enum draw_state* state, struct theme_color* _colors, int* timeout_ptr, uint32_t title_color,
                      int is_folder);
 void cb_menu_setup(enum draw_state* state, struct theme_color* _colors, int* timeout_ptr, uint32_t title_color);
+void recent_manage_setup(enum draw_state* state, struct theme_color* _colors, int* timeout_ptr, uint32_t title_color);
 void saveload_setup(enum draw_state* state, struct theme_color* _colors, int* timeout_ptr, uint32_t title_color);
 
 /* COMPACTION_TEST_START */
@@ -34,6 +35,7 @@ void handle_input_exit(enum control input);
 void handle_input_codebreaker(enum control input);
 void handle_input_psx_launcher(enum control input);
 void handle_input_saveload(enum control input);
+void handle_input_recent_manage(enum control input);
 
 /* COMPACTION_TEST_START */
 void handle_input_compaction_test(enum control input);
@@ -59,6 +61,9 @@ void draw_psx_launcher_tr(void);
 
 void draw_saveload_op(void);
 void draw_saveload_tr(void);
+
+void draw_recent_manage_op(void);
+void draw_recent_manage_tr(void);
 
 /* COMPACTION_TEST_START */
 void draw_compaction_test_op(void);
@@ -87,3 +92,8 @@ void serial_vmu_check_boot_backup(enum draw_state* draw_current_ptr, struct them
 
 void set_cur_game_item(const gd_item* id);
 const gd_item* get_cur_game_item();
+
+/* Where the folders view should land when the manage state closes */
+typedef enum RECENT_MANAGE_RESULT { RM_RESULT_ACTIVE = 0, RM_RESULT_TO_RECENT, RM_RESULT_TO_ROOT } RECENT_MANAGE_RESULT;
+
+RECENT_MANAGE_RESULT recent_manage_result(void);

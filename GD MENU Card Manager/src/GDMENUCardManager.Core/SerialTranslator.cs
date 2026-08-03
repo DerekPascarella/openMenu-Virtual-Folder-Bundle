@@ -4,24 +4,14 @@ using System.Collections.Generic;
 namespace GDMENUCardManager.Core
 {
     /// <summary>
-    /// Translates raw disc serial IDs for OpenMenu compatibility.
-    ///
-    /// There are two types of translations:
-    ///
-    /// 1. Serial Translation (Table 1): These 14 discs have incorrect/duplicate serial IDs
-    ///    that OpenMenu translates. The translated serial should be used everywhere:
-    ///    UI display, OPENMENU.INI, and artwork DAT files.
-    ///
-    /// 2. Artwork Translation (Table 2): These 12 discs are regional variants that share
-    ///    artwork with another version. The translation should ONLY be used for BOX.DAT
-    ///    and ICON.DAT operations, NOT for UI display or OPENMENU.INI.
+    /// Two independent tables, mirroring openMenu's own behavior. Table 1 fixes wrong or duplicated
+    /// serials and its result is used everywhere: UI, INI and art DATs. Table 2 points regional
+    /// variants at shared artwork and applies to BOX.DAT and ICON.DAT lookups only, never to the UI
+    /// or the INI.
     /// </summary>
     public static class SerialTranslator
     {
-        /// <summary>
-        /// Table 1: Serial ID fix table. These 14 discs need translation based on product + date (or name).
-        /// The translated serial is used EVERYWHERE (UI, INI, and artwork).
-        /// </summary>
+        // Table 1, matched on product plus release date. One entry matches on name instead.
         private static string ApplyTable1(string product, string date, string name)
         {
             // All comparisons are case-sensitive and exact-match (except the name check)
@@ -70,14 +60,10 @@ namespace GDMENUCardManager.Core
                 name.IndexOf("orth", StringComparison.OrdinalIgnoreCase) >= 0)
                 return "T0026M";     // Fist of the North Star (Atomiswave)
 
-            // No match, so return the original.
             return product;
         }
 
-        /// <summary>
-        /// Table 2: Artwork-only remap table. These regional variants share artwork
-        /// with another version. Used ONLY for BOX.DAT/ICON.DAT operations.
-        /// </summary>
+        // Table 2, artwork-only remap. Policy is on the class summary.
         private static readonly Dictionary<string, string> ArtworkRemapTable = new Dictionary<string, string>
         {
             // PAL Regional Duplicates (share artwork with base version)
@@ -95,30 +81,19 @@ namespace GDMENUCardManager.Core
             ["T8103N18"] = "T8103N50",      // WWF Attitude
         };
 
-        /// <summary>
-        /// Apply Table 2 artwork remap to a serial.
-        /// </summary>
         private static string ApplyTable2(string serial)
         {
             if (ArtworkRemapTable.TryGetValue(serial, out string remapped))
                 return remapped;
 
-            // No remap, so use the serial as-is.
             return serial;
         }
 
         /// <summary>
-        /// Translates a raw disc serial for display and OPENMENU.INI.
-        /// Applies only Table 1 (serial ID fixes).
-        ///
-        /// Use this for:
-        /// - Serial shown in the Games List UI
-        /// - Serial written to OPENMENU.INI
+        /// Table 1 only. This is the serial for the UI and OPENMENU.INI.
         /// </summary>
-        /// <param name="rawProduct">Product ID (normalized: no hyphen, trimmed)</param>
-        /// <param name="date">Date from IP.BIN (8 chars, YYYYMMDD), or null/empty if unavailable</param>
-        /// <param name="name">Name from IP.BIN (trimmed), or null/empty if unavailable</param>
-        /// <returns>The translated serial for display/INI use</returns>
+        /// <param name="rawProduct">Must already be normalized: no hyphen, trimmed.</param>
+        /// <param name="date">YYYYMMDD from IP.BIN, or empty when unknown.</param>
         public static string TranslateSerial(string rawProduct, string date, string name)
         {
             if (string.IsNullOrWhiteSpace(rawProduct))
@@ -128,16 +103,10 @@ namespace GDMENUCardManager.Core
         }
 
         /// <summary>
-        /// Translates a serial (already Table 1 translated) for artwork operations.
-        /// Applies only Table 2 (artwork remap for regional variants).
-        ///
-        /// Use this for:
-        /// - Looking up artwork in BOX.DAT
-        /// - Writing artwork to BOX.DAT/ICON.DAT
-        /// - Checking if artwork exists
+        /// Table 2 only. For BOX.DAT and ICON.DAT operations.
         /// </summary>
-        /// <param name="serial">Serial that has already had Table 1 applied (i.e., ProductNumber)</param>
-        /// <returns>The artwork serial for BOX.DAT/ICON.DAT operations</returns>
+        /// <param name="serial">Must already be Table 1 translated (i.e.,
+        /// GdItem.ProductNumber).</param>
         public static string TranslateForArtwork(string serial)
         {
             if (string.IsNullOrWhiteSpace(serial))

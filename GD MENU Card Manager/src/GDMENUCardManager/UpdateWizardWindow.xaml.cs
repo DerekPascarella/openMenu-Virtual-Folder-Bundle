@@ -120,7 +120,7 @@ namespace GDMENUCardManager
             }
             catch (OperationCanceledException)
             {
-                // User cancelled, so the window is closing.
+                // User canceled, so the window is closing.
             }
             catch (Exception ex)
             {

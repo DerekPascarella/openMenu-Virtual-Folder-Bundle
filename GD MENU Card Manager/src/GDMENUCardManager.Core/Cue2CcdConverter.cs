@@ -9,16 +9,11 @@ namespace GDMENUCardManager.Core
 {
 
     /// <summary>
-    /// Converts CUE/BIN disc images to CCD/IMG/SUB (CloneCD) format.
-    /// Supports MODE1/2352, MODE1/2048, MODE2/2352, MODE2/2336, CDI/2352, CDI/2336,
-    /// CDG, and AUDIO tracks with BINARY/WAVE source files.
+    /// Handles MODE1/2352, MODE1/2048, MODE2/2352, MODE2/2336, CDI/2352, CDI/2336, CDG and AUDIO
+    /// tracks, from BINARY or WAVE sources.
     /// </summary>
     public static class Cue2CcdConverter
     {
-        /// <summary>
-        /// Converts a CUE file and its associated source files to CCD/IMG/SUB format.
-        /// Output files are written directly to the destination directory.
-        /// </summary>
         public static async Task<bool> ConvertAsync(string cueFilePath, string destinationDir,
             IProgress<string> progress = null)
         {

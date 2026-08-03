@@ -6,9 +6,6 @@ using System.Threading.Tasks;
 
 namespace GDMENUCardManager.Core
 {
-    /// <summary>
-    /// Wrapper for the redump2cdi CLI tool that converts Redump CD-ROM cue/bin to CDI format.
-    /// </summary>
     public static class Redump2CdiConverter
     {
         private const string ToolName = "redump2cdi";
@@ -16,8 +13,7 @@ namespace GDMENUCardManager.Core
         private const string SuccessMarker = "Enjoy!";
 
         /// <summary>
-        /// Check if a CUE file is a Redump CD-ROM image (not GD-ROM).
-        /// GD-ROM images have "HIGH-DENSITY AREA" comments.
+        /// False for GD-ROM cues and for anything that is not a cue at all.
         /// </summary>
         public static bool IsRedumpCdRomCue(string cuePath)
         {
@@ -30,7 +26,7 @@ namespace GDMENUCardManager.Core
             try
             {
                 var content = File.ReadAllText(cuePath);
-                // GD-ROM images have a HIGH-DENSITY AREA comment. If that's present, it's not a CD-ROM.
+                // GD-ROM cues carry a HIGH-DENSITY AREA comment.
                 if (content.Contains("HIGH-DENSITY AREA", StringComparison.OrdinalIgnoreCase))
                     return false;
 
@@ -44,9 +40,6 @@ namespace GDMENUCardManager.Core
             }
         }
 
-        /// <summary>
-        /// Check if a CUE file is a Redump GD-ROM image.
-        /// </summary>
         public static bool IsRedumpGdRomCue(string cuePath)
         {
             if (string.IsNullOrEmpty(cuePath) || !File.Exists(cuePath))
@@ -67,7 +60,7 @@ namespace GDMENUCardManager.Core
         }
 
         /// <summary>
-        /// Get the path to the redump2cdi tool for the current platform.
+        /// Returns the path whether or not the file exists. See IsToolAvailable.
         /// </summary>
         public static string GetToolPath()
         {
@@ -83,9 +76,6 @@ namespace GDMENUCardManager.Core
             }
         }
 
-        /// <summary>
-        /// Check if the redump2cdi tool is available.
-        /// </summary>
         public static bool IsToolAvailable()
         {
             var toolPath = GetToolPath();
@@ -93,11 +83,8 @@ namespace GDMENUCardManager.Core
         }
 
         /// <summary>
-        /// Convert a Redump CUE/BIN to CDI format.
+        /// Runs the tool synchronously and gives up after five minutes.
         /// </summary>
-        /// <param name="cuePath">Path to the input .cue file</param>
-        /// <param name="cdiOutputPath">Path for the output .cdi file</param>
-        /// <returns>Tuple of (success, output/error message)</returns>
         public static (bool success, string message) ConvertToCdi(string cuePath, string cdiOutputPath)
         {
             var toolPath = GetToolPath();
@@ -124,7 +111,6 @@ namespace GDMENUCardManager.Core
                     CreateNoWindow = true
                 };
 
-                // On Unix-like systems, ensure the binary is executable
                 if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
                 {
                     EnsureExecutable(toolPath);
@@ -137,7 +123,6 @@ namespace GDMENUCardManager.Core
                 var stdoutTask = process.StandardOutput.ReadToEndAsync();
                 var stderrTask = process.StandardError.ReadToEndAsync();
 
-                // Wait for process with timeout (5 minutes max for large files)
                 bool exited = process.WaitForExit(300000);
                 if (!exited)
                 {
@@ -150,7 +135,6 @@ namespace GDMENUCardManager.Core
 
                 var combinedOutput = stdout + stderr;
 
-                // Check for success marker in output
                 if (combinedOutput.Contains(SuccessMarker))
                 {
                     // Verify the output file was created
@@ -174,14 +158,10 @@ namespace GDMENUCardManager.Core
             }
         }
 
-        /// <summary>
-        /// Ensure a file has executable permissions on Unix-like systems.
-        /// </summary>
         private static void EnsureExecutable(string filePath)
         {
             try
             {
-                // Use chmod to make the file executable
                 var chmodInfo = new ProcessStartInfo
                 {
                     FileName = "chmod",
@@ -201,9 +181,6 @@ namespace GDMENUCardManager.Core
             }
         }
 
-        /// <summary>
-        /// Get the expected CDI output filename for a given CUE file.
-        /// </summary>
         public static string GetCdiOutputName(string cuePath)
         {
             var baseName = Path.GetFileNameWithoutExtension(cuePath);

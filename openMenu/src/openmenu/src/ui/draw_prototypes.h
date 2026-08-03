@@ -65,10 +65,16 @@ void bloom_launch(const struct gd_item* disc);
 void bleem_launch(const struct gd_item* disc);
 void dreamcast_launch_disc(const struct gd_item* disc);
 void dreamcast_launch_cb(const struct gd_item* disc);
+void launch_history_record(const struct gd_item* disc);
+void recently_played_remove(uint32_t hash);
+void recently_played_clear(void);
 
 /* PSX launcher support */
 void check_bloom_available(void);
 int is_bloom_available(void);
+
+/* CodeBreaker support */
+int codebreaker_available(void);
 
 /* z depth */
 float z_get(void);

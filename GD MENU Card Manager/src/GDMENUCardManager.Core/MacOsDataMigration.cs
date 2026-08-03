@@ -5,29 +5,20 @@ using System.Runtime.InteropServices;
 namespace GDMENUCardManager.Core
 {
     /// <summary>
-    /// Handles macOS-specific Application Support directory setup and migration.
-    /// On macOS, mutable user data (DAT files, settings) must live in
-    /// ~/Library/Application Support/GDMENUCardManager/ rather than inside the .app bundle,
-    /// because the bundle may be read-only under Gatekeeper App Translocation.
-    /// All methods in this class are safe to call only when running on macOS.
+    /// macOS only. Mutable data lives in ~/Library/Application Support/GDMENUCardManager because
+    /// the .app bundle can be read-only under Gatekeeper App Translocation.
     /// </summary>
     public static class MacOsDataMigration
     {
         private const string AppFolderName = "GDMENUCardManager";
         private const string ConfigFileName = "GDMENUCardManager.dll.config";
 
-        /// <summary>
-        /// Returns ~/Library/Application Support/GDMENUCardManager
-        /// </summary>
         public static string GetUserDataDir()
         {
             var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
             return Path.Combine(home, "Library", "Application Support", AppFolderName);
         }
 
-        /// <summary>
-        /// Returns the path to the user's settings config file in Application Support.
-        /// </summary>
         public static string GetUserConfigPath()
         {
             return Path.Combine(GetUserDataDir(), ConfigFileName);
@@ -51,11 +42,8 @@ namespace GDMENUCardManager.Core
         }
 
         /// <summary>
-        /// Ensures the Application Support directory structure exists and that the
-        /// settings config file has been seeded from the bundle defaults.
-        /// Creates: UserDataDir/ and UserDataDir/dat_backups/
-        /// Does NOT create menu_data/. That directory is PerformFirstTimeDatCopy's job (used as sentinel).
-        /// This method is entirely wrapped in try-catch for graceful degradation.
+        /// Deliberately does not create menu_data/. PerformFirstTimeDatCopy uses its absence as the
+        /// first-run sentinel.
         /// </summary>
         public static void EnsureApplicationSupportExists(string bundleBasePath)
         {
@@ -75,26 +63,19 @@ namespace GDMENUCardManager.Core
             }
             catch
             {
-                // if Application Support can't be written, fall back to the bundle path.
-                // may fail under App Translocation, but don't crash here.
+                // If Application Support cannot be written, fall back to the bundle path.
+                // That may itself fail under App Translocation, but never crash here.
             }
         }
 
-        /// <summary>
-        /// Returns true if the first-time DAT file copy to Application Support has not yet
-        /// been performed. Uses the existence of the menu_data directory as the sentinel.
-        /// </summary>
         public static bool NeedsFirstTimeDatSetup()
         {
             return !Directory.Exists(GetUserMenuDataDir());
         }
 
         /// <summary>
-        /// Copies the DAT files (and the folder art map) from the bundle's tools/openMenu/menu_data/
-        /// directory to ~/Library/Application Support/GDMENUCardManager/menu_data/.
-        /// Creates the menu_data directory (the sentinel for NeedsFirstTimeDatSetup).
-        /// Reports progress as (current, total, filename).
-        /// Safe to call even if source files are missing. Each copy is individually guarded.
+        /// Each file is copied under its own guard, so a missing or unreadable source is skipped
+        /// rather than aborting the run.
         /// </summary>
         public static void PerformFirstTimeDatCopy(
             string bundleBasePath,

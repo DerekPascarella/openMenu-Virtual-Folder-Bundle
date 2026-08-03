@@ -1,14 +1,19 @@
 ﻿namespace GDMENUCardManager.Core
 {
+    /// <summary>
+    /// Parsed Dreamcast IP.BIN header fields.
+    /// </summary>
     public sealed class IpBin
     {
         private string _Disc;
+        /// <summary>
+        /// Always "N/M". Anything unparseable is coerced to "1/1".
+        /// </summary>
         public string Disc
         {
             get { return _Disc; }
             set
             {
-                // Trim whitespace
                 var trimmed = value?.Trim();
 
                 // Validate format: integer/integer

@@ -22,10 +22,13 @@ namespace GDMENUCardManager
             return p;
         }
 
-        public GdItem[] GdiShrinkWindowShowDialog(IEnumerable<GdItem> items, string title = null)
+        public ValueTask<GdItem[]> GdiShrinkWindowShowDialog(IEnumerable<GdItem> items, string title = null)
         {
             var w = new GdiShrinkWindow(items, title) { Owner = getMainWindow() };
-            return w.ShowDialog().GetValueOrDefault() ? w.List.Where(x => x.Value).Select(x => x.Key).ToArray() : null;
+            var picked = w.ShowDialog().GetValueOrDefault()
+                ? w.List.Where(x => x.Value).Select(x => x.Key).ToArray()
+                : null;
+            return new ValueTask<GdItem[]>(picked);
         }
 
         public ValueTask<bool> ShowYesNoDialog(string caption, string text)
@@ -127,7 +130,6 @@ namespace GDMENUCardManager
             {
                 sb.AppendLine($"\nThe incomplete folder will be removed:\n{incompleteFolderPath}");
 
-                // Delete the incomplete folder
                 try
                 {
                     Directory.Delete(incompleteFolderPath, true);
@@ -148,7 +150,6 @@ namespace GDMENUCardManager
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
 
-            // Exit the application
             Application.Current.Shutdown();
 
             return ValueTask.CompletedTask;

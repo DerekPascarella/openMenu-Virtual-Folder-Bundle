@@ -15,16 +15,19 @@ set(OPENMENU_SOURCES
         src/backend/boot_defaults.c
         src/backend/gdemu_control.c
         src/backend/gdemu_sdk.c
+        src/backend/last_game.c
         src/texture/block_pool.c
         src/texture/lru.c
         src/texture/simple_texture_allocator.c
         src/texture/txr_manager.c
         src/ui/dc/font_bitmap.c
         src/ui/dc/font_bmf.c
+        src/ui/dc/font_smooth.c
         src/ui/dc/input.c
         src/ui/dc/pvr_texture.c
         src/ui/animation.c
         src/ui/draw_kos.c
+        src/ui/marquee.c
         src/ui/theme_manager.c
         src/ui/ui_grid.c
         src/ui/ui_line_desc.c

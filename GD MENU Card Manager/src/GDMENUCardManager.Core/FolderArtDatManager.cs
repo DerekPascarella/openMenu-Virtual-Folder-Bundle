@@ -28,7 +28,7 @@ namespace GDMENUCardManager.Core
 
         private List<BoxDatEntry> _entries = new();
 
-        // key -> original folder path, mirrored to FOLDRART.MAP
+        // Key -> original folder path, mirrored to FOLDRART.MAP.
         private Dictionary<string, string> _keyToPath = new(StringComparer.Ordinal);
 
         /// <summary>

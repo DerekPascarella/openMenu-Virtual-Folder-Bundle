@@ -12,12 +12,18 @@ using System.Threading.Tasks;
 
 namespace GDMENUCardManager.Core
 {
-    //uses data from DuckStation
-    //https://github.com/stenzek/duckstation/blob/master/data/resources/gamedb.json
+    // Uses data from DuckStation
+    //https://github.com/stenzek/duckstation/blob/master/data/resources/gamedb.json.
 
+    /// <summary>
+    /// PSX title lookup by serial, sourced from DuckStation's gamedb.json.
+    /// </summary>
     public static class PlayStationDB
     {
         private static readonly List<PSDBEntry> _list = new List<PSDBEntry>();
+        /// <summary>
+        /// Safe to call when the file is missing, lookups then return null.
+        /// </summary>
         public static void LoadFrom(string file)
         {
             if (!File.Exists(file))

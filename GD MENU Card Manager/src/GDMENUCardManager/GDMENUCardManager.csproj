@@ -45,9 +45,6 @@
     <None Update="7z64.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Update="tools\gdishrink.exe">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
 
   <Import Project="..\GDMENUCardManager.Core\libchdr.targets" />

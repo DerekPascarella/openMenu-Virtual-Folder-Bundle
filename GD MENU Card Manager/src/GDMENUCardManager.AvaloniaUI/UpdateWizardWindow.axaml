@@ -32,9 +32,9 @@
       </StackPanel>
 
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 20 0 0">
-        <Button Content="Cancel" Click="CancelButton_Click" Width="90" Padding="15,8" Margin="0 0 10 0"
+        <Button Content="Cancel" Click="CancelButton_Click" MinWidth="90" Padding="15,8" Margin="0 0 10 0"
                 ToolTip.Tip="Close the wizard without updating"/>
-        <Button Content="Next" Click="NextButton_Click" Width="90" Padding="15,8" IsDefault="True"
+        <Button Content="Next" Click="NextButton_Click" MinWidth="90" Padding="15,8" IsDefault="True"
                 ToolTip.Tip="Continue to the download step"/>
       </StackPanel>
     </StackPanel>
@@ -49,9 +49,9 @@
       <TextBlock x:Name="SizeText" Foreground="Gray"/>
 
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 20 0 0">
-        <Button x:Name="CancelDownloadButton" Content="Cancel" Click="CancelDownloadButton_Click" Width="90" Padding="15,8" Margin="0 0 10 0"
+        <Button x:Name="CancelDownloadButton" Content="Cancel" Click="CancelDownloadButton_Click" MinWidth="90" Padding="15,8" Margin="0 0 10 0"
                 ToolTip.Tip="Cancel the download"/>
-        <Button x:Name="InstallButton" Content="Install Now" Click="InstallButton_Click" Width="90" Padding="15,8" IsVisible="False"
+        <Button x:Name="InstallButton" Content="Install Now" Click="InstallButton_Click" MinWidth="90" Padding="15,8" IsVisible="False"
                 ToolTip.Tip="Install the downloaded update"/>
       </StackPanel>
     </StackPanel>

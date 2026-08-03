@@ -76,7 +76,7 @@ namespace GDMENUCardManager.Core.Audio
             }
             catch
             {
-                // a leftover tmp inside menu_data would get baked into the menu image
+                // A leftover tmp inside menu_data would get baked into the menu image.
                 try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
                 throw;
             }
@@ -114,7 +114,7 @@ namespace GDMENUCardManager.Core.Audio
 
         private static byte[] EncodeMono(float[] samples, int frames)
         {
-            // two samples per byte, so pad the sample count to a 64 sample boundary
+            // Two samples per byte, so pad the sample count to a 64 sample boundary.
             int paddedFrames = Pad32((frames + 1) / 2) * 2;
             var payload = new byte[paddedFrames / 2];
             var enc = new AicaAdpcmEncoder();

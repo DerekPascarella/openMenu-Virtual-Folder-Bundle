@@ -47,6 +47,10 @@ namespace GDMENUCardManager.Core
 
 "@
 
+# The here-string above inherits this file's CRLF endings. Constants.cs is LF
+# per .editorconfig, so normalize before writing or every build reverts it.
+$constantsContent = $constantsContent -replace "`r`n", "`n"
+
 # Write to Constants.cs
 $constantsFile = Join-Path $PSScriptRoot "Constants.cs"
 [System.IO.File]::WriteAllText($constantsFile, $constantsContent, [System.Text.Encoding]::UTF8)

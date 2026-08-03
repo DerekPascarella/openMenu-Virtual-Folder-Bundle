@@ -28,6 +28,9 @@ namespace GDMENUCardManager.Core
         private const long PadBytes = (long)SectorSize * PadSectors;
         private const int SynthSectors = 150;
 
+        /// <summary>
+        /// Null when no tier produces a hash match. The caller falls back to the strip path.
+        /// </summary>
         public static byte[] TryReconstruct(
             byte[] gdiBytes,
             bool gdiIsDataTrack,

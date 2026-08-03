@@ -19,7 +19,7 @@ namespace GDMENUCardManager.Core.Audio
             var output = new float[dstFrames * channels];
 
             double ratio = (double)srcRate / dstRate;
-            // when downsampling the kernel widens and the cutoff drops below source Nyquist
+            // When downsampling the kernel widens and the cutoff drops below source Nyquist.
             double cutoff = Math.Min(1.0, (double)dstRate / srcRate) * 0.95;
             int taps = (int)Math.Ceiling(TapsPerSide * Math.Max(1.0, ratio));
 
@@ -45,7 +45,7 @@ namespace GDMENUCardManager.Core.Audio
                             idx = srcFrames - 1;
                         sum += interleaved[idx * channels + ch] * w;
                     }
-                    // normalizing keeps the level flat even with the clamped edges
+                    // Normalizing keeps the level flat even with the clamped edges.
                     output[n * channels + ch] = (float)(weightSum != 0 ? sum / weightSum : 0);
                 }
             }

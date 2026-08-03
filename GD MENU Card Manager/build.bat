@@ -14,6 +14,10 @@ REM Format code
 echo Formatting code...
 dotnet format src\GDMENUCardManager.sln
 if %ERRORLEVEL% neq 0 goto :error
+
+REM Normalize XAML line endings (dotnet format only handles C#).
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0normalize-xaml.ps1"
+if %ERRORLEVEL% neq 0 goto :error
 echo.
 
 REM Clean previous builds
@@ -30,7 +34,7 @@ set OUTPUT_DIR=_releases\GDMENUCardManager.%VERSION%-win-x64
 dotnet publish src\GDMENUCardManager\GDMENUCardManager.csproj -c Release -o "%OUTPUT_DIR%"
 if %ERRORLEVEL% neq 0 goto :error
 xcopy /E /I /Y src\GDMENUCardManager.Core\tools "%OUTPUT_DIR%\tools\"
-REM never ship user-generated menu options files
+REM Never ship user-generated menu options files.
 del /Q "%OUTPUT_DIR%\tools\openMenu\menu_data\DEFAULTS.INI" "%OUTPUT_DIR%\tools\openMenu\menu_data\BGM.ADP" 2>nul
 copy /Y redump2cdi\windows-x86_64-msvc\redump2cdi.exe "%OUTPUT_DIR%\tools\"
 copy /Y LICENSE "%OUTPUT_DIR%\"
@@ -40,7 +44,7 @@ if %ERRORLEVEL% neq 0 echo Warning: Failed to create zip file for win-x64
 echo Build completed for win-x64
 
 REM Build for Windows x86 (WPF - framework-dependent)
-REM Note: For x86, we need to specify the runtime
+REM x86 needs an explicit runtime.
 echo.
 echo ================================================
 echo Building WPF for Windows x86...
@@ -49,7 +53,7 @@ set OUTPUT_DIR=_releases\GDMENUCardManager.%VERSION%-win-x86
 dotnet publish src\GDMENUCardManager\GDMENUCardManager.csproj -c Release -r win-x86 --self-contained false -o "%OUTPUT_DIR%"
 if %ERRORLEVEL% neq 0 goto :error
 xcopy /E /I /Y src\GDMENUCardManager.Core\tools "%OUTPUT_DIR%\tools\"
-REM never ship user-generated menu options files
+REM Never ship user-generated menu options files.
 del /Q "%OUTPUT_DIR%\tools\openMenu\menu_data\DEFAULTS.INI" "%OUTPUT_DIR%\tools\openMenu\menu_data\BGM.ADP" 2>nul
 copy /Y redump2cdi\windows-x86-msvc\redump2cdi.exe "%OUTPUT_DIR%\tools\"
 copy /Y LICENSE "%OUTPUT_DIR%\"
@@ -76,7 +80,7 @@ set OUTPUT_DIR=_releases\GDMENUCardManager.%VERSION%-linux-x64
 dotnet publish src\GDMENUCardManager.AvaloniaUI\GDMENUCardManager.AvaloniaUI.csproj -c Release --self-contained true -r linux-x64 -p:PublishSingleFile=false -p:IncludeNativeLibrariesForSelfExtract=true -o "%OUTPUT_DIR%"
 if %ERRORLEVEL% neq 0 goto :error
 xcopy /E /I /Y src\GDMENUCardManager.Core\tools "%OUTPUT_DIR%\tools\"
-REM never ship user-generated menu options files
+REM Never ship user-generated menu options files.
 del /Q "%OUTPUT_DIR%\tools\openMenu\menu_data\DEFAULTS.INI" "%OUTPUT_DIR%\tools\openMenu\menu_data\BGM.ADP" 2>nul
 copy /Y redump2cdi\linux-x86_64\redump2cdi "%OUTPUT_DIR%\tools\"
 copy /Y LICENSE "%OUTPUT_DIR%\"
@@ -94,7 +98,7 @@ set OUTPUT_DIR=_releases
 dotnet publish src\GDMENUCardManager.AvaloniaUI\GDMENUCardManager.AvaloniaUI.csproj -c Release --self-contained true -r osx-x64 -p:PublishSingleFile=false -p:IncludeNativeLibrariesForSelfExtract=true -o "%TEMP_OUTPUT_DIR%"
 if %ERRORLEVEL% neq 0 goto :error
 xcopy /E /I /Y src\GDMENUCardManager.Core\tools "%TEMP_OUTPUT_DIR%\tools\"
-REM never ship user-generated menu options files
+REM Never ship user-generated menu options files.
 del /Q "%TEMP_OUTPUT_DIR%\tools\openMenu\menu_data\DEFAULTS.INI" "%TEMP_OUTPUT_DIR%\tools\openMenu\menu_data\BGM.ADP" 2>nul
 copy /Y redump2cdi\macos-x86_64\redump2cdi "%TEMP_OUTPUT_DIR%\tools\"
 copy /Y LICENSE "%TEMP_OUTPUT_DIR%\"
@@ -115,7 +119,7 @@ set OUTPUT_DIR=_releases
 dotnet publish src\GDMENUCardManager.AvaloniaUI\GDMENUCardManager.AvaloniaUI.csproj -c Release --self-contained true -r osx-arm64 -p:PublishSingleFile=false -p:IncludeNativeLibrariesForSelfExtract=true -o "%TEMP_OUTPUT_DIR%"
 if %ERRORLEVEL% neq 0 goto :error
 xcopy /E /I /Y src\GDMENUCardManager.Core\tools "%TEMP_OUTPUT_DIR%\tools\"
-REM never ship user-generated menu options files
+REM Never ship user-generated menu options files.
 del /Q "%TEMP_OUTPUT_DIR%\tools\openMenu\menu_data\DEFAULTS.INI" "%TEMP_OUTPUT_DIR%\tools\openMenu\menu_data\BGM.ADP" 2>nul
 copy /Y redump2cdi\macos-aarch64\redump2cdi "%TEMP_OUTPUT_DIR%\tools\"
 copy /Y LICENSE "%TEMP_OUTPUT_DIR%\"

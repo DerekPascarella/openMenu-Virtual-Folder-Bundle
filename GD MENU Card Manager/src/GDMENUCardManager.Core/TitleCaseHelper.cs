@@ -6,8 +6,8 @@ using System.Text.RegularExpressions;
 namespace GDMENUCardManager.Core
 {
     /// <summary>
-    /// Provides intelligent title case conversion that handles small words,
-    /// Roman numerals, and other special cases properly.
+    /// Title casing tuned for game titles: small words stay lowercase unless they lead, Roman
+    /// numerals stay uppercase.
     /// </summary>
     public static class TitleCaseHelper
     {
@@ -22,22 +22,16 @@ namespace GDMENUCardManager.Core
             "as", "at", "by", "in", "of", "on", "to", "up", "vs", "via"
         };
 
-        // Regex to validate Roman numerals (case-insensitive)
-        // Matches: I, II, III, IV, V, VI, VII, VIII, IX, X, XI, XII, XIII, XIV, XV, etc.
+        // Strict numeral grammar. Rejects sequences like IIII or VX.
         private static readonly Regex RomanNumeralRegex = new Regex(
             @"^M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
-        /// <summary>
-        /// Converts a string to proper title case with intelligent handling of
-        /// small words, Roman numerals, and special punctuation.
-        /// </summary>
         public static string ToTitleCase(string input)
         {
             if (string.IsNullOrWhiteSpace(input))
                 return input;
 
-            // Split by spaces while preserving multiple spaces
             var parts = SplitPreservingSpaces(input);
             var result = new StringBuilder();
 
@@ -106,7 +100,6 @@ namespace GDMENUCardManager.Core
 
         private static string ProcessWord(string word, bool isFirst, bool isLast, bool afterColon)
         {
-            // Handle hyphenated words
             if (word.Contains("-"))
             {
                 return ProcessHyphenatedWord(word, isFirst, isLast, afterColon);
@@ -144,11 +137,10 @@ namespace GDMENUCardManager.Core
                 if (i > 0)
                     result.Append('-');
 
-                // Each part of a hyphenated word gets title case treatment
-                // First part follows normal rules, subsequent parts are always capitalized
+                // The first part follows the normal rules. Later parts are always capitalized.
                 bool partIsFirst = (i == 0 && isFirst);
                 bool partIsLast = (i == parts.Length - 1 && isLast);
-                bool alwaysCapitalize = (i > 0); // Non-first parts of hyphenated words are capitalized
+                bool alwaysCapitalize = (i > 0);
 
                 if (alwaysCapitalize)
                     result.Append(Capitalize(parts[i]));
@@ -164,7 +156,6 @@ namespace GDMENUCardManager.Core
             if (string.IsNullOrEmpty(word))
                 return word;
 
-            // Check if it's a Roman numeral
             if (IsRomanNumeral(word))
             {
                 return word.ToUpperInvariant();
@@ -196,14 +187,10 @@ namespace GDMENUCardManager.Core
             if (string.IsNullOrEmpty(word))
                 return false;
 
-            // Must be at least one character and only contain Roman numeral characters
             if (!Regex.IsMatch(word, @"^[IVXLCDMivxlcdm]+$"))
                 return false;
 
-            // Validate it's a proper Roman numeral pattern
-            // Also ensure it's not just "I" which could be the pronoun
-            // But for game titles, we'll treat single "I" as Roman numeral since
-            // it's rarely used as a pronoun in titles
+            // A lone "I" is treated as a numeral. In game titles that beats the pronoun reading.
             return RomanNumeralRegex.IsMatch(word);
         }
     }

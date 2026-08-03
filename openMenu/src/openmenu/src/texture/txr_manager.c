@@ -155,7 +155,6 @@ txr_get_from_dat_set(const char* id, struct image* img, dat_system* system) {
         slot_num = find_in_cache(&system->cache, id_santized);
         txr_ptr = pool_get_slot_addr(&system->pool, slot_num);
 
-        /* now load the texture into vram */
         draw_load_texture_from_DAT_to_buffer(dat_source, id_santized, img, txr_ptr);
         pool_set_slot_format(&system->pool, slot_num, img->width, img->height, img->format);
     } else {
@@ -200,7 +199,6 @@ txr_get_folder(const char* id, struct image* img) {
         slot_num = find_in_cache(&box_system.cache, id);
         txr_ptr = pool_get_slot_addr(&box_system.pool, slot_num);
 
-        /* now load the texture into vram */
         draw_load_texture_from_DAT_to_buffer(&folder_dat, id, img, txr_ptr);
         pool_set_slot_format(&box_system.pool, slot_num, img->width, img->height, img->format);
     } else {

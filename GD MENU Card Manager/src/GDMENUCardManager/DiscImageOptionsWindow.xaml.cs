@@ -79,7 +79,7 @@ namespace GDMENUCardManager
 
     }
 
-    // Interface for the view model to allow accessing the properties
+    // Shared by the WPF and Avalonia windows so Core can read the options back.
     public interface IDiscImageOptionsViewModel
     {
         bool EnableGDIShrink { get; set; }

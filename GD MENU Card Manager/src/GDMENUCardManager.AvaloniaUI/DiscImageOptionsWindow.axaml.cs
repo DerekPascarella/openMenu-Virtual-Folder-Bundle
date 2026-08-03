@@ -10,6 +10,10 @@ namespace GDMENUCardManager
     public partial class DiscImageOptionsWindow : Window
     {
         // Store original values to restore on Cancel
+        private bool _originalEnableGDIShrink;
+        private bool _originalEnableGDIShrinkExisting;
+        private bool _originalEnableGDIShrinkCompressed;
+        private bool _originalEnableGDIShrinkBlackList;
         private bool _originalEnableVgaPatch;
         private bool _originalEnableVgaPatchExisting;
         private bool _originalEnableRegionPatch;
@@ -42,6 +46,10 @@ namespace GDMENUCardManager
             // Capture original values when window opens
             if (DataContext is IDiscImageOptionsViewModel vm)
             {
+                _originalEnableGDIShrink = vm.EnableGDIShrink;
+                _originalEnableGDIShrinkExisting = vm.EnableGDIShrinkExisting;
+                _originalEnableGDIShrinkCompressed = vm.EnableGDIShrinkCompressed;
+                _originalEnableGDIShrinkBlackList = vm.EnableGDIShrinkBlackList;
                 _originalEnableVgaPatch = vm.EnableVgaPatch;
                 _originalEnableVgaPatchExisting = vm.EnableVgaPatchExisting;
                 _originalEnableRegionPatch = vm.EnableRegionPatch;
@@ -62,6 +70,10 @@ namespace GDMENUCardManager
         {
             if (DataContext is IDiscImageOptionsViewModel vm)
             {
+                vm.EnableGDIShrink = _originalEnableGDIShrink;
+                vm.EnableGDIShrinkExisting = _originalEnableGDIShrinkExisting;
+                vm.EnableGDIShrinkCompressed = _originalEnableGDIShrinkCompressed;
+                vm.EnableGDIShrinkBlackList = _originalEnableGDIShrinkBlackList;
                 vm.EnableVgaPatch = _originalEnableVgaPatch;
                 vm.EnableVgaPatchExisting = _originalEnableVgaPatchExisting;
                 vm.EnableRegionPatch = _originalEnableRegionPatch;
@@ -78,9 +90,13 @@ namespace GDMENUCardManager
 
     }
 
-    // Interface for the view model to allow accessing the properties
+    // Shared by the WPF and Avalonia windows so Core can read the options back.
     public interface IDiscImageOptionsViewModel
     {
+        bool EnableGDIShrink { get; set; }
+        bool EnableGDIShrinkExisting { get; set; }
+        bool EnableGDIShrinkCompressed { get; set; }
+        bool EnableGDIShrinkBlackList { get; set; }
         bool EnableVgaPatch { get; set; }
         bool EnableVgaPatchExisting { get; set; }
         bool EnableRegionPatch { get; set; }

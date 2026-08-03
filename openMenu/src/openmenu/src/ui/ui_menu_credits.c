@@ -84,12 +84,8 @@ typedef enum EXIT_OPTION {
 /* Dynamic option list for current context */
 static EXIT_OPTION exit_options[EXIT_OPT_MAX];
 
-/* Build exit options list based on context
- * - is_folder: true if a folder is selected (only Exit to BIOS + Close)
- * - has_vm2: true if VM2/VMUPro/USB4Maple/Pico2Maple is detected
- * - is_game: true if type != "other" (game, psx, etc.)
- * - Also checks if VMU Game ID transmission is enabled (not set to Off)
- */
+/* A folder gets only Exit to BIOS and Close. Everything else depends on whether a
+ * VM2-family device is present and whether game ID transmission is switched on. */
 static void
 exit_menu_build_options(int is_folder, int has_vm2, int is_game) {
     exit_menu_num_options = 0;
@@ -188,6 +184,27 @@ draw_wrap_text_bmp(const char* text, int x, int y, int max_chars, int line_heigh
     }
 }
 
+#define GAME_ROW_BUDGET 38
+
+/* Builds a row label capped at GAME_ROW_BUDGET characters. Multidisc entries
+ * keep their exact disc suffix even when the name gets cut, so the name
+ * is truncated and the suffix appended after it. */
+static void
+format_game_row(char* out, size_t out_size, const gd_item* item) {
+    char suffix[10];
+    suffix[0] = '\0';
+    const int disc_total = gd_item_disc_total(item->disc);
+    if (disc_total > 1) {
+        snprintf(suffix, sizeof(suffix), " (%d/%d)", gd_item_disc_num(item->disc), disc_total);
+    }
+    const int name_budget = GAME_ROW_BUDGET - (int)strlen(suffix);
+    if ((int)strlen(item->name) <= name_budget) {
+        snprintf(out, out_size, "%s%s", item->name, suffix);
+    } else {
+        snprintf(out, out_size, "%.*s...%s", name_budget - 3, item->name, suffix);
+    }
+}
+
 #pragma endregion Exit_Menu
 
 #pragma region CodeBreaker_Menu
@@ -197,6 +214,10 @@ static const char* cb_option_text[] = {"Launch selected disc with CodeBreaker", 
 
 static int cb_menu_choice = 0;
 #define CB_MENU_NUM_OPTIONS 2
+
+/* Probed when the menu opens. Without PELICAN.BIN the window only shows
+ * a notice and a Close button. */
+static int cb_available = 1;
 
 typedef enum CB_OPTION { CB_OPT_LAUNCH = 0, CB_OPT_CLOSE } CB_OPTION;
 
@@ -220,13 +241,15 @@ static const char* menu_choice_text[] = {"Style",
                                          "Game Artwork",
                                          "Folder Artwork",
                                          "Item Details",
+                                         "Remember Last Game",
+                                         "Recently Played",
                                          "Clock",
                                          "Marquee Speed",
-                                         "VMU Time Sync",
+                                         "Boot Mode",
                                          "Serial VMU",
                                          "Serial VMU Multi-Slot",
                                          "VMU Game ID",
-                                         "Boot Mode",
+                                         "VMU Time Sync",
                                          "VMU Beep on Save"};
 static const char* theme_choice_text[] = {"LineDesc", "Grid3", "Scroll", "Folders"};
 static const char* region_choice_text[] = {"NTSC-U", "NTSC-J", "PAL"};
@@ -251,6 +274,8 @@ static const char* disc_details_choice_text[] = {"Show", "Hide"};
 static const char* folders_art_choice_text[] = {"Off", "On"};
 static const char* folder_art_choice_text[] = {"Off", "On"};
 static const char* folders_item_details_choice_text[] = {"Off", "On"};
+static const char* remember_last_game_choice_text[] = {"Off", "On"};
+static const char* recently_played_choice_text[] = {"Off", "Last 10", "Last 20", "Last 30", "Last 40", "Last 50"};
 static const char* marquee_speed_choice_text[] = {"Slow", "Medium", "Fast"};
 static const char* clock_choice_text[] = {"On (12-Hour)", "On (24-Hour)", "Off"};
 static const char* vmu_time_sync_choice_text[] = {"Off", "On"};
@@ -291,10 +316,12 @@ static int REGION_CHOICES = (sizeof(region_choice_text) / sizeof(region_choice_t
 #define FOLDER_ART_CHOICES         (sizeof(folder_art_choice_text) / sizeof(folder_art_choice_text)[0])
 #define FOLDERS_ITEM_DETAILS_CHOICES                                                                                   \
     (sizeof(folders_item_details_choice_text) / sizeof(folders_item_details_choice_text)[0])
-#define MARQUEE_SPEED_CHOICES (sizeof(marquee_speed_choice_text) / sizeof(marquee_speed_choice_text)[0])
-#define CLOCK_CHOICES         (sizeof(clock_choice_text) / sizeof(clock_choice_text)[0])
-#define VMU_TIME_SYNC_CHOICES (sizeof(vmu_time_sync_choice_text) / sizeof(vmu_time_sync_choice_text)[0])
-#define SERIAL_VMU_CHOICES    (sizeof(serial_vmu_choice_text) / sizeof(serial_vmu_choice_text)[0])
+#define REMEMBER_LAST_GAME_CHOICES (sizeof(remember_last_game_choice_text) / sizeof(remember_last_game_choice_text)[0])
+#define RECENTLY_PLAYED_CHOICES    (sizeof(recently_played_choice_text) / sizeof(recently_played_choice_text)[0])
+#define MARQUEE_SPEED_CHOICES      (sizeof(marquee_speed_choice_text) / sizeof(marquee_speed_choice_text)[0])
+#define CLOCK_CHOICES              (sizeof(clock_choice_text) / sizeof(clock_choice_text)[0])
+#define VMU_TIME_SYNC_CHOICES      (sizeof(vmu_time_sync_choice_text) / sizeof(vmu_time_sync_choice_text)[0])
+#define SERIAL_VMU_CHOICES         (sizeof(serial_vmu_choice_text) / sizeof(serial_vmu_choice_text)[0])
 #define SERIAL_VMU_MULTISLOT_CHOICES                                                                                   \
     (sizeof(serial_vmu_multislot_choice_text) / sizeof(serial_vmu_multislot_choice_text)[0])
 #define VM2_SEND_ALL_CHOICES (sizeof(vm2_send_all_choice_text) / sizeof(vm2_send_all_choice_text)[0])
@@ -318,13 +345,15 @@ typedef enum MENU_CHOICE {
     CHOICE_FOLDERS_ART,
     CHOICE_FOLDER_ART,
     CHOICE_FOLDERS_ITEM_DETAILS,
+    CHOICE_REMEMBER_LAST_GAME,
+    CHOICE_RECENTLY_PLAYED,
     CHOICE_CLOCK,
     CHOICE_MARQUEE_SPEED,
-    CHOICE_VMU_TIME_SYNC,
+    CHOICE_BOOT_MODE,
     CHOICE_SERIAL_VMU,
     CHOICE_SERIAL_VMU_MULTISLOT,
     CHOICE_VM2_SEND_ALL,
-    CHOICE_BOOT_MODE,
+    CHOICE_VMU_TIME_SYNC,
     CHOICE_BEEP,
     CHOICE_SAVE,
     CHOICE_CREDITS,
@@ -350,13 +379,15 @@ static int choices_max[MENU_CHOICES + 1] = {THEME_CHOICES,
                                             FOLDERS_ART_CHOICES,
                                             FOLDER_ART_CHOICES,
                                             FOLDERS_ITEM_DETAILS_CHOICES,
+                                            REMEMBER_LAST_GAME_CHOICES,
+                                            RECENTLY_PLAYED_CHOICES,
                                             CLOCK_CHOICES,
                                             MARQUEE_SPEED_CHOICES,
-                                            VMU_TIME_SYNC_CHOICES,
+                                            BOOT_MODE_CHOICES,
                                             SERIAL_VMU_CHOICES,
                                             SERIAL_VMU_MULTISLOT_CHOICES,
                                             VM2_SEND_ALL_CHOICES,
-                                            BOOT_MODE_CHOICES,
+                                            VMU_TIME_SYNC_CHOICES,
                                             BEEP_CHOICES,
                                             2 /* Apply/Save */};
 static const char** menu_choice_array[MENU_CHOICES] = {theme_choice_text,
@@ -375,13 +406,15 @@ static const char** menu_choice_array[MENU_CHOICES] = {theme_choice_text,
                                                        folders_art_choice_text,
                                                        folder_art_choice_text,
                                                        folders_item_details_choice_text,
+                                                       remember_last_game_choice_text,
+                                                       recently_played_choice_text,
                                                        clock_choice_text,
                                                        marquee_speed_choice_text,
-                                                       vmu_time_sync_choice_text,
+                                                       boot_mode_choice_text,
                                                        serial_vmu_choice_text,
                                                        serial_vmu_multislot_choice_text,
                                                        vm2_send_all_choice_text,
-                                                       boot_mode_choice_text,
+                                                       vmu_time_sync_choice_text,
                                                        beep_choice_text};
 static int current_choice = CHOICE_START;
 static int* input_timeout_ptr = NULL;
@@ -478,7 +511,7 @@ settings_sync_theme_row_from_settings(void) {
         menu_choice_array[CHOICE_REGION] = region_choice_text;
         REGION_CHOICES = (sizeof(region_choice_text) / sizeof(region_choice_text)[0]);
         choices_max[CHOICE_REGION] = REGION_CHOICES;
-        /* Grab custom themes if we have them */
+        /* Custom themes are optional. The built-ins always exist. */
         custom_themes = theme_get_custom(&num_custom_themes);
         if (num_custom_themes > 0) {
             for (int i = 0; i < num_custom_themes; i++) {
@@ -487,7 +520,6 @@ settings_sync_theme_row_from_settings(void) {
             }
         }
     } else {
-        /* Assign appropriate default theme name based on UI mode */
         if (sf_ui[0] == UI_FOLDERS) {
             menu_choice_array[CHOICE_REGION] = region_choice_text_folders;
         } else {
@@ -495,7 +527,6 @@ settings_sync_theme_row_from_settings(void) {
         }
         REGION_CHOICES = 1;
         choices_max[CHOICE_REGION] = 1;
-        /* Load appropriate themes based on UI mode */
         if (sf_ui[0] == UI_FOLDERS) {
             custom_scroll = theme_get_folder(&num_custom_themes);
         } else {
@@ -544,6 +575,8 @@ menu_setup(enum draw_state* state, theme_color* _colors, int* timeout_ptr, uint3
     choices[CHOICE_FOLDERS_ART] = sf_folders_art[0];
     choices[CHOICE_FOLDER_ART] = sf_folder_art[0];
     choices[CHOICE_FOLDERS_ITEM_DETAILS] = sf_folders_item_details[0];
+    choices[CHOICE_REMEMBER_LAST_GAME] = sf_remember_last_game[0];
+    choices[CHOICE_RECENTLY_PLAYED] = sf_recently_played[0];
     choices[CHOICE_MARQUEE_SPEED] = sf_marquee_speed[0];
     choices[CHOICE_CLOCK] = sf_clock[0];
     choices[CHOICE_VMU_TIME_SYNC] = sf_vmu_time_sync[0];
@@ -586,19 +619,15 @@ exit_menu_setup(enum draw_state* state, theme_color* _colors, int* timeout_ptr, 
     /* Rescan for VM2 devices (detect hot-swapped devices) */
     vm2_rescan();
 
-    /* Reset selection to first option */
     exit_menu_choice = 0;
 
-    /* Determine if VM2 is present */
     int has_vm2 = (vm2_device_count > 0);
 
-    /* Determine if current item is a game (type != "other") */
     int is_game = 0;
     if (!is_folder && cur_game_item != NULL && cur_game_item->type[0] != '\0') {
         is_game = (strcmp(cur_game_item->type, "other") != 0);
     }
 
-    /* Build the options list */
     exit_menu_build_options(is_folder, has_vm2, is_game);
 }
 
@@ -645,6 +674,8 @@ menu_accept(void) {
         sf_folders_art[0] = choices[CHOICE_FOLDERS_ART];
         sf_folder_art[0] = choices[CHOICE_FOLDER_ART];
         sf_folders_item_details[0] = choices[CHOICE_FOLDERS_ITEM_DETAILS];
+        sf_remember_last_game[0] = choices[CHOICE_REMEMBER_LAST_GAME];
+        sf_recently_played[0] = choices[CHOICE_RECENTLY_PLAYED];
         sf_marquee_speed[0] = choices[CHOICE_MARQUEE_SPEED];
         sf_clock[0] = choices[CHOICE_CLOCK];
         /* If VMU Time Sync was just enabled, sync the RTC now */
@@ -743,6 +774,7 @@ settings_option_visible(int option) {
         case CHOICE_FOLDERS_ART:
         case CHOICE_FOLDER_ART:
         case CHOICE_FOLDERS_ITEM_DETAILS:
+        case CHOICE_RECENTLY_PLAYED:
         case CHOICE_CLOCK: return sf_ui[0] == UI_FOLDERS;
         case CHOICE_MARQUEE_SPEED: return sf_ui[0] == UI_SCROLL || sf_ui[0] == UI_FOLDERS;
         case CHOICE_SERIAL_VMU:
@@ -1018,6 +1050,24 @@ menu_accept_multidisc(void) {
     }
 
     if (!cb_multidisc) {
+        /* PSX discs go through the Bleem/Bloom flow, matching a launch
+         * straight from the game list. */
+        if (!strcmp(list_multidisc[current_choice]->type, "psx")) {
+            if (is_bloom_available()) {
+                set_cur_game_item(list_multidisc[current_choice]);
+                psx_launcher_choice = 0; /* Reset to Bleem! as default */
+                *state_ptr = DRAW_PSX_LAUNCHER;
+                *input_timeout_ptr = 3;
+            } else if (sf_serial_vmu[0] != SERIAL_VMU_OFF) {
+                set_cur_game_item(list_multidisc[current_choice]);
+                *state_ptr = DRAW_SERIAL_VMU;
+                serial_vmu_start_restore(list_multidisc[current_choice], SERIAL_VMU_LAUNCH_BLEEM);
+            } else {
+                bleem_launch(list_multidisc[current_choice]);
+            }
+            return;
+        }
+
         if (sf_serial_vmu[0] != SERIAL_VMU_OFF && strcmp(list_multidisc[current_choice]->type, "other") != 0) {
             set_cur_game_item(list_multidisc[current_choice]);
             *state_ptr = DRAW_SERIAL_VMU;
@@ -1124,6 +1174,8 @@ cb_menu_setup(enum draw_state* state, theme_color* _colors, int* timeout_ptr, ui
     common_setup(state, _colors, timeout_ptr);
     menu_title_color = title_color;
 
+    cb_available = codebreaker_available();
+
     /* Reset selection to first option (Launch) */
     cb_menu_choice = 0;
 }
@@ -1214,6 +1266,12 @@ handle_input_exit(enum control input) {
 
 void
 handle_input_codebreaker(enum control input) {
+    if (!cb_available) {
+        if (input == A || input == B) {
+            menu_leave();
+        }
+        return;
+    }
     switch (input) {
         case UP: menu_cb_prev(); break;
         case DOWN: menu_cb_next(); break;
@@ -1558,35 +1616,26 @@ draw_multidisc_tr(void) {
 
     z_set_cond(205.0f);
     if (sf_ui[0] == UI_SCROLL || sf_ui[0] == UI_FOLDERS) {
-        /* Menu size and placement. Width auto-sized based on disc labels */
+        /* Menu size and placement, width follows the longest disc label */
         const int line_height = 24;
         const int title_gap = line_height / 2;
-        const int title_width = 10 * 8; /* "Multi-Disc" = 10 chars */
+        const int title_width = 10 * 8; /* "Multi-Disc" */
         const int padding = 16;         /* 8px margin on each side */
-        const int max_name_chars = 35;  /* Maximum characters for game name */
         char line_buf[48];
-        char temp_game_name[36];
 
-        /* Find the longest disc label to determine popup width */
-        int max_label_len = 0;
+        /* Measure the rows exactly as they get drawn further down */
+        int max_label = 0;
         for (int i = 0; i < multidisc_len; i++) {
-            int name_len = strlen(list_multidisc[i]->name);
-            if (name_len > max_name_chars) {
-                name_len = max_name_chars;
-            }
-            /* Account for " #N" or " #NN" suffix (space + # + 1-2 digits) */
-            int disc_num = gd_item_disc_num(list_multidisc[i]->disc);
-            int suffix_len = (disc_num >= 10) ? 4 : 3;
-            int label_len = name_len + suffix_len;
-            if (label_len > max_label_len) {
-                max_label_len = label_len;
+            format_game_row(line_buf, sizeof(line_buf), list_multidisc[i]);
+            const int label_len = (int)strlen(line_buf);
+            if (label_len > max_label) {
+                max_label = label_len;
             }
         }
 
-        /* Width is the larger of title or max label, plus padding */
-        const int content_width = max_label_len * 8;
+        const int content_width = max_label * 8;
         const int width = (content_width > title_width ? content_width : title_width) + padding;
-        const int height = (multidisc_len + 2) * line_height + (line_height / 2) + title_gap;
+        const int height = (multidisc_len + 2) * line_height + (line_height / 2) + title_gap + line_height;
         const int x = (640 / 2) - (width / 2);
         const int y = (480 / 2) - (height / 2);
         const int x_item = x + (padding / 2);
@@ -1609,31 +1658,23 @@ draw_multidisc_tr(void) {
             } else {
                 font_bmp_set_color(text_color);
             }
-            const int disc_num = gd_item_disc_num(list_multidisc[i]->disc);
-            strncpy(temp_game_name, list_multidisc[i]->name, sizeof(temp_game_name) - 1);
-            temp_game_name[sizeof(temp_game_name) - 1] = '\0';
-            /* Add ellipsis if name was truncated */
-            if (strlen(list_multidisc[i]->name) >= sizeof(temp_game_name)) {
-                strcpy(&temp_game_name[sizeof(temp_game_name) - 4], "...");
-            }
-            /* Format as "GameName #N" without fixed-width padding */
-            snprintf(line_buf, sizeof(line_buf), "%s #%d", temp_game_name, disc_num);
+            format_game_row(line_buf, sizeof(line_buf), list_multidisc[i]);
             font_bmp_draw_main(x_item, cur_y, line_buf);
         }
 
-        /* Close option */
-        cur_y += line_height;
+        /* Close option, one empty row below the discs */
+        cur_y += 2 * line_height;
         font_bmp_set_color(current_choice == multidisc_len ? highlight_color : text_color);
         font_bmp_draw_main(x_item, cur_y, "Close");
     } else {
         /* Menu size and placement */
         const int line_height = 32;
         const int width = 300;
-        const int height = (multidisc_len + 2) * line_height + (line_height / 2);
+        const int height = (multidisc_len + 2) * line_height + (line_height / 2) + line_height;
         const int x = (640 / 2) - (width / 2);
         const int y = (480 / 2) - (height / 2);
         const int x_item = x + 4;
-        char line_buf[65];
+        char line_buf[72];
         char temp_game_name[62];
 
         /* Draw a popup in the middle of the screen */
@@ -1661,12 +1702,13 @@ draw_multidisc_tr(void) {
             if (strlen(list_multidisc[i]->name) >= sizeof(temp_game_name)) {
                 strcpy(&temp_game_name[sizeof(temp_game_name) - 4], "...");
             }
-            snprintf(line_buf, 69, "%s #%d", temp_game_name, disc_num);
+            snprintf(line_buf, sizeof(line_buf), "%s (%d/%d)", temp_game_name, disc_num,
+                     gd_item_disc_total(list_multidisc[i]->disc));
             font_bmf_draw_auto_size(x_item, cur_y, temp_color, line_buf, width - 4);
         }
 
-        /* Close option */
-        cur_y += line_height;
+        /* Close option, one empty row below the discs */
+        cur_y += 2 * line_height;
         font_bmf_draw(x_item, cur_y, current_choice == multidisc_len ? highlight_color : text_color, "Close");
     }
 }
@@ -1800,6 +1842,34 @@ draw_codebreaker_tr(void) {
         const int padding = 16;         /* 8px margin on each side */
         const int title_width = 10 * 8; /* "Use Cheats" = 10 chars */
 
+        if (!cb_available) {
+            const int content_width = 24 * 8; /* "CodeBreaker not found in" */
+            const int width = (content_width > title_width ? content_width : title_width) + padding;
+            const int height = (4 + 1) * line_height + 4;
+            const int x = (640 / 2) - (width / 2);
+            const int y = (480 / 2) - (height / 2);
+            const int x_item = x + (padding / 2);
+
+            draw_popup_menu(x, y, width, height);
+
+            int cur_y = y + 2;
+            font_bmp_begin_draw();
+            font_bmp_set_color(menu_title_color);
+            font_bmp_draw_main(x + width / 2 - (10 * 8 / 2), cur_y, "Use Cheats");
+
+            cur_y += title_gap;
+            cur_y += line_height;
+            font_bmp_set_color(text_color);
+            font_bmp_draw_main(x_item, cur_y, "CodeBreaker not found in");
+            cur_y += line_height;
+            font_bmp_draw_main(x_item, cur_y, "this openMenu build.");
+            cur_y += line_height; /* blank */
+            cur_y += line_height;
+            font_bmp_set_color(highlight_color);
+            font_bmp_draw_main(x_item, cur_y, "Close");
+            return;
+        }
+
         /* Find the longest option text */
         int max_option_len = 0;
         for (int i = 0; i < CB_MENU_NUM_OPTIONS; i++) {
@@ -1841,6 +1911,33 @@ draw_codebreaker_tr(void) {
         const int title_gap = line_height / 4;
         const int padding = 20;
 
+        if (!cb_available) {
+            const int content_width = 24 * 10; /* "CodeBreaker not found in" */
+            const int title_width = 10 * 10;   /* "Use Cheats" */
+            const int width = (content_width > title_width ? content_width : title_width) + padding;
+            const int height = (4 + 1) * line_height + (line_height / 2);
+            const int x = (640 / 2) - (width / 2);
+            const int y = (480 / 2) - (height / 2);
+            const int x_item = x + 10;
+
+            draw_popup_menu(x, y, width, height);
+
+            int cur_y = y + 2;
+            font_bmf_begin_draw();
+            font_bmf_set_height_default();
+            font_bmf_draw_centered(x + width / 2, cur_y, text_color, "Use Cheats");
+
+            cur_y += title_gap;
+            cur_y += line_height;
+            font_bmf_draw_auto_size(x_item, cur_y, text_color, "CodeBreaker not found in", width - 20);
+            cur_y += line_height;
+            font_bmf_draw_auto_size(x_item, cur_y, text_color, "this openMenu build.", width - 20);
+            cur_y += line_height; /* blank */
+            cur_y += line_height;
+            font_bmf_draw_auto_size(x_item, cur_y, highlight_color, "Close", width - 20);
+            return;
+        }
+
         /* Find the longest option text */
         int max_option_len = 0;
         for (int i = 0; i < CB_MENU_NUM_OPTIONS; i++) {
@@ -1878,6 +1975,388 @@ draw_codebreaker_tr(void) {
         }
     }
 }
+
+#pragma region Recent_Manage
+
+/* Layers inside the manage state. The confirm layers either sit on top
+ * of their parent or replace it, depending on which one triggered them. */
+typedef enum RECENT_MANAGE_LAYER {
+    RM_LAYER_MENU = 0,
+    RM_LAYER_LIST,
+    RM_LAYER_CONFIRM_REMOVE,
+    RM_LAYER_CONFIRM_CLEAR
+} RECENT_MANAGE_LAYER;
+
+#define RM_MENU_NUM_OPTIONS 3
+#define RM_WINDOW_ROWS      10
+
+static const char* rm_menu_text[RM_MENU_NUM_OPTIONS] = {"Remove entries", "Clear list", "Close"};
+static const char* rm_remove_confirm_text = "Remove this entry from the Recently Played list?";
+static const char* rm_clear_confirm_text = "Remove all entries from the Recently Played list?";
+
+static RECENT_MANAGE_LAYER rm_layer = RM_LAYER_MENU;
+static RECENT_MANAGE_RESULT rm_result = RM_RESULT_ACTIVE;
+static int rm_menu_choice = 0;
+static int rm_list_choice = 0;
+static int rm_scroll_offset = 0;
+static int rm_removed_count = 0;
+static int rm_confirm_choice = 0; /* 0 is Yes and 1 is No */
+static int rm_window_width = 320;
+
+/* Clamps the scroll window and keeps the cursor inside it. */
+static void
+rm_list_update_scroll(int count) {
+    const int window = count < RM_WINDOW_ROWS ? count : RM_WINDOW_ROWS;
+    const int max_scroll = count - window;
+    if (rm_scroll_offset > max_scroll) {
+        rm_scroll_offset = max_scroll;
+    }
+    if (rm_scroll_offset < 0) {
+        rm_scroll_offset = 0;
+    }
+    if (rm_list_choice < count) {
+        if (rm_list_choice < rm_scroll_offset) {
+            rm_scroll_offset = rm_list_choice;
+        } else if (rm_list_choice >= rm_scroll_offset + window) {
+            rm_scroll_offset = rm_list_choice - window + 1;
+        }
+    } else {
+        /* Cursor is on Close, show the end of the list */
+        rm_scroll_offset = max_scroll;
+    }
+}
+
+void
+recent_manage_setup(enum draw_state* state, theme_color* _colors, int* timeout_ptr, uint32_t title_color) {
+    common_setup(state, _colors, timeout_ptr);
+    menu_title_color = title_color;
+
+    rm_layer = RM_LAYER_MENU;
+    rm_result = RM_RESULT_ACTIVE;
+    rm_menu_choice = 0;
+    rm_removed_count = 0;
+}
+
+RECENT_MANAGE_RESULT
+recent_manage_result(void) { return rm_result; }
+
+static void
+rm_menu_move(int dir) {
+    if (*input_timeout_ptr > 0) {
+        return;
+    }
+    rm_menu_choice += dir;
+    if (rm_menu_choice < 0) {
+        rm_menu_choice = RM_MENU_NUM_OPTIONS - 1;
+    }
+    if (rm_menu_choice >= RM_MENU_NUM_OPTIONS) {
+        rm_menu_choice = 0;
+    }
+    *input_timeout_ptr = INPUT_TIMEOUT;
+}
+
+static void
+rm_list_move(int dir) {
+    if (*input_timeout_ptr > 0) {
+        return;
+    }
+    int count = 0;
+    list_recent_entries(&count);
+    rm_list_choice += dir;
+    /* One extra stop for the Close row at index count */
+    if (rm_list_choice < 0) {
+        rm_list_choice = count;
+    }
+    if (rm_list_choice > count) {
+        rm_list_choice = 0;
+    }
+    *input_timeout_ptr = INPUT_TIMEOUT;
+}
+
+static void
+rm_confirm_move(void) {
+    if (*input_timeout_ptr > 0) {
+        return;
+    }
+    rm_confirm_choice = !rm_confirm_choice;
+    *input_timeout_ptr = INPUT_TIMEOUT;
+}
+
+/* Closing the remove window follows a simple rule. Removing nothing
+ * cancels back to the popup, and removing anything returns to the
+ * refreshed recent view. */
+static void
+rm_list_close(void) {
+    if (rm_removed_count > 0) {
+        rm_result = RM_RESULT_TO_RECENT;
+        menu_leave();
+    } else {
+        rm_layer = RM_LAYER_MENU;
+        *input_timeout_ptr = INPUT_TIMEOUT;
+    }
+}
+
+static void
+rm_menu_accept(void) {
+    switch (rm_menu_choice) {
+        case 0: /* Remove entries */
+        {
+            int count = 0;
+            list_recent_entries(&count);
+            /* The scrollbar gutter is only carried when a scrollbar will show */
+            rm_window_width = (count > RM_WINDOW_ROWS) ? 336 : 320;
+            rm_layer = RM_LAYER_LIST;
+            rm_list_choice = 0;
+            rm_scroll_offset = 0;
+            rm_removed_count = 0;
+            *input_timeout_ptr = INPUT_TIMEOUT;
+            break;
+        }
+        case 1: /* Clear list */
+            rm_layer = RM_LAYER_CONFIRM_CLEAR;
+            rm_confirm_choice = 0;
+            *input_timeout_ptr = INPUT_TIMEOUT;
+            break;
+        case 2: /* Close */ menu_leave(); break;
+        default: break;
+    }
+}
+
+static void
+rm_list_accept(void) {
+    int count = 0;
+    list_recent_entries(&count);
+    if (rm_list_choice >= count) {
+        rm_list_close();
+        return;
+    }
+    rm_layer = RM_LAYER_CONFIRM_REMOVE;
+    rm_confirm_choice = 0;
+    *input_timeout_ptr = INPUT_TIMEOUT;
+}
+
+static void
+rm_confirm_remove_accept(void) {
+    if (rm_confirm_choice == 0) {
+        int count = 0;
+        gd_item** entries = list_recent_entries(&count);
+        if (rm_list_choice < count) {
+            recently_played_remove(gd_item_recent_hash(entries[rm_list_choice]));
+            rm_removed_count++;
+            /* Rebuild the shared list behind the popup */
+            list_set_recent();
+            list_recent_entries(&count);
+            if (count == 0) {
+                rm_result = RM_RESULT_TO_ROOT;
+                menu_leave();
+                return;
+            }
+            if (rm_list_choice >= count) {
+                rm_list_choice = count - 1;
+            }
+        }
+    }
+    rm_layer = RM_LAYER_LIST;
+    *input_timeout_ptr = INPUT_TIMEOUT;
+}
+
+static void
+rm_confirm_clear_accept(void) {
+    if (rm_confirm_choice == 0) {
+        recently_played_clear();
+        list_set_recent();
+        rm_result = RM_RESULT_TO_ROOT;
+        menu_leave();
+        return;
+    }
+    /* Cancel restores the popup with the cursor still on Clear list */
+    rm_layer = RM_LAYER_MENU;
+    *input_timeout_ptr = INPUT_TIMEOUT;
+}
+
+void
+handle_input_recent_manage(enum control input) {
+    switch (rm_layer) {
+        case RM_LAYER_MENU:
+            switch (input) {
+                case UP: rm_menu_move(-1); break;
+                case DOWN: rm_menu_move(1); break;
+                case A: rm_menu_accept(); break;
+                case B: menu_leave(); break;
+                default: break;
+            }
+            break;
+        case RM_LAYER_LIST:
+            switch (input) {
+                case UP: rm_list_move(-1); break;
+                case DOWN: rm_list_move(1); break;
+                case A: rm_list_accept(); break;
+                case B: rm_list_close(); break;
+                default: break;
+            }
+            break;
+        case RM_LAYER_CONFIRM_REMOVE:
+            switch (input) {
+                case UP:
+                case DOWN: rm_confirm_move(); break;
+                case A: rm_confirm_remove_accept(); break;
+                case B:
+                    rm_confirm_choice = 1;
+                    rm_confirm_remove_accept();
+                    break;
+                default: break;
+            }
+            break;
+        case RM_LAYER_CONFIRM_CLEAR:
+            switch (input) {
+                case UP:
+                case DOWN: rm_confirm_move(); break;
+                case A: rm_confirm_clear_accept(); break;
+                case B:
+                    rm_confirm_choice = 1;
+                    rm_confirm_clear_accept();
+                    break;
+                default: break;
+            }
+            break;
+        default: break;
+    }
+}
+
+static void
+rm_draw_menu(void) {
+    const int line_height = 24;
+    const int title_width = 11 * 8; /* Manage List */
+    int max_option_len = 0;
+    for (int i = 0; i < RM_MENU_NUM_OPTIONS; i++) {
+        const int len = (int)strlen(rm_menu_text[i]);
+        if (len > max_option_len) {
+            max_option_len = len;
+        }
+    }
+    const int content_width = max_option_len * 8;
+    const int width = (content_width > title_width ? content_width : title_width) + 16;
+    const int height = (RM_MENU_NUM_OPTIONS + 1) * line_height + 4;
+    const int x = (640 / 2) - (width / 2);
+    const int y = (480 / 2) - (height / 2);
+    const int x_item = x + 8;
+
+    draw_popup_menu(x, y, width, height);
+
+    int cur_y = y + 2;
+    font_bmp_begin_draw();
+    font_bmp_set_color(menu_title_color);
+    font_bmp_draw_main(x + width / 2 - (11 * 8 / 2), cur_y, "Manage List");
+
+    cur_y += 2;
+    for (int i = 0; i < RM_MENU_NUM_OPTIONS; i++) {
+        cur_y += line_height;
+        font_bmp_set_color(i == rm_menu_choice ? highlight_color : text_color);
+        font_bmp_draw_main(x_item, cur_y, rm_menu_text[i]);
+    }
+}
+
+static void
+rm_draw_list(void) {
+    int count = 0;
+    gd_item** entries = list_recent_entries(&count);
+    const int line_height = 24;
+    const int width = rm_window_width;
+    const int list_pad = 8;
+    const int window = count < RM_WINDOW_ROWS ? count : RM_WINDOW_ROWS;
+    char row_buf[48];
+
+    rm_list_update_scroll(count);
+
+    const int height = 20 + list_pad + (window + 2) * line_height + 8;
+    const int x = (640 / 2) - (width / 2);
+    const int y = (480 / 2) - (height / 2);
+    const int x_item = x + 8;
+    const int list_top = y + 20 + list_pad;
+
+    draw_popup_menu(x, y, width, height);
+
+    /* Scrollbar along the right edge, only when the list does not fit */
+    if (count > window) {
+        const int track_x = x + width - 12;
+        const int track_h = window * line_height;
+        const int max_scroll = count - window;
+        int thumb_h = (track_h * window) / count;
+        if (thumb_h < 16) {
+            thumb_h = 16;
+        }
+        const int thumb_y = list_top + 1 + ((track_h - 2 - thumb_h) * rm_scroll_offset) / max_scroll;
+        draw_draw_quad(track_x, list_top, 6, track_h, menu_bkg_border_color);
+        draw_draw_quad(track_x + 1, thumb_y, 4, thumb_h, highlight_color);
+    }
+
+    font_bmp_begin_draw();
+    font_bmp_set_color(menu_title_color);
+    font_bmp_draw_main(x + width / 2 - (14 * 8 / 2), y + 2, "Remove Entries");
+
+    for (int row = 0; row < window; row++) {
+        const int i = rm_scroll_offset + row;
+        font_bmp_set_color(i == rm_list_choice ? highlight_color : text_color);
+        format_game_row(row_buf, sizeof(row_buf), entries[i]);
+        font_bmp_draw_main(x_item, list_top + row * line_height + 4, row_buf);
+    }
+
+    font_bmp_set_color(rm_list_choice == count ? highlight_color : text_color);
+    font_bmp_draw_main(x_item, list_top + (window + 1) * line_height + 4, "Close");
+}
+
+static void
+rm_draw_confirm(const char* title, const char* body, int wrap_chars) {
+    const int line_height = 24;
+    const int width = wrap_chars * 8 + 16;
+    const int body_lines = count_wrap_lines(body, wrap_chars);
+    const int height = 20 + 2 + (body_lines + 1) * line_height + 2 * line_height + 8;
+    const int x = (640 / 2) - (width / 2);
+    const int y = (480 / 2) - (height / 2);
+    const int x_item = x + 8;
+
+    draw_popup_menu(x, y, width, height);
+
+    font_bmp_begin_draw();
+    font_bmp_set_color(menu_title_color);
+    font_bmp_draw_main(x + width / 2 - ((int)strlen(title) * 8 / 2), y + 2, title);
+
+    int cur_y = y + 20 + 8;
+    font_bmp_set_color(text_color);
+    draw_wrap_text_bmp(body, x_item, cur_y, wrap_chars, line_height);
+
+    cur_y += (body_lines + 1) * line_height;
+    font_bmp_set_color(rm_confirm_choice == 0 ? highlight_color : text_color);
+    font_bmp_draw_main(x_item, cur_y, "Yes");
+    cur_y += line_height;
+    font_bmp_set_color(rm_confirm_choice == 1 ? highlight_color : text_color);
+    font_bmp_draw_main(x_item, cur_y, "No");
+}
+
+void
+draw_recent_manage_op(void) { /* nothing in the opaque pass */ }
+
+void
+draw_recent_manage_tr(void) {
+    z_set_cond(205.0f);
+    switch (rm_layer) {
+        case RM_LAYER_MENU: rm_draw_menu(); break;
+        case RM_LAYER_LIST: rm_draw_list(); break;
+        case RM_LAYER_CONFIRM_REMOVE:
+            /* The confirm overlays the window at a higher depth */
+            rm_draw_list();
+            z_set_cond(210.0f);
+            rm_draw_confirm("Confirm", rm_remove_confirm_text, 26);
+            break;
+        case RM_LAYER_CONFIRM_CLEAR:
+            /* The clear confirm takes over since it is wider than its parent */
+            rm_draw_confirm("Clear List", rm_clear_confirm_text, 25);
+            break;
+        default: break;
+    }
+}
+
+#pragma endregion Recent_Manage
 
 /* PSX Launcher popup functions */
 static void
@@ -2459,6 +2938,8 @@ saveload_apply_choices_to_settings(void) {
     sf_folders_art[0] = choices[CHOICE_FOLDERS_ART];
     sf_folder_art[0] = choices[CHOICE_FOLDER_ART];
     sf_folders_item_details[0] = choices[CHOICE_FOLDERS_ITEM_DETAILS];
+    sf_remember_last_game[0] = choices[CHOICE_REMEMBER_LAST_GAME];
+    sf_recently_played[0] = choices[CHOICE_RECENTLY_PLAYED];
     sf_marquee_speed[0] = choices[CHOICE_MARQUEE_SPEED];
     sf_clock[0] = choices[CHOICE_CLOCK];
     sf_vmu_time_sync[0] = choices[CHOICE_VMU_TIME_SYNC];
@@ -3122,7 +3603,7 @@ draw_saveload_tr(void) {
         const int padding = 16;
 
         /* Calculate height based on content:
-         * 4 ports × 2 lines each = 8 lines
+         * 4 ports x 2 lines each = 8 lines
          * 1 Serial line
          * 4 action area lines
          * = 13 content lines + title */
@@ -3390,7 +3871,7 @@ draw_saveload_tr(void) {
         const int padding = 16;
 
         /* Calculate height based on content:
-         * 4 ports × 2 lines each = 8 lines
+         * 4 ports x 2 lines each = 8 lines
          * 1 Serial line
          * 4 action area lines
          * = 13 content lines + title */
