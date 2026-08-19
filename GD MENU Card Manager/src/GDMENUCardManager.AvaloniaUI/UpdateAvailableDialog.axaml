@@ -2,9 +2,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="450" d:DesignHeight="220"
+        mc:Ignorable="d" d:DesignWidth="480" d:DesignHeight="220"
         x:Class="GDMENUCardManager.UpdateAvailableDialog"
-        Title="Update Available" SizeToContent="Height" Width="450"
+        Title="Update Available" SizeToContent="Height" Width="480"
         CanResize="False" CanMinimize="False"
         WindowStartupLocation="CenterOwner">
   <Grid Margin="20">
@@ -15,11 +15,13 @@
 
     <!-- Message -->
     <StackPanel Grid.Row="0">
-      <StackPanel Orientation="Horizontal" Margin="0 0 0 10" Spacing="0">
+      <!-- WrapPanel, not StackPanel: a long version tag wraps to the next line
+           instead of running off the edge of the window. -->
+      <WrapPanel Orientation="Horizontal" Margin="0 0 0 10">
         <TextBlock Text="A new version of GD MENU Card Manager ("/>
         <TextBlock x:Name="VersionText" FontWeight="SemiBold"/>
         <TextBlock Text=") is available."/>
-      </StackPanel>
+      </WrapPanel>
 
       <Button x:Name="ChangelogButton" Content="View Changelog" Click="Changelog_Click" Margin="0 0 0 15"
               Background="Transparent" BorderBrush="Transparent" Foreground="Blue"

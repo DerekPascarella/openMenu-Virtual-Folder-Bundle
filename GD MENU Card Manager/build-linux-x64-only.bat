@@ -61,6 +61,14 @@ REM Copy LICENSE and README
 copy /Y LICENSE "%OUTPUT_DIR%\"
 copy /Y README.md "%OUTPUT_DIR%\"
 
+REM Remove intermediate build output after a successful package.
+call cleanup-build-output.bat
+if %ERRORLEVEL% neq 0 (
+    echo ERROR: Build output cleanup failed
+    pause
+    exit /b 1
+)
+
 echo.
 echo ================================================
 echo Build completed successfully!

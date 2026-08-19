@@ -26,6 +26,7 @@
       <conv:BoolAndMultiValueConverter x:Key="BoolAndConverter"/>
       <conv:BoolToOpacityConverter x:Key="BoolToOpacity"/>
       <conv:CanReadIpBinConverter x:Key="CanReadIpBin"/>
+      <conv:RowMatchBrushConverter x:Key="RowMatchBrush"/>
 
       <!--icons from materialdesignicons.com-->
       <Viewbox x:Key="ViewOpenFolder" Width="18" Height="18">
@@ -199,6 +200,7 @@
           <DataGrid.Styles>
             <Style Selector="DataGridRow">
               <Setter Property="ContextMenu" Value="{DynamicResource rowmenu}"/>
+              <Setter Property="Background" Value="{Binding IsMatch, Converter={StaticResource RowMatchBrush}}"/>
             </Style>
           </DataGrid.Styles>
           <DataGrid.Resources>
@@ -257,7 +259,9 @@
             <DataGridTemplateColumn Header="Title" Width="2*">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate>
-                  <TextBlock Text="{Binding Name, Mode=OneWay}" VerticalAlignment="Center"/>
+                  <TextBlock VerticalAlignment="Center"
+                             local:HighlightBehavior.SourceText="{Binding Name, Mode=OneWay}"
+                             local:HighlightBehavior.Query="{Binding $parent[Window].DataContext.Filter, Mode=OneWay}"/>
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
               <DataGridTemplateColumn.CellEditingTemplate>
@@ -281,12 +285,17 @@
             <DataGridTemplateColumn Header="Serial" Width="75">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate>
-                  <TextBlock Text="{Binding ProductNumber, Mode=OneWay}" VerticalAlignment="Center"/>
+                  <TextBlock local:HighlightBehavior.SourceText="{Binding ArchiveSerialDisplay, Mode=OneWay}"
+                             local:HighlightBehavior.Query="{Binding $parent[Window].DataContext.Filter, Mode=OneWay}"
+                             ToolTip.Tip="{Binding ArchiveMetadataToolTip}"
+                             Background="Transparent"
+                             HorizontalAlignment="Stretch"
+                             VerticalAlignment="Center"/>
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
               <DataGridTemplateColumn.CellEditingTemplate>
                 <DataTemplate>
-                  <TextBox Text="{Binding ProductNumber, Mode=TwoWay}" Foreground="Black"/>
+                  <TextBox Text="{Binding ProductNumber, Mode=OneWay}" Foreground="Black"/>
                 </DataTemplate>
               </DataGridTemplateColumn.CellEditingTemplate>
             </DataGridTemplateColumn>
@@ -296,7 +305,8 @@
                   <Button Click="ButtonArtwork_Click" CommandParameter="{Binding}"
                           Content="{Binding HasArtwork, Converter={StaticResource ArtworkButtonLabel}}"
                           FontWeight="{Binding HasArtwork, Converter={StaticResource ArtworkButtonFontWeight}}"
-                          ToolTip.Tip="{Binding HasArtwork, Converter={StaticResource ArtworkButtonLabel}, ConverterParameter=tooltip}"
+                          ToolTip.Tip="{Binding ArtworkButtonToolTip}"
+                          ToolTip.ShowOnDisabled="True"
                           Padding="5,2" MinWidth="55" HorizontalAlignment="Stretch">
                     <Button.IsEnabled>
                       <MultiBinding Converter="{StaticResource BoolAndConverter}">
@@ -311,36 +321,48 @@
             <DataGridTemplateColumn Header="Disc" Width="45">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate>
-                  <TextBlock Text="{Binding Disc, Mode=OneWay}" VerticalAlignment="Center"/>
+                  <TextBlock Text="{Binding ArchiveDiscDisplay, Mode=OneWay}"
+                             ToolTip.Tip="{Binding ArchiveMetadataToolTip}"
+                             Background="Transparent"
+                             HorizontalAlignment="Stretch"
+                             VerticalAlignment="Center"/>
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
               <DataGridTemplateColumn.CellEditingTemplate>
                 <DataTemplate>
-                  <TextBox Text="{Binding Disc, Mode=TwoWay}" Foreground="Black"/>
+                  <TextBox Text="{Binding Disc, Mode=OneWay}" Foreground="Black"/>
                 </DataTemplate>
               </DataGridTemplateColumn.CellEditingTemplate>
             </DataGridTemplateColumn>
             <DataGridTemplateColumn Header="Region" Width="60">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate>
-                  <TextBlock Text="{Binding Region, Mode=OneWay}" VerticalAlignment="Center"/>
+                  <TextBlock Text="{Binding ArchiveRegionDisplay, Mode=OneWay}"
+                             ToolTip.Tip="{Binding ArchiveMetadataToolTip}"
+                             Background="Transparent"
+                             HorizontalAlignment="Stretch"
+                             VerticalAlignment="Center"/>
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
               <DataGridTemplateColumn.CellEditingTemplate>
                 <DataTemplate>
-                  <TextBox Text="{Binding Region, Mode=TwoWay}" Foreground="Black"/>
+                  <TextBox Text="{Binding Region, Mode=OneWay}" Foreground="Black"/>
                 </DataTemplate>
               </DataGridTemplateColumn.CellEditingTemplate>
             </DataGridTemplateColumn>
             <DataGridTemplateColumn Header="Type" Width="80" IsVisible="False">
               <DataGridTemplateColumn.CellTemplate>
                 <DataTemplate>
-                  <TextBlock Text="{Binding DiscType, Mode=OneWay}" VerticalAlignment="Center"/>
+                  <TextBlock Text="{Binding ArchiveTypeDisplay, Mode=OneWay}"
+                             ToolTip.Tip="{Binding ArchiveMetadataToolTip}"
+                             Background="Transparent"
+                             HorizontalAlignment="Stretch"
+                             VerticalAlignment="Center"/>
                 </DataTemplate>
               </DataGridTemplateColumn.CellTemplate>
               <DataGridTemplateColumn.CellEditingTemplate>
                 <DataTemplate>
-                  <ComboBox ItemsSource="{x:Static local:MainWindow.DiscTypes}" SelectedItem="{Binding DiscType, Mode=TwoWay}" Foreground="Black" Background="White"/>
+                  <ComboBox ItemsSource="{x:Static local:MainWindow.DiscTypes}" SelectedItem="{Binding DiscType, Mode=OneWay}" Foreground="Black" Background="White"/>
                 </DataTemplate>
               </DataGridTemplateColumn.CellEditingTemplate>
             </DataGridTemplateColumn>

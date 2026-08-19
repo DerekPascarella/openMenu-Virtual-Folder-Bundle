@@ -11,6 +11,14 @@ namespace GDMENUCardManager.Core.Interface
         public ValueTask<bool> ShowYesNoDialog(string caption, string text);
 
         /// <summary>
+        /// Requests a choice for a batch containing two or more compressed inputs.
+        /// </summary>
+        public ValueTask<ArchiveAddMode> ShowArchiveAddModeDialog(int compressedInputCount)
+        {
+            return new ValueTask<ArchiveAddMode>(ArchiveAddMode.ParseNow);
+        }
+
+        /// <summary>
         /// Shows a warning dialog with an OK button.
         /// </summary>
         public ValueTask ShowWarningDialog(string caption, string text);
@@ -53,15 +61,20 @@ namespace GDMENUCardManager.Core.Interface
         public ValueTask<bool> ShowConfigReadOnlyDialog(string configPath, string error);
 
         public void ExtractArchive(string archivePath, string extractTo);
-        public Dictionary<string, long> GetArchiveFiles(string archivePath);
+        public string ExtractArchiveForEntry(
+            string archivePath,
+            string extractTo,
+            ArchiveEntryInfo selectedEntry);
+        public IReadOnlyList<ArchiveEntryInfo> GetArchiveEntries(string archivePath);
 
         /// <summary>
-        /// Reads up to maxBytes from a single named entry in an archive without fully
-        /// extracting it. Matches the entry by leaf filename (case-insensitive). Returns
-        /// null when the entry is missing or unreadable. May return fewer bytes than
-        /// requested when the entry is smaller than maxBytes.
+        /// Reads up to maxBytes from the exact archive entry.
         /// </summary>
-        public byte[] ReadArchiveEntryBytes(string archivePath, string entryName, long maxBytes);
+        public byte[] ReadArchiveEntryBytes(
+            string archivePath,
+            ArchiveEntryInfo entry,
+            long maxBytes);
+
     }
 
     public interface IProgressWindow

@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 using System.Windows;
 using GDMENUCardManager.Core;
 using GDMENUCardManager.Core.Interface;
+using SharpCompress.Readers;
+using SharpCompress.Archives;
 using SevenZip;
 
 namespace GDMENUCardManager
@@ -34,6 +36,16 @@ namespace GDMENUCardManager
         public ValueTask<bool> ShowYesNoDialog(string caption, string text)
         {
             return new ValueTask<bool>(MessageBox.Show(getMainWindow(), text, caption, MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes);
+        }
+
+        public ValueTask<ArchiveAddMode> ShowArchiveAddModeDialog(int compressedInputCount)
+        {
+            var dialog = new ArchiveAddModeDialog(compressedInputCount)
+            {
+                Owner = getMainWindow()
+            };
+            dialog.ShowDialog();
+            return new ValueTask<ArchiveAddMode>(dialog.Result);
         }
 
         public ValueTask ShowWarningDialog(string caption, string text)
@@ -164,56 +176,125 @@ namespace GDMENUCardManager
             }
         }
 
-        public Dictionary<string, long> GetArchiveFiles(string archivePath)
+        public string ExtractArchiveForEntry(
+            string archivePath,
+            string extractTo,
+            ArchiveEntryInfo selectedEntry)
         {
-            var toReturn = new Dictionary<string, long>();
-            using (var compressedfile = new SevenZipExtractor(archivePath))
-                foreach (var item in compressedfile.ArchiveFileData.Where(x => !x.IsDirectory))
-                    if (!toReturn.ContainsKey(item.FileName))
-                        toReturn.Add(item.FileName, (long)item.Size);
-            return toReturn;
+            if (selectedEntry == null)
+                throw new ArgumentNullException(nameof(selectedEntry));
+
+            using var archive = new SevenZipExtractor(archivePath);
+            var entries = archive.ArchiveFileData
+                .Where(item => !item.IsDirectory)
+                .ToList();
+            var descriptors = entries
+                .Select((item, ordinal) => new ArchiveEntryInfo(
+                    ordinal,
+                    item.FileName,
+                    (long)item.Size))
+                .ToArray();
+            var extractionEntries = ArchiveEntrySelection.SelectForFlatExtraction(
+                descriptors,
+                selectedEntry);
+
+            Directory.CreateDirectory(extractTo);
+            archive.PreserveDirectoryStructure = false;
+            archive.ExtractFiles(
+                extractTo,
+                extractionEntries.Select(entry => entries[entry.Ordinal].Index).ToArray());
+
+            foreach (var entry in extractionEntries)
+            {
+                string outputPath = Path.Combine(
+                    extractTo,
+                    ArchiveEntryPath.GetLeafName(entry.FullName));
+                if (!File.Exists(outputPath) || new FileInfo(outputPath).Length != entry.Size)
+                    throw new InvalidDataException("An archive entry was not extracted completely.");
+            }
+
+            return Path.Combine(extractTo, ArchiveEntryPath.GetLeafName(selectedEntry.FullName));
         }
 
-        public byte[] ReadArchiveEntryBytes(string archivePath, string entryName, long maxBytes)
+        public IReadOnlyList<ArchiveEntryInfo> GetArchiveEntries(string archivePath)
         {
-            if (string.IsNullOrEmpty(archivePath) || string.IsNullOrEmpty(entryName) || maxBytes <= 0)
+            using var archive = new SevenZipExtractor(archivePath);
+            return archive.ArchiveFileData
+                .Where(item => !item.IsDirectory)
+                .Select((item, ordinal) => new ArchiveEntryInfo(
+                    ordinal,
+                    item.FileName,
+                    (long)item.Size))
+                .ToArray();
+        }
+
+        // Decompression-work ceiling for one bounded read inside a solid
+        // archive (bytes stored before the entry plus the prefix itself).
+        private const long MaxSolidReadWorkBytes = 128L * 1024 * 1024;
+
+        public byte[] ReadArchiveEntryBytes(
+            string archivePath,
+            ArchiveEntryInfo requestedEntry,
+            long maxBytes)
+        {
+            if (string.IsNullOrEmpty(archivePath) || requestedEntry == null || maxBytes <= 0)
                 return null;
 
             try
             {
                 using var stream = File.OpenRead(archivePath);
                 using var archive = SharpCompress.Archives.ArchiveFactory.Open(stream);
-
-                var entry = archive.Entries.FirstOrDefault(e =>
-                    !e.IsDirectory &&
-                    e.Key != null &&
-                    string.Equals(
-                        Path.GetFileName(e.Key.Replace('\\', '/')),
-                        entryName,
-                        StringComparison.OrdinalIgnoreCase));
-
-                if (entry == null)
+                if (archive.Type == SharpCompress.Common.ArchiveType.Rar && archive.IsSolid)
                     return null;
 
-                using var entryStream = entry.OpenEntryStream();
-                using var ms = new MemoryStream();
-                var buffer = new byte[8192];
-                long remaining = maxBytes;
-                while (remaining > 0)
+                var entries = archive.Entries.Where(entry => !entry.IsDirectory).ToList();
+                var entry = entries.ElementAtOrDefault(requestedEntry.Ordinal);
+
+                if (entry == null ||
+                    entry.Key == null ||
+                    entry.Size != requestedEntry.Size ||
+                    !ArchiveEntryPath.HasSameIdentityKey(entry.Key, requestedEntry.FullName))
+                    return null;
+
+                long expectedBytes = Math.Min(requestedEntry.Size, maxBytes);
+
+                // Reaching an entry inside a solid block first decompresses
+                // everything stored before it. The byte cap alone does not
+                // bound that work, so the read is skipped when it would
+                // exceed the budget. SharpCompress only reports IsSolid for
+                // RAR, so 7z is treated as solid outright (7-Zip archives
+                // normally are).
+                if (archive.Type == SharpCompress.Common.ArchiveType.SevenZip || archive.IsSolid)
                 {
-                    int chunk = (int)Math.Min(buffer.Length, remaining);
+                    long precedingBytes = entries.Take(requestedEntry.Ordinal).Sum(e => e.Size);
+                    if (precedingBytes + expectedBytes > MaxSolidReadWorkBytes)
+                        return null;
+                }
+
+                using var entryStream = entry.OpenEntryStream();
+                using var output = new MemoryStream();
+                var buffer = new byte[8192];
+                while (output.Length < expectedBytes)
+                {
+                    int chunk = (int)Math.Min(
+                        buffer.Length,
+                        expectedBytes - output.Length);
                     int read = entryStream.Read(buffer, 0, chunk);
                     if (read <= 0)
                         break;
-                    ms.Write(buffer, 0, read);
-                    remaining -= read;
+
+                    output.Write(buffer, 0, read);
                 }
-                return ms.ToArray();
+
+                return output.Length == expectedBytes
+                    ? output.ToArray()
+                    : null;
             }
             catch
             {
                 return null;
             }
         }
+
     }
 }

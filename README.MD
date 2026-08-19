@@ -100,7 +100,7 @@ To accommodate the new openMenu, a modified version of [GD MENU Card Manager](ht
 
 ## Current Version
 
-The latest version of **openMenu Virtual Folder Bundle** is [1.6.2-ateam](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/releases/tag/1.6.2-ateam).
+The latest version of **openMenu Virtual Folder Bundle** is [1.6.3-ateam](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/releases/tag/1.6.3-ateam).
 
 ---
 
@@ -115,6 +115,16 @@ The latest version of **openMenu Virtual Folder Bundle** is [1.6.2-ateam](https:
 ---
 
 ## Changelog
+- **Version 1.6.3-ateam (2026-08-19)**
+  - **GD MENU Card Manager**
+    - Button widths on numerous windows widened to properly fit text (see [Issue 193](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/193)).
+    - PlayStation game database was broken in macOS, now titles are automatically populated when disc images are added (see [Issue 194](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/194)).
+    - Enhancements and fixes to GDI shrinking (see [Issue 195](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/195)).
+    - Major enhancements to bulk adding compressed disc images (see [Issue 196](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/196)).
+    - Error message no longer appears if user multi-selects a CUE and its BINs when adding a disc image (see [Issue 197](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/197)).
+    - Many games added to GDI shrink blacklist (see [Issue 198](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/198)).
+    - Enhanced search functionality added (see [Issue 200](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/200)).
+    - "Temporary Folder" path and "File/Folder Lock Check" settings are remembered without having to save SD card changes first (see [Issue 201](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/201)).
 - **Version 1.6.2-ateam (2026-08-03)**
   - **openMenu**
     - openMenu now has an optional Recently Played list for the last 10, 20, 30, 40, and 50 games played (see [Issue 182](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/182)).

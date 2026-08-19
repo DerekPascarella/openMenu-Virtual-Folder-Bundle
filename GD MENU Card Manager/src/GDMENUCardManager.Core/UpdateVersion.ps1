@@ -35,6 +35,7 @@ namespace GDMENUCardManager.Core
         public const string VersionTextFile = "version.txt";
         public const string DateTextFile = "date.txt";
         public const string RegionTextFile = "region.txt";
+        public const string ShrunkTextFile = "shrunk.txt";
         //private const string InfoTextFile = "info.txt";
         public const string MenuConfigTextFile = "GDEMU.INI";
         public const string GdiShrinkBlacklistFile = "gdishrink_blacklist.txt";

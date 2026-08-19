@@ -182,6 +182,103 @@ namespace GDMENUCardManager.Core
         }
     }
 
+    public sealed class TitleEditOperation : UndoOperation
+    {
+        private readonly List<TitleEdit> _edits = new List<TitleEdit>();
+        private readonly string _description;
+
+        public TitleEditOperation(string description)
+        {
+            _description = description;
+        }
+
+        public int Count => _edits.Count;
+
+        public override string Description => _description;
+
+        public void Add(GdItem item, string oldTitle, bool oldState)
+        {
+            _edits.Add(new TitleEdit(
+                item,
+                oldTitle,
+                item.Name,
+                oldState,
+                item.HasUserEditedCompressedTitle));
+        }
+
+        public override void Undo()
+        {
+            foreach (var edit in _edits)
+                edit.Item.RestoreTitleState(edit.OldTitle, edit.OldState);
+        }
+
+        public override void Redo()
+        {
+            foreach (var edit in _edits)
+                edit.Item.RestoreTitleState(edit.NewTitle, edit.NewState);
+        }
+
+        private sealed record TitleEdit(
+            GdItem Item,
+            string OldTitle,
+            string NewTitle,
+            bool OldState,
+            bool NewState);
+    }
+
+    public sealed class ArchiveMetadataEditOperation : UndoOperation
+    {
+        private readonly List<ArchiveMetadataEdit> _edits =
+            new List<ArchiveMetadataEdit>();
+        private readonly string _description;
+
+        public ArchiveMetadataEditOperation(string description)
+        {
+            _description = description;
+        }
+
+        public int Count => _edits.Count;
+
+        public override string Description => _description;
+
+        public void Add(
+            GdItem item,
+            ArchiveMetadataField field,
+            ArchiveMetadataFieldState oldState,
+            ArchiveMetadataFieldState newState)
+        {
+            if (item == null)
+                throw new ArgumentNullException(nameof(item));
+            _edits.Add(new ArchiveMetadataEdit(
+                item,
+                field,
+                oldState,
+                newState));
+        }
+
+        public override void Undo()
+        {
+            foreach (var edit in _edits)
+                edit.Item.RestoreArchiveMetadataFieldState(
+                    edit.Field,
+                    edit.OldState);
+        }
+
+        public override void Redo()
+        {
+            foreach (var edit in _edits)
+                edit.Item.RestoreArchiveMetadataFieldState(
+                    edit.Field,
+                    edit.NewState);
+        }
+
+        private sealed record ArchiveMetadataEdit(
+            GdItem Item,
+            ArchiveMetadataField Field,
+            ArchiveMetadataFieldState OldState,
+            ArchiveMetadataFieldState NewState);
+    }
+
     /// <summary>
     /// Represents an undoable artwork change (add, update, or delete).
     /// </summary>

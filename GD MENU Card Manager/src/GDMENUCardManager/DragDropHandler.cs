@@ -67,7 +67,7 @@ namespace GDMENUCardManager
                 dropInfo.DropTargetAdorner = DropTargetAdorners.Insert;
         }
 
-        public static async Task<DropResult> Drop(IDropInfo dropInfo)
+        public static async Task<DropResult> Drop(IDropInfo dropInfo, Manager manager, Func<int, IProgress<string>> addProgressFactory = null)
         {
             var invalid = new List<string>();
             var result = new DropResult();
@@ -83,24 +83,20 @@ namespace GDMENUCardManager
 
                 result.IsAdd = true;
 
-                foreach (var o in data.GetFileDropList())
-                {
-                    try
-                    {
-                        var toInsert = await ImageHelper.CreateGdItemAsync(o);
-                        destinationList.Insert(insertIndex, toInsert);
-                        result.AddedItems.Add((toInsert, insertIndex));
-                        insertIndex++;
-                    }
-                    catch (UnsupportedDiscFormatException)
-                    {
-                        result.UnsupportedRedumpGdi.Add(System.IO.Path.GetFileName(o));
-                    }
-                    catch (Exception ex)
-                    {
-                        invalid.Add($"{o} - {ex.Message}");
-                    }
-                }
+                var droppedFiles = data.GetFileDropList().Cast<string>().ToList();
+                var companions = await ImageHelper.GetCompanionFilePathsAsync(droppedFiles);
+                var addPaths = droppedFiles
+                    .Where(path => !companions.Contains(path))
+                    .ToArray();
+                var added = await manager.AddGames(
+                    addPaths,
+                    insertIndex,
+                    AddGamesUndoProfile.WpfExternalDrop,
+                    addProgressFactory?.Invoke(addPaths.Length));
+                result.AddedItems.AddRange(added.AddedItems);
+                result.UnsupportedRedumpGdi.AddRange(added.UnsupportedRedumpGdi);
+                invalid.AddRange(added.InvalidDetails.Select(failure =>
+                    $"{failure.Path} - {failure.Message}"));
             }
             else
             {
@@ -148,7 +144,7 @@ namespace GDMENUCardManager
                 foreach (var name in result.UnsupportedRedumpGdi)
                     invalid.Add($"{name} - {LegacyRedumpGdiDetector.ShortMessage}");
 
-                throw new InvalidDropException(string.Join(Environment.NewLine, invalid));
+                throw new InvalidDropException(string.Join(Environment.NewLine + Environment.NewLine, invalid));
             }
 
             return result;

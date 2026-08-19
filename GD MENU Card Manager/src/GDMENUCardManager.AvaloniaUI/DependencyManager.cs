@@ -40,6 +40,13 @@ namespace GDMENUCardManager
             return await MessageBoxManager.GetMessageBoxStandard(caption, text, ButtonEnum.YesNo).ShowWindowDialogAsync(getMainWindow()) == ButtonResult.Yes;
         }
 
+        public async ValueTask<ArchiveAddMode> ShowArchiveAddModeDialog(int compressedInputCount)
+        {
+            var dialog = new ArchiveAddModeDialog(compressedInputCount);
+            await dialog.ShowDialog(getMainWindow());
+            return dialog.Result;
+        }
+
         public async ValueTask ShowWarningDialog(string caption, string text)
         {
             await MessageBoxManager.GetMessageBoxStandard(caption, text, ButtonEnum.Ok, Icon.Warning).ShowWindowDialogAsync(getMainWindow());
@@ -168,57 +175,154 @@ namespace GDMENUCardManager
                 reader.WriteAllToDirectory(extractTo, extOptions);
         }
 
-        public Dictionary<string, long> GetArchiveFiles(string archivePath)
+        public string ExtractArchiveForEntry(
+            string archivePath,
+            string extractTo,
+            ArchiveEntryInfo selectedEntry)
         {
-            var toReturn = new Dictionary<string, long>();
-            using (var stream = File.OpenRead(archivePath))
-            using (var archive = ArchiveFactory.Open(stream))
-                foreach (var item in archive.Entries)
-                    if (!item.IsDirectory && !toReturn.ContainsKey(item.Key))
-                        toReturn.Add(item.Key, item.Size);
-            return toReturn;
+            if (selectedEntry == null)
+                throw new ArgumentNullException(nameof(selectedEntry));
+
+            using var stream = File.OpenRead(archivePath);
+            using var archive = ArchiveFactory.Open(stream);
+            var entries = archive.Entries.Where(entry => !entry.IsDirectory).ToList();
+            var descriptors = entries
+                .Select((entry, ordinal) => new ArchiveEntryInfo(
+                    ordinal,
+                    entry.Key,
+                    entry.Size))
+                .ToArray();
+            var extractionEntries = ArchiveEntrySelection.SelectForFlatExtraction(
+                descriptors,
+                selectedEntry);
+            Directory.CreateDirectory(extractTo);
+
+            // The reader does not replay archive.Entries in order (SharpCompress
+            // regroups 7z entries by solid block), so wanted entries are matched
+            // by identity instead of position.
+            var remaining = extractionEntries.ToList();
+            using (var reader = archive.ExtractAllEntries())
+            {
+                while (remaining.Count > 0 && reader.MoveToNextEntry())
+                {
+                    if (reader.Entry.IsDirectory || string.IsNullOrWhiteSpace(reader.Entry.Key))
+                        continue;
+
+                    // A streamed zip's local header can report size 0 (the real
+                    // size arrives in the trailing data descriptor), so the size
+                    // only disqualifies a match when the reader knows it.
+                    int index = remaining.FindIndex(expected =>
+                        ArchiveEntryPath.HasSameIdentityKey(reader.Entry.Key, expected.FullName) &&
+                        (reader.Entry.Size == expected.Size || reader.Entry.Size <= 0));
+                    if (index < 0)
+                        continue;
+
+                    var expected = remaining[index];
+                    remaining.RemoveAt(index);
+
+                    string outputPath = Path.Combine(
+                        extractTo,
+                        ArchiveEntryPath.GetLeafName(expected.FullName));
+                    using (var output = new FileStream(
+                        outputPath,
+                        FileMode.Create,
+                        FileAccess.Write,
+                        FileShare.None))
+                    {
+                        reader.WriteEntryTo(output);
+                    }
+
+                    if (new FileInfo(outputPath).Length != expected.Size)
+                        throw new InvalidDataException("An archive entry was not extracted completely.");
+                }
+            }
+
+            if (remaining.Count > 0)
+                throw new InvalidDataException("One or more archive entries were not extracted.");
+
+            return Path.Combine(extractTo, ArchiveEntryPath.GetLeafName(selectedEntry.FullName));
         }
 
-        public byte[] ReadArchiveEntryBytes(string archivePath, string entryName, long maxBytes)
+        public IReadOnlyList<ArchiveEntryInfo> GetArchiveEntries(string archivePath)
         {
-            if (string.IsNullOrEmpty(archivePath) || string.IsNullOrEmpty(entryName) || maxBytes <= 0)
+            using var stream = File.OpenRead(archivePath);
+            using var archive = ArchiveFactory.Open(stream);
+            return archive.Entries
+                .Where(entry => !entry.IsDirectory)
+                .Select((entry, ordinal) => new ArchiveEntryInfo(
+                    ordinal,
+                    entry.Key,
+                    entry.Size))
+                .ToArray();
+        }
+
+        // Decompression-work ceiling for one bounded read inside a solid
+        // archive (bytes stored before the entry plus the prefix itself).
+        private const long MaxSolidReadWorkBytes = 128L * 1024 * 1024;
+
+        public byte[] ReadArchiveEntryBytes(
+            string archivePath,
+            ArchiveEntryInfo requestedEntry,
+            long maxBytes)
+        {
+            if (string.IsNullOrEmpty(archivePath) || requestedEntry == null || maxBytes <= 0)
                 return null;
 
             try
             {
                 using var stream = File.OpenRead(archivePath);
                 using var archive = ArchiveFactory.Open(stream);
-
-                var entry = archive.Entries.FirstOrDefault(e =>
-                    !e.IsDirectory &&
-                    e.Key != null &&
-                    string.Equals(
-                        Path.GetFileName(e.Key.Replace('\\', '/')),
-                        entryName,
-                        StringComparison.OrdinalIgnoreCase));
-
-                if (entry == null)
+                if (archive.Type == ArchiveType.Rar && archive.IsSolid)
                     return null;
 
-                using var entryStream = entry.OpenEntryStream();
-                using var ms = new MemoryStream();
-                var buffer = new byte[8192];
-                long remaining = maxBytes;
-                while (remaining > 0)
+                var entries = archive.Entries.Where(entry => !entry.IsDirectory).ToList();
+                var entry = entries.ElementAtOrDefault(requestedEntry.Ordinal);
+
+                if (entry == null ||
+                    entry.Key == null ||
+                    entry.Size != requestedEntry.Size ||
+                    !ArchiveEntryPath.HasSameIdentityKey(entry.Key, requestedEntry.FullName))
+                    return null;
+
+                long expectedBytes = Math.Min(requestedEntry.Size, maxBytes);
+
+                // Reaching an entry inside a solid block first decompresses
+                // everything stored before it. The byte cap alone does not
+                // bound that work, so the read is skipped when it would
+                // exceed the budget. SharpCompress only reports IsSolid for
+                // RAR, so 7z is treated as solid outright (7-Zip archives
+                // normally are).
+                if (archive.Type == ArchiveType.SevenZip || archive.IsSolid)
                 {
-                    int chunk = (int)Math.Min(buffer.Length, remaining);
+                    long precedingBytes = entries.Take(requestedEntry.Ordinal).Sum(e => e.Size);
+                    if (precedingBytes + expectedBytes > MaxSolidReadWorkBytes)
+                        return null;
+                }
+
+                using var entryStream = entry.OpenEntryStream();
+                using var output = new MemoryStream();
+                var buffer = new byte[8192];
+                while (output.Length < expectedBytes)
+                {
+                    int chunk = (int)Math.Min(
+                        buffer.Length,
+                        expectedBytes - output.Length);
                     int read = entryStream.Read(buffer, 0, chunk);
                     if (read <= 0)
                         break;
-                    ms.Write(buffer, 0, read);
-                    remaining -= read;
+
+                    output.Write(buffer, 0, read);
                 }
-                return ms.ToArray();
+
+                return output.Length == expectedBytes
+                    ? output.ToArray()
+                    : null;
             }
             catch
             {
                 return null;
             }
         }
+
     }
 }

@@ -130,6 +130,10 @@ if %ERRORLEVEL% neq 0 goto :error
 rd /s /q "%TEMP_OUTPUT_DIR%" 2>nul
 echo Build completed for osx-arm64
 
+REM Remove intermediate build output after every successful package.
+call cleanup-build-output.bat
+if %ERRORLEVEL% neq 0 goto :error
+
 echo.
 echo ================================================
 echo All builds completed successfully!

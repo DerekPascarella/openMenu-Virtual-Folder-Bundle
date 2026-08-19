@@ -1,0 +1,14 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="350"
+        x:Class="GDMENUCardManager.TextWindow"
+        Title="TextWindow" Height="350" Width="600"
+        CanMinimize="False" CanMaximize="False"
+        WindowStartupLocation="CenterOwner">
+  <DockPanel>
+    <Button DockPanel.Dock="Bottom" Content="OK" Click="OkButton_Click" IsDefault="True" Width="80" Padding="15,8" HorizontalAlignment="Right" Margin="0,10,10,10"/>
+    <TextBox IsReadOnly="True" TextWrapping="Wrap" ScrollViewer.VerticalScrollBarVisibility="Auto" Text="{Binding Text, Mode=OneTime}"/>
+  </DockPanel>
+</Window>

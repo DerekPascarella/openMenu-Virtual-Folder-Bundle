@@ -1,0 +1,51 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="GDMENUCardManager.ArchiveAddModeDialog"
+        Title="Add Compressed Disc Images" SizeToContent="Height" Width="560"
+        WindowStartupLocation="CenterOwner" CanResize="False" CanMinimize="False"
+        AutomationProperties.AutomationId="ArchiveAddModeDialog">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0">
+            <TextBlock x:Name="CountText" TextWrapping="Wrap"/>
+            <TextBlock Text="When should their metadata be read?" TextWrapping="Wrap" Margin="0,12,0,0"/>
+            <TextBlock Text="Metadata includes title, serial ID, region, and disc number/count."
+                       TextWrapping="Wrap" Margin="0,8,0,0"/>
+
+            <TextBlock Text="&quot;Parse Now&quot;" TextWrapping="Wrap" Margin="0,16,0,6"/>
+            <StackPanel Margin="20,0,0,0">
+                <TextBlock Text="&#x2022; Attempts to read metadata before adding the games." TextWrapping="Wrap" Margin="0,0,0,4"/>
+                <TextBlock Text="&#x2022; When parsing succeeds, supported fields can be edited immediately." TextWrapping="Wrap" Margin="0,0,0,4"/>
+                <TextBlock Text="&#x2022; If parsing fails, disc image titles and folder paths can still be edited." TextWrapping="Wrap"/>
+            </StackPanel>
+
+            <TextBlock Text="&quot;Wait for Save&quot;" TextWrapping="Wrap" Margin="0,16,0,6"/>
+            <StackPanel Margin="20,0,0,0">
+                <TextBlock Text="&#x2022; Adds the games immediately using their archive file names." TextWrapping="Wrap" Margin="0,0,0,4"/>
+                <TextBlock Text="&#x2022; Reads metadata after full extraction when you click &quot;Save Changes&quot;." TextWrapping="Wrap" Margin="0,0,0,4"/>
+                <TextBlock Text="&#x2022; Until then, only disc image titles and folder paths can be edited." TextWrapping="Wrap"/>
+            </StackPanel>
+
+            <TextBlock Text="Any edits made before saving are retained."
+                       TextWrapping="Wrap" Margin="0,16,0,0"/>
+            <TextBlock Text="Reading metadata from compressed archives can be slow, especially over a network."
+                       TextWrapping="Wrap" Margin="0,12,0,0"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+            <Button x:Name="ParseNowButton" Content="Parse Now" MinWidth="120" Padding="15,8"
+                    IsDefault="True" Click="ParseNowButton_Click"
+                    AutomationProperties.AutomationId="ArchiveAddModeParseNow"/>
+            <Button x:Name="DeferToSaveButton" Content="Wait for Save" MinWidth="120" Padding="15,8" Margin="8,0,0,0"
+                    Click="DeferToSaveButton_Click"
+                    AutomationProperties.AutomationId="ArchiveAddModeDeferToSave"/>
+            <Button x:Name="CancelButton" Content="Cancel" MinWidth="120" Padding="15,8" Margin="8,0,0,0"
+                    IsCancel="True" Click="CancelButton_Click"
+                    AutomationProperties.AutomationId="ArchiveAddModeCancel"/>
+        </StackPanel>
+    </Grid>
+</Window>

@@ -198,7 +198,7 @@
                         Sort List</Button>
                 </DockPanel>
 
-                <DataGrid x:Name="dg1" ItemsSource="{Binding Manager.ItemList, Mode=OneTime}" AutoGenerateColumns="False" CanUserResizeRows="False" CanUserSortColumns="False" CanUserReorderColumns="False" CanUserAddRows="False" CanUserDeleteRows="{Binding IsBusy, Mode=OneWay, Converter={StaticResource BoolToInverseBool}}" dd:DragDrop.DropHandler="{Binding Path=., Mode=OneWay}" dd:DragDrop.IsDragSource="{Binding IsBusy, Mode=OneWay, Converter={StaticResource BoolToInverseBool}}" dd:DragDrop.IsDropTarget="{Binding IsBusy, Mode=OneWay, Converter={StaticResource BoolToInverseBool}}" PreviewKeyDown="DataGrid_PreviewKeyDown" BeginningEdit="DataGrid_BeginningEdit" CellEditEnding="DataGrid_CellEditEnding" Margin="0,0,0,8">
+                <DataGrid x:Name="dg1" ItemsSource="{Binding Manager.ItemList, Mode=OneTime}" AutoGenerateColumns="False" CanUserResizeRows="False" CanUserSortColumns="False" CanUserReorderColumns="False" CanUserAddRows="False" CanUserDeleteRows="{Binding IsBusy, Mode=OneWay, Converter={StaticResource BoolToInverseBool}}" dd:DragDrop.DropHandler="{Binding Path=., Mode=OneWay}" dd:DragDrop.IsDragSource="{Binding IsBusy, Mode=OneWay, Converter={StaticResource BoolToInverseBool}}" dd:DragDrop.IsDropTarget="{Binding IsBusy, Mode=OneWay, Converter={StaticResource BoolToInverseBool}}" PreviewKeyDown="DataGrid_PreviewKeyDown" BeginningEdit="DataGrid_BeginningEdit" CellEditEnding="DataGrid_CellEditEnding" PreparingCellForEdit="DataGrid_PreparingCellForEdit" Margin="0,0,0,8">
                     <DataGrid.Resources>
                         <ContextMenu x:Key="rowmenu" Opened="ContextMenu_Opened">
                             <ContextMenu.Items>
@@ -236,6 +236,9 @@
                                 <DataTrigger Binding="{Binding SdNumber}" Value="1">
                                     <Setter Property="ContextMenu" Value="{x:Null}" />
                                 </DataTrigger>
+                                <DataTrigger Binding="{Binding IsMatch}" Value="True">
+                                    <Setter Property="Background" Value="#FBF0C4" />
+                                </DataTrigger>
                             </Style.Triggers>
                         </Style>
                     </DataGrid.RowStyle>
@@ -256,7 +259,20 @@
                             </DataGridTextColumn.Header>
                         </DataGridTextColumn>
                         <DataGridTextColumn Header="Size" Width="67" IsReadOnly="True" Binding="{Binding Length, Mode=OneWay, Converter={StaticResource ByteSizeToString}}"/>
-                        <DataGridTextColumn x:Name="TitleColumn" Header="Title" Width="2*" Binding="{Binding Name, Mode=TwoWay}"/>
+                        <DataGridTemplateColumn x:Name="TitleColumn" Header="Title" Width="2*">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Margin="2,0" VerticalAlignment="Center"
+                                               local:HighlightBehavior.SourceText="{Binding Name, Mode=OneWay}"
+                                               local:HighlightBehavior.Query="{Binding DataContext.Filter, RelativeSource={RelativeSource AncestorType=DataGrid}, Mode=OneWay}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                            <DataGridTemplateColumn.CellEditingTemplate>
+                                <DataTemplate>
+                                    <TextBox Text="{Binding Name, Mode=OneWay}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellEditingTemplate>
+                        </DataGridTemplateColumn>
                         <DataGridTemplateColumn x:Name="FolderColumn" Header="Folder" Width="1*" Visibility="Collapsed">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
@@ -276,12 +292,30 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellEditingTemplate>
                         </DataGridTemplateColumn>
-                        <DataGridTextColumn Header="Serial" Width="75" Binding="{Binding ProductNumber, Mode=TwoWay}"/>
+                        <DataGridTemplateColumn Header="Serial" Width="75">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock local:HighlightBehavior.SourceText="{Binding ArchiveSerialDisplay, Mode=OneWay}"
+                                               local:HighlightBehavior.Query="{Binding DataContext.Filter, RelativeSource={RelativeSource AncestorType=DataGrid}, Mode=OneWay}"
+                                               ToolTip="{Binding ArchiveMetadataToolTip}"
+                                               Background="Transparent"
+                                               HorizontalAlignment="Stretch"
+                                               VerticalAlignment="Center"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                            <DataGridTemplateColumn.CellEditingTemplate>
+                                <DataTemplate>
+                                    <TextBox Text="{Binding ProductNumber, Mode=OneWay}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellEditingTemplate>
+                        </DataGridTemplateColumn>
                         <DataGridTemplateColumn x:Name="ArtColumn" Header="Artwork" Width="60" Visibility="Collapsed">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <Button Click="ButtonArtwork_Click" CommandParameter="{Binding}"
                                             Content="{Binding HasArtwork, Converter={StaticResource ArtworkButtonLabel}}"
+                                            ToolTip="{Binding ArtworkButtonToolTip}"
+                                            ToolTipService.ShowOnDisabled="True"
                                             Padding="5,2" MinWidth="55" HorizontalAlignment="Stretch">
                                         <Button.Style>
                                             <Style TargetType="Button">
@@ -289,10 +323,6 @@
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding HasArtwork}" Value="False">
                                                         <Setter Property="FontWeight" Value="Bold"/>
-                                                        <Setter Property="ToolTip" Value="Assign artwork"/>
-                                                    </DataTrigger>
-                                                    <DataTrigger Binding="{Binding HasArtwork}" Value="True">
-                                                        <Setter Property="ToolTip" Value="Edit currently assigned artwork"/>
                                                     </DataTrigger>
                                                     <DataTrigger Binding="{Binding IsArtworkEnabled, RelativeSource={RelativeSource AncestorType=Window}}" Value="False">
                                                         <Setter Property="IsEnabled" Value="False"/>
@@ -304,17 +334,51 @@
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
-                        <DataGridTextColumn x:Name="DiscColumn" Header="Disc" Width="45" IsReadOnly="True" Binding="{Binding Disc, Mode=TwoWay}"/>
-                        <DataGridTextColumn x:Name="RegionColumn" Header="Region" Width="60" Binding="{Binding Region, Mode=TwoWay}"/>
-                        <DataGridTemplateColumn x:Name="TypeColumn" Header="Type" Width="80" Visibility="Collapsed">
+                        <DataGridTemplateColumn x:Name="DiscColumn" Header="Disc" Width="45">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
-                                    <TextBlock Text="{Binding DiscType, Mode=OneWay}" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding ArchiveDiscDisplay, Mode=OneWay}"
+                                               ToolTip="{Binding ArchiveMetadataToolTip}"
+                                               Background="Transparent"
+                                               HorizontalAlignment="Stretch"
+                                               VerticalAlignment="Center"/>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                             <DataGridTemplateColumn.CellEditingTemplate>
                                 <DataTemplate>
-                                    <ComboBox SelectedItem="{Binding DiscType, Mode=TwoWay}">
+                                    <TextBox Text="{Binding Disc, Mode=OneWay}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellEditingTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn x:Name="RegionColumn" Header="Region" Width="60">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding ArchiveRegionDisplay, Mode=OneWay}"
+                                               ToolTip="{Binding ArchiveMetadataToolTip}"
+                                               Background="Transparent"
+                                               HorizontalAlignment="Stretch"
+                                               VerticalAlignment="Center"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                            <DataGridTemplateColumn.CellEditingTemplate>
+                                <DataTemplate>
+                                    <TextBox Text="{Binding Region, Mode=OneWay}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellEditingTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn x:Name="TypeColumn" Header="Type" Width="80" Visibility="Collapsed">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding ArchiveTypeDisplay, Mode=OneWay}"
+                                               ToolTip="{Binding ArchiveMetadataToolTip}"
+                                               Background="Transparent"
+                                               HorizontalAlignment="Stretch"
+                                               VerticalAlignment="Center"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                            <DataGridTemplateColumn.CellEditingTemplate>
+                                <DataTemplate>
+                                    <ComboBox SelectedItem="{Binding DiscType, Mode=OneWay}">
                                         <sys:String xmlns:sys="clr-namespace:System;assembly=mscorlib">Game</sys:String>
                                         <sys:String xmlns:sys="clr-namespace:System;assembly=mscorlib">Other</sys:String>
                                         <sys:String xmlns:sys="clr-namespace:System;assembly=mscorlib">PSX</sys:String>

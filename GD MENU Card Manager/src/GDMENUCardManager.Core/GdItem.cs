@@ -45,6 +45,47 @@ namespace GDMENUCardManager.Core
             }
         }
 
+        private bool _hasUserEditedCompressedTitle;
+        private ArchiveMetadataField _manualArchiveMetadataFields;
+
+        /// <summary>
+        /// True when a user action changed the title while this item was compressed.
+        /// </summary>
+        public bool HasUserEditedCompressedTitle => _hasUserEditedCompressedTitle;
+
+        private bool _isMatch;
+
+        /// <summary>
+        /// Whether the current search text matches Name or ProductNumber.
+        /// Transient row highlight state, never saved.
+        /// </summary>
+        public bool IsMatch
+        {
+            get { return _isMatch; }
+            set { if (_isMatch != value) { _isMatch = value; RaisePropertyChanged(); } }
+        }
+
+        /// <summary>
+        /// Stores a title from a user action and records its compressed origin.
+        /// </summary>
+        public bool CommitUserTitle(string previousTitle, string requestedTitle)
+        {
+            Name = requestedTitle;
+            if (Name == previousTitle)
+                return false;
+
+            if (FileFormat == FileFormat.SevenZip)
+                _hasUserEditedCompressedTitle = true;
+
+            return true;
+        }
+
+        internal void RestoreTitleState(string title, bool hasUserEditedCompressedTitle)
+        {
+            Name = title;
+            _hasUserEditedCompressedTitle = hasUserEditedCompressedTitle;
+        }
+
         private string _ProductNumber;
         public string ProductNumber
         {
@@ -85,7 +126,9 @@ namespace GDMENUCardManager.Core
                 }
 
                 RaisePropertyChanged();
+                RaisePropertyChanged(nameof(ArchiveSerialDisplay));
                 RaisePropertyChanged(nameof(HasArtwork));
+                RaisePropertyChanged(nameof(ArtworkButtonToolTip));
                 RaisePropertyChanged(nameof(CanManageArtwork));
             }
         }
@@ -98,6 +141,242 @@ namespace GDMENUCardManager.Core
 
         public bool WasSerialTranslated { get; private set; }
 
+        public GdItem CreateArchivePreparationCopy()
+        {
+            var copy = new GdItem
+            {
+                Guid = Guid,
+                _Length = _Length,
+                _Name = _Name,
+                _hasUserEditedCompressedTitle = _hasUserEditedCompressedTitle,
+                _manualArchiveMetadataFields = _manualArchiveMetadataFields,
+                _ProductNumber = _ProductNumber,
+                OriginalSerial = OriginalSerial,
+                WasSerialTranslated = WasSerialTranslated,
+                _Folder = _Folder,
+                _AlternativeFolders = new List<string>(_AlternativeFolders),
+                _FullFolderPath = _FullFolderPath,
+                _Ip = CopyIp(_Ip),
+                _ImageRegion = _ImageRegion,
+                _SdNumber = _SdNumber,
+                _Work = _Work,
+                CanApplyGDIShrink = CanApplyGDIShrink,
+                WasShrunk = WasShrunk,
+                _FileFormat = _FileFormat,
+                _DiscType = _DiscType,
+                ArchiveImageEntries = ArchiveImageEntries?.ToArray() ?? Array.Empty<ArchiveEntryInfo>(),
+                SelectedArchiveEntry = SelectedArchiveEntry,
+                IsArchiveMetadataPending = IsArchiveMetadataPending
+            };
+            copy.ImageFiles.AddRange(ImageFiles);
+            return copy;
+        }
+
+        public ArchiveMetadataFieldState CaptureArchiveMetadataFieldState(
+            ArchiveMetadataField field)
+        {
+            return new ArchiveMetadataFieldState(
+                GetArchiveMetadataFieldValue(field),
+                (_manualArchiveMetadataFields & field) == field,
+                field == ArchiveMetadataField.Serial ? OriginalSerial : null,
+                field == ArchiveMetadataField.Serial && WasSerialTranslated);
+        }
+
+        public bool CommitUserArchiveMetadata(
+            ArchiveMetadataField field,
+            string requestedValue)
+        {
+            if (FileFormat != FileFormat.SevenZip || IsArchiveMetadataPending)
+                return false;
+            if (!IsSingleArchiveMetadataField(field))
+                throw new ArgumentOutOfRangeException(nameof(field));
+            if (field == ArchiveMetadataField.Type &&
+                !IsValidDiscType(requestedValue))
+                return false;
+
+            ArchiveMetadataFieldState oldState =
+                CaptureArchiveMetadataFieldState(field);
+            SetArchiveMetadataFieldValue(field, requestedValue);
+            ArchiveMetadataFieldState newState =
+                CaptureArchiveMetadataFieldState(field);
+            if (oldState == newState)
+                return false;
+
+            _manualArchiveMetadataFields |= field;
+            return true;
+        }
+
+        public void RestoreArchiveMetadataFieldState(
+            ArchiveMetadataField field,
+            ArchiveMetadataFieldState state)
+        {
+            if (!IsSingleArchiveMetadataField(field))
+                throw new ArgumentOutOfRangeException(nameof(field));
+            if (field == ArchiveMetadataField.Serial)
+                RestoreSerialState(state);
+            else
+                SetArchiveMetadataFieldValue(field, state.Value);
+            if (state.IsManual)
+                _manualArchiveMetadataFields |= field;
+            else
+                _manualArchiveMetadataFields &= ~field;
+        }
+
+        private void RestoreSerialState(ArchiveMetadataFieldState state)
+        {
+            _ProductNumber = state.Value;
+            OriginalSerial = state.OriginalSerial;
+            WasSerialTranslated = state.WasSerialTranslated;
+            RaisePropertyChanged(nameof(ProductNumber));
+            RaisePropertyChanged(nameof(ArchiveSerialDisplay));
+            RaisePropertyChanged(nameof(HasArtwork));
+            RaisePropertyChanged(nameof(ArtworkButtonToolTip));
+            RaisePropertyChanged(nameof(CanManageArtwork));
+        }
+
+        internal ArchiveMetadataField ManualArchiveMetadataFields =>
+            _manualArchiveMetadataFields;
+
+        private string GetArchiveMetadataFieldValue(ArchiveMetadataField field)
+        {
+            return field switch
+            {
+                ArchiveMetadataField.Serial => ProductNumber,
+                ArchiveMetadataField.Type => DiscType,
+                ArchiveMetadataField.Disc => Disc,
+                ArchiveMetadataField.Region => Region,
+                _ => throw new ArgumentOutOfRangeException(nameof(field))
+            };
+        }
+
+        private void SetArchiveMetadataFieldValue(
+            ArchiveMetadataField field,
+            string value)
+        {
+            switch (field)
+            {
+                case ArchiveMetadataField.Serial:
+                    ProductNumber = value;
+                    break;
+                case ArchiveMetadataField.Type:
+                    if (!IsValidDiscType(value))
+                        throw new ArgumentException("The disc type is invalid.", nameof(value));
+                    DiscType = value;
+                    break;
+                case ArchiveMetadataField.Disc:
+                    Disc = value;
+                    break;
+                case ArchiveMetadataField.Region:
+                    Region = NormalizeRegion(value);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(field));
+            }
+        }
+
+        private static bool IsSingleArchiveMetadataField(ArchiveMetadataField field)
+        {
+            return field == ArchiveMetadataField.Serial ||
+                field == ArchiveMetadataField.Type ||
+                field == ArchiveMetadataField.Disc ||
+                field == ArchiveMetadataField.Region;
+        }
+
+        private static bool IsValidDiscType(string value)
+        {
+            return string.Equals(value, "Game", StringComparison.Ordinal) ||
+                string.Equals(value, "PSX", StringComparison.Ordinal) ||
+                string.Equals(value, "Other", StringComparison.Ordinal);
+        }
+
+        public void PublishPreparedArchiveState(
+            GdItem prepared,
+            string cardPath,
+            int folderNumber,
+            bool backfillBlankSerial)
+        {
+            if (prepared == null)
+                throw new ArgumentNullException(nameof(prepared));
+
+            _Ip = CopyIp(prepared._Ip);
+            _ImageRegion = prepared._ImageRegion;
+            ImageFiles.Clear();
+            ImageFiles.AddRange(prepared.ImageFiles);
+            _DiscType = prepared._DiscType;
+            _FileFormat = prepared._FileFormat;
+            _Length = prepared._Length;
+            CanApplyGDIShrink = prepared.CanApplyGDIShrink;
+            WasShrunk = prepared.WasShrunk;
+            bool publishPendingTitle = IsArchiveMetadataPending &&
+                !_hasUserEditedCompressedTitle;
+            if (publishPendingTitle)
+                _Name = prepared._Name;
+
+            bool shouldBackfillBlankSerial =
+                backfillBlankSerial && string.IsNullOrWhiteSpace(_ProductNumber);
+            if (shouldBackfillBlankSerial)
+            {
+                _ProductNumber = prepared._ProductNumber;
+                OriginalSerial = prepared.OriginalSerial;
+                WasSerialTranslated = prepared.WasSerialTranslated;
+            }
+
+            // Publication is the commit point for this artifact.
+            // Precommit failures leave the live row pending.
+            IsArchiveMetadataPending = false;
+
+            _FullFolderPath = cardPath;
+            _SdNumber = folderNumber;
+            _Work = WorkMode.None;
+
+            RaisePropertyChanged(nameof(Ip));
+            if (publishPendingTitle)
+                RaisePropertyChanged(nameof(Name));
+            RaisePropertyChanged(nameof(Disc));
+            RaisePropertyChanged(nameof(ArchiveDiscDisplay));
+            RaisePropertyChanged(nameof(Region));
+            RaisePropertyChanged(nameof(ArchiveRegionDisplay));
+            RaisePropertyChanged(nameof(DiscType));
+            RaisePropertyChanged(nameof(ArchiveTypeDisplay));
+            RaisePropertyChanged(nameof(FullFolderPath));
+            RaisePropertyChanged(nameof(Work));
+            RaisePropertyChanged(nameof(SdNumber));
+            RaisePropertyChanged(nameof(Location));
+            RaisePropertyChanged(nameof(IsNotOnSdCard));
+            RaisePropertyChanged(nameof(FileFormat));
+            if (shouldBackfillBlankSerial)
+            {
+                RaisePropertyChanged(nameof(ProductNumber));
+                RaisePropertyChanged(nameof(HasArtwork));
+                RaisePropertyChanged(nameof(ArtworkButtonToolTip));
+                RaisePropertyChanged(nameof(CanManageArtwork));
+            }
+            RaisePropertyChanged(nameof(ArchiveSerialDisplay));
+            RaisePropertyChanged(nameof(Length));
+        }
+
+        private static IpBin CopyIp(IpBin ip)
+        {
+            if (ip == null)
+                return null;
+
+            var copy = new IpBin
+            {
+                Region = ip.Region,
+                Vga = ip.Vga,
+                Version = ip.Version,
+                ReleaseDate = ip.ReleaseDate,
+                Name = ip.Name,
+                CRC = ip.CRC,
+                ProductNumber = ip.ProductNumber,
+                SpecialDisc = ip.SpecialDisc,
+                IsDefaultIpBin = ip.IsDefaultIpBin
+            };
+            if (ip.Disc != null)
+                copy.Disc = ip.Disc;
+            return copy;
+        }
+
         public void RevertSerialTranslation()
         {
             if (WasSerialTranslated && OriginalSerial != null)
@@ -106,7 +385,9 @@ namespace GDMENUCardManager.Core
                 OriginalSerial = null;
                 WasSerialTranslated = false;
                 RaisePropertyChanged(nameof(ProductNumber));
+                RaisePropertyChanged(nameof(ArchiveSerialDisplay));
                 RaisePropertyChanged(nameof(HasArtwork));
+                RaisePropertyChanged(nameof(ArtworkButtonToolTip));
                 RaisePropertyChanged(nameof(CanManageArtwork));
             }
         }
@@ -119,6 +400,7 @@ namespace GDMENUCardManager.Core
             OriginalSerial = null;
             WasSerialTranslated = false;
             RaisePropertyChanged(nameof(HasArtwork));
+            RaisePropertyChanged(nameof(ArtworkButtonToolTip));
         }
 
         /// <summary>
@@ -199,6 +481,66 @@ namespace GDMENUCardManager.Core
 
         public readonly System.Collections.Generic.List<string> ImageFiles = new System.Collections.Generic.List<string>();
 
+        /// <summary>
+        /// Lists the supported disc images found in archive order.
+        /// </summary>
+        public IReadOnlyList<ArchiveEntryInfo> ArchiveImageEntries { get; internal set; } =
+            Array.Empty<ArchiveEntryInfo>();
+
+        /// <summary>
+        /// Identifies the archive image chosen when the item was added.
+        /// </summary>
+        public ArchiveEntryInfo SelectedArchiveEntry { get; internal set; }
+
+        /// <summary>
+        /// True until archive metadata has been resolved and published.
+        /// </summary>
+        private bool _isArchiveMetadataPending;
+        public bool IsArchiveMetadataPending
+        {
+            get { return _isArchiveMetadataPending; }
+            internal set
+            {
+                if (_isArchiveMetadataPending == value)
+                    return;
+
+                _isArchiveMetadataPending = value;
+                RaisePropertyChanged();
+                RaisePropertyChanged(nameof(ArchiveSerialDisplay));
+                RaisePropertyChanged(nameof(ArchiveTypeDisplay));
+                RaisePropertyChanged(nameof(ArchiveDiscDisplay));
+                RaisePropertyChanged(nameof(ArchiveRegionDisplay));
+                RaisePropertyChanged(nameof(ArchiveMetadataToolTip));
+                RaisePropertyChanged(nameof(ArtworkButtonToolTip));
+                RaisePropertyChanged(nameof(CanEditParsedArchiveMetadata));
+            }
+        }
+
+        public string ArchiveSerialDisplay =>
+            IsArchiveMetadataPending ? string.Empty : ProductNumber;
+
+        public string ArchiveTypeDisplay =>
+            IsArchiveMetadataPending ? string.Empty : DiscType;
+
+        public string ArchiveDiscDisplay =>
+            IsArchiveMetadataPending ? string.Empty : Disc;
+
+        public string ArchiveRegionDisplay =>
+            IsArchiveMetadataPending ? string.Empty : Region;
+
+        public string ArchiveMetadataToolTip => IsArchiveMetadataPending
+            ? "Cannot be edited until after SD card changes are saved."
+            : null;
+
+        public string ArtworkButtonToolTip => IsArchiveMetadataPending
+            ? ArchiveMetadataToolTip
+            : HasArtwork
+                ? "Edit currently assigned artwork"
+                : "Assign artwork";
+
+        public bool CanEditParsedArchiveMetadata =>
+            FileFormat == FileFormat.SevenZip && !IsArchiveMetadataPending;
+
         private string _FullFolderPath;
         public string FullFolderPath
         {
@@ -210,7 +552,16 @@ namespace GDMENUCardManager.Core
         public IpBin Ip
         {
             get { return _Ip; }
-            set { _Ip = value; _ImageRegion = NormalizeRegion(value?.Region); RaisePropertyChanged(); RaisePropertyChanged(nameof(Disc)); RaisePropertyChanged(nameof(Region)); }
+            set
+            {
+                _Ip = value;
+                _ImageRegion = NormalizeRegion(value?.Region);
+                RaisePropertyChanged();
+                RaisePropertyChanged(nameof(Disc));
+                RaisePropertyChanged(nameof(ArchiveDiscDisplay));
+                RaisePropertyChanged(nameof(Region));
+                RaisePropertyChanged(nameof(ArchiveRegionDisplay));
+            }
         }
 
         /// <summary>
@@ -247,6 +598,7 @@ namespace GDMENUCardManager.Core
                 {
                     _Ip.Disc = value;
                     RaisePropertyChanged();
+                    RaisePropertyChanged(nameof(ArchiveDiscDisplay));
                 }
             }
         }
@@ -263,6 +615,7 @@ namespace GDMENUCardManager.Core
                 {
                     _Ip.Region = value;
                     RaisePropertyChanged();
+                    RaisePropertyChanged(nameof(ArchiveRegionDisplay));
                 }
             }
         }
@@ -317,18 +670,32 @@ namespace GDMENUCardManager.Core
 
         public bool CanApplyGDIShrink { get; set; }
 
+        // True when this disc was shrunk, either during this session or on an
+        // earlier save that left a "shrunk.txt" marker in the folder.
+        public bool WasShrunk { get; set; }
+
         private FileFormat _FileFormat;
         public FileFormat FileFormat
         {
             get { return _FileFormat; }
-            set { _FileFormat = value; RaisePropertyChanged(); }
+            set
+            {
+                _FileFormat = value;
+                RaisePropertyChanged();
+                RaisePropertyChanged(nameof(CanEditParsedArchiveMetadata));
+            }
         }
 
         private string _DiscType = "Game";
         public string DiscType
         {
             get { return _DiscType; }
-            set { _DiscType = value; RaisePropertyChanged(); }
+            set
+            {
+                _DiscType = value;
+                RaisePropertyChanged();
+                RaisePropertyChanged(nameof(ArchiveTypeDisplay));
+            }
         }
 
         public string GetDiscTypeFileValue()
@@ -398,6 +765,7 @@ namespace GDMENUCardManager.Core
         public void RefreshArtworkStatus()
         {
             RaisePropertyChanged(nameof(HasArtwork));
+            RaisePropertyChanged(nameof(ArtworkButtonToolTip));
         }
 
 #if DEBUG
@@ -418,7 +786,9 @@ namespace GDMENUCardManager.Core
         {
             RaisePropertyChanged(nameof(Ip));
             RaisePropertyChanged(nameof(Disc));
+            RaisePropertyChanged(nameof(ArchiveDiscDisplay));
             RaisePropertyChanged(nameof(Region));
+            RaisePropertyChanged(nameof(ArchiveRegionDisplay));
         }
     }
 }

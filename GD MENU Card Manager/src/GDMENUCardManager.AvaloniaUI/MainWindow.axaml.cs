@@ -119,7 +119,7 @@ namespace GDMENUCardManager
         public string Filter
         {
             get { return _Filter; }
-            set { _Filter = value; RaisePropertyChanged(); }
+            set { _Filter = value; RaisePropertyChanged(); UpdateSearchMatches(); }
         }
 
         private bool _IsFilterActive;
@@ -221,7 +221,7 @@ namespace GDMENUCardManager
         public bool EnableLockCheck
         {
             get { return Manager.EnableLockCheck; }
-            set { Manager.EnableLockCheck = value; RaisePropertyChanged(); }
+            set { Manager.EnableLockCheck = value; RaisePropertyChanged(); SaveLockCheckConfig(); }
         }
 
         private readonly List<FilePickerFileType> fileFilterList;
@@ -251,6 +251,10 @@ namespace GDMENUCardManager
         private GdItem _editingItem;
         private string _editingPropertyName;
         private object _editingOldValue;
+        private bool _editingOldTitleWasUserEdited;
+        private ArchiveMetadataField? _editingArchiveMetadataField;
+        private ArchiveMetadataFieldState _editingArchiveMetadataOldState;
+        private ArchiveMetadataFieldState _editingArchiveRegionOldState;
 
         // Flag to prevent duplicate serial translation dialogs
         private bool _handlingSerialTranslation;
@@ -344,7 +348,7 @@ namespace GDMENUCardManager
                 Manager.EnableLockCheck = lockCheck;
 
             // Disc Image Options
-            HaveGDIShrinkBlacklist = File.Exists(Constants.GdiShrinkBlacklistFile);
+            HaveGDIShrinkBlacklist = File.Exists(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, Constants.GdiShrinkBlacklistFile));
             if (bool.TryParse(ConfigurationManager.AppSettings["EnableGDIShrink"], out bool gdiShrink))
                 Manager.EnableGDIShrink = gdiShrink;
             if (bool.TryParse(ConfigurationManager.AppSettings["EnableGDIShrinkCompressed"], out bool gdiShrinkCompressed))
@@ -670,42 +674,63 @@ namespace GDMENUCardManager
 
         private void DataGrid_BeginningEdit(object sender, DataGridBeginningEditEventArgs e)
         {
-            // Check if this is a menu item
             if (e.Row?.DataContext is GdItem item)
             {
                 bool isMenuItem = item.Ip?.Name == "GDMENU" || item.Ip?.Name == "openMenu";
 
                 if (isMenuItem)
                 {
-                    // Prevent editing ANY cell for menu items
                     e.Cancel = true;
+                    ClearEditingCapture();
                     return;
                 }
 
-                if (item.FileFormat == FileFormat.SevenZip)
+                string header = e.Column.Header?.ToString();
+                _editingArchiveMetadataField = null;
+                if (item.FileFormat == FileFormat.SevenZip &&
+                    TryGetArchiveMetadataField(header, out var archiveField))
                 {
-                    var lockedHeader = e.Column.Header?.ToString();
-                    if (lockedHeader == "Serial" || lockedHeader == "Type" || lockedHeader == "Disc")
+                    if (!ArchiveMetadataEditPolicy.CanEdit(
+                        item,
+                        archiveField,
+                        MenuKindSelected))
                     {
                         e.Cancel = true;
+                        ClearEditingCapture();
                         return;
                     }
-                }
 
-                // Region can only be edited on uncompressed Game images in a patchable format
-                if (e.Column.Header?.ToString() == "Region" && !CanEditRegion(item))
+                    _editingArchiveMetadataField = archiveField;
+                    _editingArchiveMetadataOldState =
+                        item.CaptureArchiveMetadataFieldState(archiveField);
+                    if (archiveField == ArchiveMetadataField.Type)
+                    {
+                        _editingArchiveRegionOldState =
+                            item.CaptureArchiveMetadataFieldState(
+                                ArchiveMetadataField.Region);
+                    }
+                }
+                else if (header == "Region" && !CanEditRegion(item))
                 {
                     e.Cancel = true;
+                    ClearEditingCapture();
+                    return;
+                }
+                else if (header == "Disc" && MenuKindSelected != MenuKind.openMenu)
+                {
+                    e.Cancel = true;
+                    ClearEditingCapture();
                     return;
                 }
 
-                // Capture old value for undo
                 _editingItem = item;
+                _editingOldTitleWasUserEdited = false;
                 var column = e.Column;
                 if (column.Header?.ToString() == "Title")
                 {
                     _editingPropertyName = nameof(GdItem.Name);
                     _editingOldValue = item.Name;
+                    _editingOldTitleWasUserEdited = item.HasUserEditedCompressedTitle;
                 }
                 else if (column.Header?.ToString() == "Serial")
                 {
@@ -734,19 +759,8 @@ namespace GDMENUCardManager
                 }
                 else
                 {
-                    _editingItem = null;
-                    _editingPropertyName = null;
-                    _editingOldValue = null;
+                    ClearEditingCapture();
                 }
-            }
-
-            // Prevent editing the Disc column when not in openMenu mode (for non-menu items)
-            if (e.Column?.Header?.ToString() == "Disc" && MenuKindSelected != MenuKind.openMenu)
-            {
-                e.Cancel = true;
-                _editingItem = null;
-                _editingPropertyName = null;
-                _editingOldValue = null;
             }
         }
 
@@ -754,10 +768,7 @@ namespace GDMENUCardManager
         {
             if (e.EditAction == DataGridEditAction.Cancel)
             {
-                // Edit was canceled, no undo needed
-                _editingItem = null;
-                _editingPropertyName = null;
-                _editingOldValue = null;
+                ClearEditingCapture();
                 return;
             }
 
@@ -768,6 +779,9 @@ namespace GDMENUCardManager
             var item = _editingItem;
             var propertyName = _editingPropertyName;
             var oldValue = _editingOldValue;
+            var archiveField = _editingArchiveMetadataField;
+            var archiveOldState = _editingArchiveMetadataOldState;
+            var archiveRegionOldState = _editingArchiveRegionOldState;
 
             // Read the editing element directly, since the binding may not have updated yet.
             object newValue = null;
@@ -780,21 +794,22 @@ namespace GDMENUCardManager
                 // Avalonia ComboBox uses SelectedItem
                 newValue = comboBox.SelectedItem;
             }
-            else if (e.EditingElement is Panel panel)
+            else if (e.EditingElement is Visual visual)
             {
-                // Template columns may wrap the actual control in a panel
-                var innerTextBox = panel.Children.OfType<TextBox>().FirstOrDefault();
-                if (innerTextBox != null)
+                var innerComboBox = visual.GetVisualDescendants()
+                    .OfType<ComboBox>()
+                    .FirstOrDefault();
+                if (innerComboBox != null)
                 {
-                    newValue = innerTextBox.Text;
+                    newValue = innerComboBox.SelectedItem;
                 }
                 else
                 {
-                    var innerComboBox = panel.Children.OfType<ComboBox>().FirstOrDefault();
-                    if (innerComboBox != null)
-                    {
-                        newValue = innerComboBox.SelectedItem;
-                    }
+                    var innerTextBox = visual.GetVisualDescendants()
+                        .OfType<TextBox>()
+                        .FirstOrDefault();
+                    if (innerTextBox != null)
+                        newValue = innerTextBox.Text;
                 }
             }
 
@@ -807,11 +822,8 @@ namespace GDMENUCardManager
                 var revertValue = oldValue as string ?? "";
                 if (e.EditingElement is TextBox revertTb)
                     revertTb.Text = revertValue;
-                else if (e.EditingElement is Panel revertPanel)
-                {
-                    var innerTb = revertPanel.Children.OfType<TextBox>().FirstOrDefault();
-                    if (innerTb != null) innerTb.Text = revertValue;
-                }
+                else
+                    SetEditingControlValue(e.EditingElement, revertValue);
                 // Revert the property in case binding already updated it
                 RevertProperty(item, propertyName, oldValue);
                 e.Cancel = true;
@@ -825,12 +837,86 @@ namespace GDMENUCardManager
                 return;
             }
 
-            // Region edits get normalized before committing
+            bool oldTitleState = _editingOldTitleWasUserEdited;
+
+            if (propertyName == nameof(GdItem.Name))
+            {
+                ClearEditingCapture();
+
+                if (newValue is string requestedTitle &&
+                    item.CommitUserTitle(oldValue as string, requestedTitle))
+                {
+                    SetEditingTextBoxText(e.EditingElement, item.Name);
+                    var operation = new TitleEditOperation("Edit Title");
+                    operation.Add(item, oldValue as string, oldTitleState);
+                    Manager.UndoManager.RecordChange(operation);
+                }
+
+                return;
+            }
+
+            if (archiveField.HasValue)
+            {
+                ClearEditingCapture();
+                string requested = newValue as string;
+                if (archiveField.Value == ArchiveMetadataField.Region)
+                {
+                    requested = GdItem.NormalizeRegion(requested);
+                    if (requested == null)
+                    {
+                        SetEditingControlValue(e.EditingElement, archiveOldState.Value);
+                        return;
+                    }
+                }
+
+                if (!item.CommitUserArchiveMetadata(archiveField.Value, requested))
+                {
+                    SetEditingControlValue(e.EditingElement, archiveOldState.Value);
+                    return;
+                }
+
+                var archiveNewState =
+                    item.CaptureArchiveMetadataFieldState(archiveField.Value);
+                SetEditingControlValue(e.EditingElement, archiveNewState.Value);
+                string operationDescription = "Edit " + e.Column.Header;
+                if (archiveField.Value == ArchiveMetadataField.Serial)
+                {
+                    QueueArchiveSerialTranslationOperation(
+                        item,
+                        archiveOldState,
+                        operationDescription);
+                    return;
+                }
+
+                var operation = new ArchiveMetadataEditOperation(
+                    operationDescription);
+                operation.Add(
+                    item,
+                    archiveField.Value,
+                    archiveOldState,
+                    archiveNewState);
+
+                if (archiveField.Value == ArchiveMetadataField.Type &&
+                    item.DiscType != "Game" &&
+                    item.CommitUserArchiveMetadata(
+                        ArchiveMetadataField.Region,
+                        null))
+                {
+                    operation.Add(
+                        item,
+                        ArchiveMetadataField.Region,
+                        archiveRegionOldState,
+                        item.CaptureArchiveMetadataFieldState(
+                            ArchiveMetadataField.Region));
+                }
+
+                Manager.UndoManager.RecordChange(operation);
+                return;
+            }
+
             if (propertyName == nameof(GdItem.Region))
             {
-                _editingItem = null;
-                _editingPropertyName = null;
-                _editingOldValue = null;
+                ClearEditingCapture();
 
                 var oldRegion = oldValue as string;
                 var normalized = GdItem.NormalizeRegion(newValue as string);
@@ -863,10 +949,7 @@ namespace GDMENUCardManager
                 return;
             }
 
-            // Clear immediately so next edit can capture its own values
-            _editingItem = null;
-            _editingPropertyName = null;
-            _editingOldValue = null;
+            ClearEditingCapture();
 
             // Only record if we got a new value and it's different from old
             if (newValue != null && !Equals(oldValue, newValue))
@@ -890,26 +973,119 @@ namespace GDMENUCardManager
                     }
                 }
 
+                object committedValue = newValue;
+                if (propertyName == nameof(GdItem.ProductNumber))
+                {
+                    item.ProductNumber = newValue as string;
+                    committedValue = item.ProductNumber;
+                }
+                else if (propertyName == nameof(GdItem.DiscType))
+                {
+                    item.DiscType = newValue as string;
+                    committedValue = item.DiscType;
+                }
+                else if (propertyName == nameof(GdItem.Disc))
+                {
+                    item.Disc = newValue as string;
+                    committedValue = item.Disc;
+                }
+
                 Manager.UndoManager.RecordChange(new PropertyEditOperation
                 {
                     Item = item,
                     PropertyName = propertyName,
                     OldValue = oldValue,
-                    NewValue = newValue
+                    NewValue = committedValue
                 });
 
                 // If Serial column was edited, check for translation after binding updates
                 if (propertyName == nameof(GdItem.ProductNumber))
+                    QueueSerialTranslationDialog(item);
+            }
+        }
+
+        private static bool TryGetArchiveMetadataField(
+            string header,
+            out ArchiveMetadataField field)
+        {
+            field = header switch
+            {
+                "Serial" => ArchiveMetadataField.Serial,
+                "Type" => ArchiveMetadataField.Type,
+                "Disc" => ArchiveMetadataField.Disc,
+                "Region" => ArchiveMetadataField.Region,
+                _ => ArchiveMetadataField.None
+            };
+            return field != ArchiveMetadataField.None;
+        }
+
+        private void ClearEditingCapture()
+        {
+            _editingItem = null;
+            _editingPropertyName = null;
+            _editingOldValue = null;
+            _editingOldTitleWasUserEdited = false;
+            _editingArchiveMetadataField = null;
+        }
+
+        private void QueueSerialTranslationDialog(GdItem item)
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
+            {
+                if (!_handlingSerialTranslation && item.WasSerialTranslated)
                 {
-                    // Post to dispatcher so the binding has time to update the property
-                    // Skip if a button handler is already handling the translation
-                    Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
-                    {
-                        if (!_handlingSerialTranslation && item.WasSerialTranslated)
-                        {
-                            await Helper.DependencyManager.ShowSerialTranslationDialog(new[] { item });
-                        }
-                    }, Avalonia.Threading.DispatcherPriority.Background);
+                    await Helper.DependencyManager.ShowSerialTranslationDialog(
+                        new[] { item });
+                }
+            }, Avalonia.Threading.DispatcherPriority.Background);
+        }
+
+        private void QueueArchiveSerialTranslationOperation(
+            GdItem item,
+            ArchiveMetadataFieldState oldState,
+            string description)
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
+            {
+                if (!_handlingSerialTranslation && item.WasSerialTranslated)
+                {
+                    await Helper.DependencyManager.ShowSerialTranslationDialog(
+                        new[] { item });
+                }
+
+                var operation = new ArchiveMetadataEditOperation(description);
+                operation.Add(
+                    item,
+                    ArchiveMetadataField.Serial,
+                    oldState,
+                    item.CaptureArchiveMetadataFieldState(
+                        ArchiveMetadataField.Serial));
+                Manager.UndoManager.RecordChange(operation);
+            }, Avalonia.Threading.DispatcherPriority.Background);
+        }
+
+        private static void SetEditingControlValue(
+            object editingElement,
+            string value)
+        {
+            if (editingElement is ComboBox comboBox)
+                comboBox.SelectedItem = value;
+            else if (editingElement is TextBox textBox)
+                textBox.Text = value ?? "";
+            else if (editingElement is Visual visual)
+            {
+                var innerCombo = visual.GetVisualDescendants()
+                    .OfType<ComboBox>()
+                    .FirstOrDefault();
+                if (innerCombo != null)
+                    innerCombo.SelectedItem = value;
+                else
+                {
+                    var innerText = visual.GetVisualDescendants()
+                        .OfType<TextBox>()
+                        .FirstOrDefault();
+                    if (innerText != null)
+                        innerText.Text = value ?? "";
                 }
             }
         }
@@ -979,6 +1155,7 @@ namespace GDMENUCardManager
         private void ItemList_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
         {
             updateTotalSize();
+            UpdateSearchMatches();
 
             // If filter is active, refresh the filtered view (e.g., after undo re-inserts items)
             if (IsFilterActive && _activeFilterText != null)
@@ -1367,8 +1544,6 @@ namespace GDMENUCardManager
 
                 if (await Manager.Save(TempFolder))
                 {
-                    SaveTempFolderConfig();
-                    SaveLockCheckConfig();
                     await MessageBoxManager.GetMessageBoxStandard("Information", "Done!").ShowWindowDialogAsync(this);
                 }
             }
@@ -1676,12 +1851,15 @@ namespace GDMENUCardManager
                 IsBusy = true;
                 var invalid = new List<string>();
                 var unsupportedRedumpGdi = new List<string>();
-                var addedItems = new List<(GdItem Item, int Index)>();
 
                 try
                 {
                     // Dropped files arrive as storage items, take the real path off each.
                     var droppedItems = e.DataTransfer.TryGetFiles() ?? Array.Empty<IStorageItem>();
+                    var companions = await ImageHelper.GetCompanionFilePathsAsync(
+                        droppedItems.Select(x => x.TryGetLocalPath()).Where(x => x != null));
+                    var addPaths = new List<string>();
+
                     foreach (var storageItem in droppedItems)
                     {
                         var o = storageItem.TryGetLocalPath();
@@ -1691,37 +1869,62 @@ namespace GDMENUCardManager
                             continue;
                         }
 
-                        try
+                        // Files referenced by an index file in this same drop ride along with it.
+                        if (companions.Contains(o))
+                            continue;
+
+                        addPaths.Add(o);
+                    }
+
+                    ProgressWindow progressWindow = null;
+                    if (addPaths.Count > 1)
+                    {
+                        progressWindow = new ProgressWindow();
+                        progressWindow.Title = "Adding Disc Images";
+                    }
+
+                    AddGamesResult added;
+                    try
+                    {
+                        // Shown on the first report, so it appears after the archive
+                        // add-mode dialog and never at all when the user cancels it.
+                        var progress = new Progress<string>(msg =>
                         {
-                            var gdItem = await ImageHelper.CreateGdItemAsync(o);
-                            insertIndex = Math.Min(insertIndex, Manager.ItemList.Count);
-                            Manager.ItemList.Insert(insertIndex, gdItem);
-                            addedItems.Add((gdItem, insertIndex));
-                            insertIndex++;
-                        }
-                        catch (UnsupportedDiscFormatException)
+                            if (progressWindow != null)
+                            {
+                                if (!progressWindow.IsVisible)
+                                    progressWindow.Show(this);
+                                progressWindow.TextContent = msg;
+                            }
+                        });
+
+                        added = await Manager.AddGames(
+                            addPaths.ToArray(),
+                            insertIndex,
+                            AddGamesUndoProfile.AvaloniaExternalDrop,
+                            progress);
+                    }
+                    finally
+                    {
+                        if (progressWindow != null)
                         {
-                            unsupportedRedumpGdi.Add(Path.GetFileName(o));
-                        }
-                        catch (Exception ex)
-                        {
-                            invalid.Add($"{o} - {ex.Message}");
+                            progressWindow.AllowClose();
+                            progressWindow.Close();
                         }
                     }
 
-                    // Record undo operation if any items were added
-                    if (addedItems.Count > 0)
-                    {
-                        var undoOp = new MultiItemAddOperation { ItemList = Manager.ItemList };
-                        undoOp.Items.AddRange(addedItems);
-                        Manager.UndoManager.RecordChange(undoOp);
+                    invalid.AddRange(added.InvalidDetails.Select(failure =>
+                        $"{failure.Path} - {failure.Message}"));
+                    unsupportedRedumpGdi.AddRange(added.UnsupportedRedumpGdi);
 
+                    if (added.AddedItems.Count > 0)
+                    {
                         // Show serial translation dialog if any items were translated
                         await ShowSerialTranslationDialogIfNeeded();
                     }
 
                     if (invalid.Any())
-                        await MessageBoxManager.GetMessageBoxStandard("Error", string.Join(Environment.NewLine, invalid), icon: MsBox.Avalonia.Enums.Icon.Error).ShowWindowDialogAsync(this);
+                        await new TextWindow("Ignored folders/files", string.Join(Environment.NewLine + Environment.NewLine, invalid)).ShowDialog(this);
 
                     if (unsupportedRedumpGdi.Any())
                         await MessageBoxManager.GetMessageBoxStandard("Information", LegacyRedumpGdiDetector.BuildMessage(unsupportedRedumpGdi), icon: MsBox.Avalonia.Enums.Icon.Info).ShowWindowDialogAsync(this);
@@ -1959,7 +2162,10 @@ namespace GDMENUCardManager
             var folders = await StorageProvider.OpenFolderPickerAsync(pickerOptions);
             var selectedFolder = folders.Count > 0 ? folders[0].TryGetLocalPath() : null;
             if (!string.IsNullOrEmpty(selectedFolder))
+            {
                 TempFolder = selectedFolder;
+                SaveTempFolderConfig();
+            }
         }
 
         private async void ButtonResetTempFolder_Click(object sender, RoutedEventArgs e)
@@ -2087,27 +2293,28 @@ namespace GDMENUCardManager
                     return;
 
                 // Capture old names before batch rename
-                var oldNames = Manager.ItemList.ToDictionary(i => i, i => i.Name);
+                var oldTitles = Manager.ItemList.ToDictionary(
+                    item => item,
+                    item => (
+                        Name: item.Name,
+                        WasUserEdited: item.HasUserEditedCompressedTitle));
 
                 var count = await Manager.BatchRenameItems(w.NotOnCard, w.OnCard, w.FolderName, w.ParseTosec);
 
                 // Record undo for items whose names actually changed
                 if (count > 0)
                 {
-                    var undoOp = new MultiPropertyEditOperation("Batch Rename")
-                    {
-                        PropertyName = nameof(GdItem.Name)
-                    };
+                    var undoOp = new TitleEditOperation("Batch Rename");
 
                     foreach (var item in Manager.ItemList)
                     {
-                        if (oldNames.TryGetValue(item, out var oldName) && item.Name != oldName)
+                        if (oldTitles.TryGetValue(item, out var old) && item.Name != old.Name)
                         {
-                            undoOp.Edits.Add((item, oldName, item.Name));
+                            undoOp.Add(item, old.Name, old.WasUserEdited);
                         }
                     }
 
-                    if (undoOp.Edits.Count > 0)
+                    if (undoOp.Count > 0)
                     {
                         Manager.UndoManager.RecordChange(undoOp);
                     }
@@ -2464,23 +2671,18 @@ namespace GDMENUCardManager
             if (items.Count == 0)
                 return;
 
-            var undoOp = new MultiPropertyEditOperation("Title Case")
-            {
-                PropertyName = nameof(GdItem.Name)
-            };
+            var undoOp = new TitleEditOperation("Title Case");
 
             foreach (var item in items)
             {
-                var oldName = item.Name;
-                var newName = TitleCaseHelper.ToTitleCase(item.Name);
-                if (newName != oldName)
-                {
-                    undoOp.Edits.Add((item, oldName, newName));
-                    item.Name = newName;
-                }
+                string oldTitle = item.Name;
+                bool oldState = item.HasUserEditedCompressedTitle;
+                string requestedTitle = TitleCaseHelper.ToTitleCase(item.Name);
+                if (item.CommitUserTitle(oldTitle, requestedTitle))
+                    undoOp.Add(item, oldTitle, oldState);
             }
 
-            if (undoOp.Edits.Count > 0)
+            if (undoOp.Count > 0)
             {
                 Manager.UndoManager.RecordChange(undoOp);
             }
@@ -2494,23 +2696,18 @@ namespace GDMENUCardManager
             if (items.Count == 0)
                 return;
 
-            var undoOp = new MultiPropertyEditOperation("Uppercase")
-            {
-                PropertyName = nameof(GdItem.Name)
-            };
+            var undoOp = new TitleEditOperation("Uppercase");
 
             foreach (var item in items)
             {
-                var oldName = item.Name;
-                var newName = item.Name.ToUpperInvariant();
-                if (newName != oldName)
-                {
-                    undoOp.Edits.Add((item, oldName, newName));
-                    item.Name = newName;
-                }
+                string oldTitle = item.Name;
+                bool oldState = item.HasUserEditedCompressedTitle;
+                string requestedTitle = item.Name.ToUpperInvariant();
+                if (item.CommitUserTitle(oldTitle, requestedTitle))
+                    undoOp.Add(item, oldTitle, oldState);
             }
 
-            if (undoOp.Edits.Count > 0)
+            if (undoOp.Count > 0)
             {
                 Manager.UndoManager.RecordChange(undoOp);
             }
@@ -2524,23 +2721,18 @@ namespace GDMENUCardManager
             if (items.Count == 0)
                 return;
 
-            var undoOp = new MultiPropertyEditOperation("Lowercase")
-            {
-                PropertyName = nameof(GdItem.Name)
-            };
+            var undoOp = new TitleEditOperation("Lowercase");
 
             foreach (var item in items)
             {
-                var oldName = item.Name;
-                var newName = item.Name.ToLowerInvariant();
-                if (newName != oldName)
-                {
-                    undoOp.Edits.Add((item, oldName, newName));
-                    item.Name = newName;
-                }
+                string oldTitle = item.Name;
+                bool oldState = item.HasUserEditedCompressedTitle;
+                string requestedTitle = item.Name.ToLowerInvariant();
+                if (item.CommitUserTitle(oldTitle, requestedTitle))
+                    undoOp.Add(item, oldTitle, oldState);
             }
 
-            if (undoOp.Edits.Count > 0)
+            if (undoOp.Count > 0)
             {
                 Manager.UndoManager.RecordChange(undoOp);
             }
@@ -2575,25 +2767,26 @@ namespace GDMENUCardManager
                 }
 
                 // Capture old names before rename
-                var oldNames = items.ToDictionary(i => i, i => i.Name);
+                var oldTitles = items.ToDictionary(
+                    item => item,
+                    item => (
+                        Name: item.Name,
+                        WasUserEdited: item.HasUserEditedCompressedTitle));
 
                 await Manager.RenameItems(items, renameBy);
 
                 // Record undo for items whose names actually changed
-                var undoOp = new MultiPropertyEditOperation($"Rename by {renameBy}")
-                {
-                    PropertyName = nameof(GdItem.Name)
-                };
+                var undoOp = new TitleEditOperation($"Rename by {renameBy}");
 
                 foreach (var item in items)
                 {
-                    if (oldNames.TryGetValue(item, out var oldName) && item.Name != oldName)
+                    if (oldTitles.TryGetValue(item, out var old) && item.Name != old.Name)
                     {
-                        undoOp.Edits.Add((item, oldName, item.Name));
+                        undoOp.Add(item, old.Name, old.WasUserEdited);
                     }
                 }
 
-                if (undoOp.Edits.Count > 0)
+                if (undoOp.Count > 0)
                 {
                     Manager.UndoManager.RecordChange(undoOp);
                 }
@@ -2875,10 +3068,43 @@ namespace GDMENUCardManager
             {
                 IsBusy = true;
 
-                var (invalid, unsupportedRedumpGdi) = await Manager.AddGames(files);
+                ProgressWindow progressWindow = null;
+                if (files.Length > 1)
+                {
+                    progressWindow = new ProgressWindow();
+                    progressWindow.Title = "Adding Disc Images";
+                }
+
+                AddGamesResult added;
+                try
+                {
+                    // Shown on the first report, so it appears after the archive
+                    // add-mode dialog and never at all when the user cancels it.
+                    var progress = new Progress<string>(msg =>
+                    {
+                        if (progressWindow != null)
+                        {
+                            if (!progressWindow.IsVisible)
+                                progressWindow.Show(this);
+                            progressWindow.TextContent = msg;
+                        }
+                    });
+
+                    added = await Manager.AddGames(files, progress: progress);
+                }
+                finally
+                {
+                    if (progressWindow != null)
+                    {
+                        progressWindow.AllowClose();
+                        progressWindow.Close();
+                    }
+                }
+
+                var (invalid, unsupportedRedumpGdi) = added;
 
                 if (invalid.Any())
-                    await MessageBoxManager.GetMessageBoxStandard("Error", string.Join(Environment.NewLine, invalid), icon: MsBox.Avalonia.Enums.Icon.Error).ShowWindowDialogAsync(this);
+                    await new TextWindow("Ignored folders/files", string.Join(Environment.NewLine + Environment.NewLine, invalid)).ShowDialog(this);
 
                 if (unsupportedRedumpGdi.Any())
                     await MessageBoxManager.GetMessageBoxStandard("Information", LegacyRedumpGdiDetector.BuildMessage(unsupportedRedumpGdi), icon: MsBox.Avalonia.Enums.Icon.Info).ShowWindowDialogAsync(this);
@@ -3053,6 +3279,13 @@ namespace GDMENUCardManager
             if (item.ProductNumber?.IndexOf(text, 0, StringComparison.InvariantCultureIgnoreCase) >= 0)
                 return true;
             return false;
+        }
+
+        private void UpdateSearchMatches()
+        {
+            var text = _Filter?.Trim() ?? string.Empty;
+            foreach (var item in Manager.ItemList)
+                item.IsMatch = text.Length > 0 && FilterInItem(item, text);
         }
 
         private void ApplyFilterToGrid(string filterText)

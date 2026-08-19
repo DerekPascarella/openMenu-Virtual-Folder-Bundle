@@ -7,6 +7,20 @@ using System.Threading.Tasks;
 
 namespace GDMENUCardManager.Core
 {
+    internal readonly struct ArchiveGdiInspectionResult
+    {
+        public ArchiveGdiInspectionResult(bool readSucceeded, bool isLegacy, ReadOnlyMemory<byte> manifestBytes)
+        {
+            ReadSucceeded = readSucceeded;
+            IsLegacy = isLegacy;
+            ManifestBytes = manifestBytes;
+        }
+
+        public bool ReadSucceeded { get; }
+        public bool IsLegacy { get; }
+        public ReadOnlyMemory<byte> ManifestBytes { get; }
+    }
+
     /// <summary>
     /// Thrown when a disc image is in a format the application refuses to load.
     /// </summary>
@@ -69,44 +83,43 @@ namespace GDMENUCardManager.Core
             }
         }
 
-        /// <summary>
-        /// Same check for a .gdi stored inside an archive, using the archive's
-        /// entry sizes instead of files on disk.
-        /// </summary>
-        public static async Task<bool> IsLegacyRedumpGdiInArchiveAsync(string archivePath, Dictionary<string, long> archiveContents)
+        internal static async Task<ArchiveGdiInspectionResult> InspectGdiInArchiveAsync(
+            string archivePath,
+            IReadOnlyList<ArchiveEntryInfo> archiveEntries,
+            ArchiveEntryInfo selectedGdi)
         {
             try
             {
-                var gdiEntry = archiveContents.Keys.FirstOrDefault(f =>
-                    Path.GetExtension(f).Equals(".gdi", StringComparison.OrdinalIgnoreCase));
+                if (archiveEntries == null || selectedGdi == null ||
+                    !Path.GetExtension(selectedGdi.FullName)
+                        .Equals(".gdi", StringComparison.OrdinalIgnoreCase))
+                    return default;
 
-                if (gdiEntry == null)
-                    return false;
-
-                var gdiName = Path.GetFileName(gdiEntry.Replace('\\', '/'));
                 var gdiBytes = await Task.Run(() =>
-                    Helper.DependencyManager.ReadArchiveEntryBytes(archivePath, gdiName, GdiTextReadBytes));
+                    Helper.DependencyManager.ReadArchiveEntryBytes(
+                        archivePath,
+                        selectedGdi,
+                        GdiTextReadBytes));
 
                 if (gdiBytes == null || gdiBytes.Length == 0)
-                    return false;
+                    return default;
 
                 var lines = Encoding.ASCII.GetString(gdiBytes)
                     .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
 
-                return CheckTrackLayout(lines, trackFileName =>
+                var isLegacy = CheckTrackLayout(lines, trackFileName =>
                 {
-                    foreach (var entry in archiveContents)
-                    {
-                        var entryName = Path.GetFileName(entry.Key.Replace('\\', '/'));
-                        if (entryName.Equals(trackFileName, StringComparison.OrdinalIgnoreCase))
-                            return entry.Value;
-                    }
-                    return null;
+                    return ArchiveEntryPath.FindRelativeEntry(
+                        archiveEntries,
+                        selectedGdi,
+                        trackFileName)?.Size;
                 });
+
+                return new ArchiveGdiInspectionResult(true, isLegacy, gdiBytes);
             }
             catch
             {
-                return false;
+                return default;
             }
         }
 

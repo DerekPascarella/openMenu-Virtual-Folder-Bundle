@@ -80,7 +80,7 @@ namespace GDMENUCardManager
                 {
                     IpInfo = "Can't load from compressed files.";
                 }
-                LabelText = "Can't load from compressed files.";
+                LabelText = ImageHelper.GetGdTextUnavailableMessage(item);
                 return;
             }
 
@@ -102,6 +102,13 @@ namespace GDMENUCardManager
             catch (Exception ex)
             {
                 IpInfo = $"Error: {ex.Message}";
+            }
+
+            var unavailableMessage = ImageHelper.GetGdTextUnavailableMessage(item);
+            if (unavailableMessage != null)
+            {
+                LabelText = unavailableMessage;
+                return;
             }
 
             // Load GDTEX texture

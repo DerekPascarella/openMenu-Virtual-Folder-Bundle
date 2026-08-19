@@ -37,9 +37,9 @@
 
     <!-- Buttons -->
     <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
-      <Button Content="Quit" Click="QuitButton_Click" Width="90" Padding="15,8" Margin="0 0 10 0"
+      <Button Content="Quit" Click="QuitButton_Click" Width="110" Padding="15,8" Margin="0 0 10 0"
               ToolTip.Tip="Exit the application without scanning"/>
-      <Button Content="Start Scan" Click="StartScanButton_Click" Width="90" Padding="15,8" IsDefault="True"
+      <Button Content="Start Scan" Click="StartScanButton_Click" Width="110" Padding="15,8" IsDefault="True"
               ToolTip.Tip="Begin the one-time metadata scan"/>
     </StackPanel>
   </Grid>

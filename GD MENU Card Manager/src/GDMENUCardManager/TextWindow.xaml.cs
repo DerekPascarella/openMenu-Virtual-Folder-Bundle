@@ -34,5 +34,10 @@ namespace GDMENUCardManager
                 SetWindowLong(hwnd, GWL_STYLE, GetWindowLong(hwnd, GWL_STYLE) & ~(WS_MAXIMIZEBTN | WS_MINIMIZEBTN));
             };
         }
+
+        private void OkButton_Click(object sender, RoutedEventArgs e)
+        {
+            Close();
+        }
     }
 }

@@ -13,11 +13,23 @@ using System.Xml.Linq;
 
 namespace GDMENUCardManager.Core
 {
+    /// <summary>
+    /// Controls whether archive metadata is read while adding a row.
+    /// </summary>
+    public enum ArchiveAddMode
+    {
+        ParseNow,
+        DeferToSave,
+        Cancel
+    }
+
     public static class ImageHelper
     {
         private static readonly char[] katanachar = "SEGA SEGAKATANA SEGA ENTERPRISES".ToCharArray();
 
-        public static async Task<GdItem> CreateGdItemAsync(string fileOrFolderPath)
+        public static async Task<GdItem> CreateGdItemAsync(
+            string fileOrFolderPath,
+            ArchiveAddMode archiveAddMode = ArchiveAddMode.ParseNow)
         {
             string folderPath;
             string[] files;
@@ -56,30 +68,30 @@ namespace GDMENUCardManager.Core
             }
 
             // Is compressed?
+            string archiveSidecarName = null;
+            string archiveSidecarSerial = null;
             if (itemImageFile == null && files.Any(Helper.CompressedFileExpression))
             {
                 string compressedFile = files.First(Helper.CompressedFileExpression);
 
-                var filesInsideArchive = await Task.Run(() => Helper.DependencyManager.GetArchiveFiles(compressedFile));
+                var archiveEntries = await Task.Run(() =>
+                    Helper.DependencyManager.GetArchiveEntries(compressedFile));
+                var imageEntries = archiveEntries
+                    .Where(entry => Manager.supportedImageFormats.Any(format =>
+                        format.Equals(
+                            Path.GetExtension(entry.FullName),
+                            StringComparison.OrdinalIgnoreCase)))
+                    .ToArray();
 
-                foreach (var file in filesInsideArchive.Keys)
-                {
-                    var fileExt = Path.GetExtension(file).ToLower();
-                    if (Manager.supportedImageFormats.Any(x => x == fileExt))
-                    {
-                        itemImageFile = file;
-                        break;
-                    }
-                }
-
-                item.CanApplyGDIShrink = filesInsideArchive.Keys.Any(x => Path.GetExtension(x).Equals(".gdi", StringComparison.InvariantCultureIgnoreCase));
+                item.ArchiveImageEntries = Array.AsReadOnly(imageEntries);
+                item.SelectedArchiveEntry = imageEntries.FirstOrDefault();
+                itemImageFile = item.SelectedArchiveEntry?.FullName;
+                item.CanApplyGDIShrink = item.SelectedArchiveEntry != null &&
+                    Path.GetExtension(item.SelectedArchiveEntry.FullName)
+                        .Equals(".gdi", StringComparison.OrdinalIgnoreCase);
 
                 if (!string.IsNullOrEmpty(itemImageFile))
                 {
-                    if (Path.GetExtension(itemImageFile).Equals(".gdi", StringComparison.OrdinalIgnoreCase) &&
-                        await LegacyRedumpGdiDetector.IsLegacyRedumpGdiInArchiveAsync(compressedFile, filesInsideArchive))
-                        throw new UnsupportedDiscFormatException(LegacyRedumpGdiDetector.ShortMessage);
-
                     item.ImageFiles.Add(Path.GetFileName(compressedFile));
 
                     var itemName = Path.GetFileNameWithoutExtension(compressedFile);
@@ -87,8 +99,69 @@ namespace GDMENUCardManager.Core
                     if (m.Success)
                         itemName = itemName.Substring(0, m.Index);
 
-                    ip = await ArchiveIpBinReader.TryReadAsync(compressedFile, filesInsideArchive);
+                    if (archiveAddMode != ArchiveAddMode.DeferToSave)
+                    {
+                        ReadOnlyMemory<byte>? gdiManifestBytes = null;
+                        if (Path.GetExtension(itemImageFile).Equals(".gdi", StringComparison.OrdinalIgnoreCase))
+                        {
+                            ip = await ArchiveIpBinReader.TryReadLateGdiTrackOneAsync(
+                                compressedFile,
+                                archiveEntries,
+                                item.SelectedArchiveEntry);
+                            if (ip == null)
+                            {
+                                var gdiInspection = await LegacyRedumpGdiDetector.InspectGdiInArchiveAsync(
+                                    compressedFile,
+                                    archiveEntries,
+                                    item.SelectedArchiveEntry);
 
+                                if (gdiInspection.IsLegacy)
+                                    throw new UnsupportedDiscFormatException(LegacyRedumpGdiDetector.ShortMessage);
+
+                                if (gdiInspection.ReadSucceeded)
+                                    gdiManifestBytes = gdiInspection.ManifestBytes;
+                            }
+                        }
+                        else if (Path.GetExtension(itemImageFile).Equals(
+                                     ".cdi",
+                                     StringComparison.OrdinalIgnoreCase) ||
+                                 Path.GetExtension(itemImageFile).Equals(
+                                     ".ccd",
+                                     StringComparison.OrdinalIgnoreCase) ||
+                                 Path.GetExtension(itemImageFile).Equals(
+                                     ".mds",
+                                     StringComparison.OrdinalIgnoreCase))
+                        {
+                            ip = await ArchiveBoundedDiscMetadataReader.TryReadAsync(
+                                compressedFile,
+                                archiveEntries,
+                                item.SelectedArchiveEntry);
+                        }
+
+                        if (ip == null)
+                        {
+                            ip = await ArchiveIpBinReader.TryReadAsync(
+                                compressedFile,
+                                archiveEntries,
+                                item.SelectedArchiveEntry,
+                                gdiManifestBytes);
+                        }
+
+                        if (ip == null &&
+                            Path.GetExtension(itemImageFile).Equals(
+                                ".cue",
+                                StringComparison.OrdinalIgnoreCase))
+                        {
+                            ip = await ArchivePlayStationMetadataReader.TryReadAsync(
+                                compressedFile,
+                                archiveEntries,
+                                item.SelectedArchiveEntry);
+                            if (ip != null)
+                                item.DiscType = "PSX";
+                        }
+                    }
+
+                    bool archiveMetadataParsed = ip != null;
                     if (ip == null)
                     {
                         ip = new IpBin
@@ -99,8 +172,30 @@ namespace GDMENUCardManager.Core
                         };
                     }
 
-                    item.Length = ByteSizeLib.ByteSize.FromBytes(filesInsideArchive.Sum(x => x.Value));
+                    // Sidecar text files inside the archive override the item
+                    // fields below, like the ones beside an uncompressed image
+                    // do. The parsed Ip keeps the disc's real identity.
+                    if (archiveAddMode != ArchiveAddMode.DeferToSave)
+                    {
+                        archiveSidecarName = await ReadArchiveSidecarTextAsync(
+                            compressedFile,
+                            archiveEntries,
+                            item.SelectedArchiveEntry,
+                            Constants.NameTextFile);
+
+                        archiveSidecarSerial = await ReadArchiveSidecarTextAsync(
+                            compressedFile,
+                            archiveEntries,
+                            item.SelectedArchiveEntry,
+                            Constants.SerialTextFile);
+                    }
+
+                    item.Length = ByteSizeLib.ByteSize.FromBytes(archiveEntries.Sum(entry => entry.Size));
                     item.FileFormat = FileFormat.SevenZip;
+                    // Save replaces filename metadata after extracting the selected image.
+                    item.IsArchiveMetadataPending =
+                        archiveAddMode == ArchiveAddMode.DeferToSave ||
+                        !archiveMetadataParsed;
                 }
             }
 
@@ -445,6 +540,11 @@ namespace GDMENUCardManager.Core
             item.Name = ip.Name;
             item.ProductNumber = ip.ProductNumber;
 
+            if (archiveSidecarName != null)
+                item.Name = archiveSidecarName;
+            if (archiveSidecarSerial != null)
+                item.ProductNumber = archiveSidecarSerial;
+
             var itemNamePath = Path.Combine(item.FullFolderPath, Constants.NameTextFile);
             if (await Helper.FileExistsAsync(itemNamePath))
                 item.Name = await Helper.ReadAllTextAsync(itemNamePath);
@@ -456,7 +556,14 @@ namespace GDMENUCardManager.Core
             item.Name = item.Name.Trim();
 
             if (item.FullFolderPath.StartsWith(Manager.sdPath, StringComparison.InvariantCultureIgnoreCase) && int.TryParse(Path.GetFileName(Path.GetDirectoryName(itemImageFile)), out int number))
+            {
                 item.SdNumber = number;
+
+                // Only card folders carry a trustworthy marker. A stray shrunk.txt
+                // next to images on the PC must not flag the item.
+                if (await Helper.FileExistsAsync(Path.Combine(item.FullFolderPath, Constants.ShrunkTextFile)))
+                    item.WasShrunk = true;
+            }
 
             //item.ImageFile = Path.GetFileName(item.ImageFile);
 
@@ -523,6 +630,75 @@ namespace GDMENUCardManager.Core
             return str;
         }
 
+
+        // Reads a sidecar text file stored inside the archive, beside the selected
+        // image or at the archive root. The image's own directory wins over the root.
+        private static async Task<string> ReadArchiveSidecarTextAsync(
+            string compressedFile,
+            IReadOnlyList<ArchiveEntryInfo> archiveEntries,
+            ArchiveEntryInfo selectedEntry,
+            string sidecarFileName)
+        {
+            // Sidecar text files are tiny. Anything bigger is not a sidecar.
+            const long maxSidecarBytes = 4096;
+
+            string selectedDirectory;
+            try
+            {
+                selectedDirectory = ArchiveEntryPath.GetDirectoryKey(selectedEntry.FullName);
+            }
+            catch (ArgumentException)
+            {
+                return null;
+            }
+
+            ArchiveEntryInfo match = null;
+            foreach (var entry in archiveEntries)
+            {
+                if (entry.Size > maxSidecarBytes)
+                    continue;
+
+                string directory;
+                string leaf;
+                try
+                {
+                    directory = ArchiveEntryPath.GetDirectoryKey(entry.FullName);
+                    leaf = ArchiveEntryPath.GetLeafName(entry.FullName);
+                }
+                catch (ArgumentException)
+                {
+                    continue;
+                }
+
+                if (!leaf.Equals(sidecarFileName, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                bool inSelectedDirectory = selectedDirectory.Length > 0 &&
+                    string.Equals(directory, selectedDirectory, StringComparison.OrdinalIgnoreCase);
+                if (inSelectedDirectory)
+                {
+                    match = entry;
+                    break;
+                }
+
+                if (directory.Length == 0 && match == null)
+                    match = entry;
+            }
+
+            if (match == null)
+                return null;
+
+            var bytes = await Task.Run(() =>
+                Helper.DependencyManager.ReadArchiveEntryBytes(compressedFile, match, maxSidecarBytes));
+            if (bytes == null)
+                return null;
+
+            // File.ReadAllText strips the UTF-8 byte order mark, so match it.
+            if (bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF)
+                return Encoding.UTF8.GetString(bytes, 3, bytes.Length - 3);
+
+            return Encoding.UTF8.GetString(bytes);
+        }
 
         /// <summary>
         /// Reads from the image every time. Does not touch the cached Ip on the item.
@@ -724,6 +900,13 @@ namespace GDMENUCardManager.Core
             }
         }
 
+        public static string GetGdTextUnavailableMessage(GdItem item)
+        {
+            return CanExtractGdText(item)
+                ? null
+                : "Cannot be read from this disc image until SD card changes are saved.";
+        }
+
         private static byte[] extractFileFromPartition(IOpticalMediaImage opticalImage, Partition partition, string fileName)
         {
             var iso = new ISO9660();
@@ -863,7 +1046,14 @@ namespace GDMENUCardManager.Core
             item.Name = item.Name.Trim();
 
             if (item.FullFolderPath.StartsWith(Manager.sdPath, StringComparison.InvariantCultureIgnoreCase) && int.TryParse(new DirectoryInfo(item.FullFolderPath).Name, out int number))
+            {
                 item.SdNumber = number;
+
+                // Only card folders carry a trustworthy marker. A stray shrunk.txt
+                // next to images on the PC must not flag the item.
+                if (await Helper.FileExistsAsync(Path.Combine(item.FullFolderPath, Constants.ShrunkTextFile)))
+                    item.WasShrunk = true;
+            }
 
             Manager.UpdateItemLength(item);
 
@@ -1024,6 +1214,54 @@ namespace GDMENUCardManager.Core
             catch { }
 
             return null;
+        }
+
+        /// <summary>
+        /// Full paths of files referenced by index files in the same dropped batch
+        /// (cue bins, gdi tracks, ccd img/sub, mds mdf). Such files belong to their
+        /// index item and must not be treated as standalone drops.
+        /// </summary>
+        public static async Task<HashSet<string>> GetCompanionFilePathsAsync(IEnumerable<string> paths)
+        {
+            var companions = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var path in paths)
+            {
+                try
+                {
+                    if ((await Helper.GetAttributesAsync(path)).HasFlag(FileAttributes.Directory))
+                        continue;
+
+                    var dir = Path.GetDirectoryName(path);
+                    switch (Path.GetExtension(path).ToLowerInvariant())
+                    {
+                        case ".cue":
+                            var cueParser = new CueSheetParser();
+                            cueParser.Parse(path);
+                            foreach (var bin in cueParser.GetAllBinFiles())
+                                companions.Add(Path.GetFullPath(Path.Combine(dir, bin)));
+                            break;
+                        case ".gdi":
+                            foreach (var track in await GetGdiFileListAsync(path))
+                                companions.Add(Path.GetFullPath(Path.Combine(dir, track)));
+                            break;
+                        case ".ccd":
+                            companions.Add(Path.ChangeExtension(path, ".img"));
+                            companions.Add(Path.ChangeExtension(path, ".sub"));
+                            break;
+                        case ".mds":
+                            companions.Add(Path.ChangeExtension(path, ".mdf"));
+                            break;
+                    }
+                }
+                catch
+                {
+                    // A malformed index contributes nothing here and will fail on
+                    // its own when it is parsed as an item.
+                }
+            }
+
+            return companions;
         }
 
         private static async Task<string[]> GetGdiFileListAsync(string gdiFilePath)

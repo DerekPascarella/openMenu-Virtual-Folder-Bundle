@@ -35,11 +35,11 @@
         </DataGrid>
 
         <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 10 0 0">
-            <Button Content="Select All" Width="110" Padding="15,8" Margin="0 0 10 0" Click="ButtonAll_Click"
+            <Button Content="Select All" Width="120" Padding="15,8" Margin="0 0 10 0" Click="ButtonAll_Click"
                     ToolTip="Mark every game in the list for shrinking"/>
-            <Button Content="Select None" Width="110" Padding="15,8" Margin="0 0 10 0" Click="ButtonNone_Click"
+            <Button Content="Select None" Width="120" Padding="15,8" Margin="0 0 10 0" Click="ButtonNone_Click"
                     ToolTip="Unmark every game in the list"/>
-            <Button Content="Proceed" Width="110" Padding="15,8" IsDefault="True" Click="ButtonShrink_Click"
+            <Button Content="Proceed" Width="120" Padding="15,8" IsDefault="True" Click="ButtonShrink_Click"
                     ToolTip="Shrink the checked games"/>
         </StackPanel>
 
