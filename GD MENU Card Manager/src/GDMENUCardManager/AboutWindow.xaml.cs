@@ -119,12 +119,12 @@ namespace GDMENUCardManager
                 }
                 else
                 {
-                    MessageBox.Show(this, "You are running the latest version.", "Information", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show(this, "You are running the latest version.", "Information", MessageBoxButton.OK, MessageBoxImage.None);
                 }
             }
             catch
             {
-                MessageBox.Show(this, "Could not check for updates. Please check your internet connection.", "Information", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(this, "Could not check for updates. Please check your internet connection.", "Information", MessageBoxButton.OK, MessageBoxImage.None);
             }
             finally
             {

@@ -175,7 +175,7 @@ namespace GDMENUCardManager
             {
                 ContentTitle = "Confirmation",
                 ContentMessage = "You have unsaved changes. Save before navigating?",
-                Icon = MsBox.Avalonia.Enums.Icon.Warning,
+                Icon = MsBox.Avalonia.Enums.Icon.None,
                 ShowInCenter = true,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 ButtonDefinitions = new ButtonDefinition[]
@@ -303,7 +303,7 @@ namespace GDMENUCardManager
             {
                 ContentTitle = "Confirmation",
                 ContentMessage = $"Delete artwork for folder '{FolderPath}'?",
-                Icon = MsBox.Avalonia.Enums.Icon.Warning,
+                Icon = MsBox.Avalonia.Enums.Icon.None,
                 ShowInCenter = true,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 ButtonDefinitions = new ButtonDefinition[]
@@ -372,7 +372,7 @@ namespace GDMENUCardManager
             {
                 // Hash collision, show the message.
                 await MessageBoxManager.GetMessageBoxStandard("Error", ex.Message,
-                    icon: MsBox.Avalonia.Enums.Icon.Error).ShowWindowDialogAsync(this);
+                    icon: MsBox.Avalonia.Enums.Icon.None, windowStartupLocation: WindowStartupLocation.CenterOwner).ShowWindowDialogAsync(this);
             }
             catch
             {
@@ -395,7 +395,7 @@ namespace GDMENUCardManager
                 {
                     ContentTitle = "Confirmation",
                     ContentMessage = "You have unsaved changes. Discard them?",
-                    Icon = MsBox.Avalonia.Enums.Icon.Warning,
+                    Icon = MsBox.Avalonia.Enums.Icon.None,
                     ShowInCenter = true,
                     WindowStartupLocation = WindowStartupLocation.CenterOwner,
                     ButtonDefinitions = new ButtonDefinition[]

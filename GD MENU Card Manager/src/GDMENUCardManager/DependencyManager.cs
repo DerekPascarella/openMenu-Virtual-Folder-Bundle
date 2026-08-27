@@ -35,7 +35,7 @@ namespace GDMENUCardManager
 
         public ValueTask<bool> ShowYesNoDialog(string caption, string text)
         {
-            return new ValueTask<bool>(MessageBox.Show(getMainWindow(), text, caption, MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes);
+            return new ValueTask<bool>(MessageBox.Show(getMainWindow(), text, caption, MessageBoxButton.YesNo, MessageBoxImage.None) == MessageBoxResult.Yes);
         }
 
         public ValueTask<ArchiveAddMode> ShowArchiveAddModeDialog(int compressedInputCount)
@@ -50,7 +50,7 @@ namespace GDMENUCardManager
 
         public ValueTask ShowWarningDialog(string caption, string text)
         {
-            MessageBox.Show(getMainWindow(), text, caption, MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(getMainWindow(), text, caption, MessageBoxButton.OK, MessageBoxImage.None);
             return new ValueTask();
         }
 
@@ -128,7 +128,7 @@ namespace GDMENUCardManager
                 sb.ToString(),
                 "Confirmation",
                 MessageBoxButton.YesNo,
-                MessageBoxImage.Warning);
+                MessageBoxImage.None);
 
             return new ValueTask<bool>(result == MessageBoxResult.Yes);
         }
@@ -160,7 +160,7 @@ namespace GDMENUCardManager
                 sb.ToString(),
                 "Error",
                 MessageBoxButton.OK,
-                MessageBoxImage.Error);
+                MessageBoxImage.None);
 
             Application.Current.Shutdown();
 

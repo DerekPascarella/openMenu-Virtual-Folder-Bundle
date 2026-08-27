@@ -148,11 +148,11 @@ namespace GDMENUCardManager
             if (!((sender as Button)?.CommandParameter is FolderArtOrphanRow row))
                 return;
 
-            var result = MessageBox.Show(
+            var result = MessageBox.Show(this,
                 $"Delete unassigned artwork for '{row.Display}'? This cannot be undone once DAT files are saved.",
                 "Confirmation",
                 MessageBoxButton.YesNo,
-                MessageBoxImage.Warning);
+                MessageBoxImage.None);
 
             if (result == MessageBoxResult.Yes)
             {
@@ -339,9 +339,9 @@ namespace GDMENUCardManager
                 // Validate printable ASCII
                 if (!Core.Helper.IsValidPrintableAscii(node.Name))
                 {
-                    MessageBox.Show(
+                    MessageBox.Show(this,
                         "Only printable ASCII characters (letters, numbers, and standard symbols) are supported by openMenu.",
-                        "Information", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        "Information", MessageBoxButton.OK, MessageBoxImage.None);
                     node.Name = "PLEASE RENAME";
                     _editingOriginalName = null;
                     return;
@@ -370,9 +370,9 @@ namespace GDMENUCardManager
                 {
                     if (!Core.Helper.IsValidPrintableAscii(textBox.Text))
                     {
-                        MessageBox.Show(
+                        MessageBox.Show(this,
                             "Only printable ASCII characters (letters, numbers, and standard symbols) are supported by openMenu.",
-                            "Information", MessageBoxButton.OK, MessageBoxImage.Warning);
+                            "Information", MessageBoxButton.OK, MessageBoxImage.None);
                         node.Name = "PLEASE RENAME";
                         _editingOriginalName = null;
                     }
@@ -515,7 +515,7 @@ namespace GDMENUCardManager
                         // Prevent dropping node onto itself or its own descendants
                         if (IsDescendant(targetNode, droppedNode))
                         {
-                            MessageBox.Show("Cannot move a folder into its own subfolder.", "Information", MessageBoxButton.OK, MessageBoxImage.Warning);
+                            MessageBox.Show(this, "Cannot move a folder into its own subfolder.", "Information", MessageBoxButton.OK, MessageBoxImage.None);
                             return;
                         }
 

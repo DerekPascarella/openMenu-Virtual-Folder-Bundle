@@ -141,7 +141,7 @@ namespace GDMENUCardManager
                 {
                     await MessageBoxManager.GetMessageBoxStandard("Information",
                         "This folder path is already assigned to this disc image.",
-                        icon: MsBox.Avalonia.Enums.Icon.Info).ShowWindowDialogAsync(this);
+                        icon: MsBox.Avalonia.Enums.Icon.None, windowStartupLocation: WindowStartupLocation.CenterOwner).ShowWindowDialogAsync(this);
                     entry.FolderPath = string.Empty;
                 }
             }

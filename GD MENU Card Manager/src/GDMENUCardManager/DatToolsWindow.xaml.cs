@@ -40,7 +40,7 @@ namespace GDMENUCardManager
             {
                 dialog.Description = "Select DAT import folder";
 
-                if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                if (dialog.ShowDialog(new Win32Window(this)) == System.Windows.Forms.DialogResult.OK)
                 {
                     var result = dialog.SelectedPath;
 
@@ -50,8 +50,8 @@ namespace GDMENUCardManager
 
                     if (!File.Exists(boxPath) && !File.Exists(metaPath))
                     {
-                        MessageBox.Show("Selected folder does not contain BOX.DAT or META.DAT.",
-                            "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                        MessageBox.Show(this, "Selected folder does not contain BOX.DAT or META.DAT.",
+                            "Error", MessageBoxButton.OK, MessageBoxImage.None);
                         return;
                     }
 
@@ -68,11 +68,11 @@ namespace GDMENUCardManager
                 return;
 
             // Confirmation dialog
-            var confirmResult = MessageBox.Show(
+            var confirmResult = MessageBox.Show(this,
                 "This will backup current DAT files and merge entries from the selected folder.\n\nContinue?",
                 "Confirmation",
                 MessageBoxButton.OKCancel,
-                MessageBoxImage.Warning);
+                MessageBoxImage.None);
 
             if (confirmResult != MessageBoxResult.OK)
                 return;
@@ -109,7 +109,7 @@ namespace GDMENUCardManager
 
                 if (!result.success)
                 {
-                    MessageBox.Show(result.errorMessage, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show(this, result.errorMessage, "Error", MessageBoxButton.OK, MessageBoxImage.None);
                     return;
                 }
 
@@ -119,7 +119,7 @@ namespace GDMENUCardManager
                 {
                     message += "\n\nICON.DAT was automatically regenerated using the updated contents of BOX.DAT.";
                 }
-                MessageBox.Show(message, "Information", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(this, message, "Information", MessageBoxButton.OK, MessageBoxImage.None);
 
                 // Close this window
                 this.Close();
@@ -134,7 +134,7 @@ namespace GDMENUCardManager
             {
                 progressWindow.AllowClose();
                 progressWindow.Close();
-                MessageBox.Show($"An error occurred: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(this, $"An error occurred: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.None);
             }
         }
 
@@ -148,7 +148,7 @@ namespace GDMENUCardManager
             {
                 dialog.Description = "Select PNG export folder";
 
-                if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                if (dialog.ShowDialog(new Win32Window(this)) == System.Windows.Forms.DialogResult.OK)
                 {
                     _exportTargetPath = dialog.SelectedPath;
                     TextExportTargetPath.Text = dialog.SelectedPath;
@@ -189,19 +189,19 @@ namespace GDMENUCardManager
 
                 if (!result.success)
                 {
-                    MessageBox.Show(result.errorMessage, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show(this, result.errorMessage, "Error", MessageBoxButton.OK, MessageBoxImage.None);
                     return;
                 }
 
                 // Keep window open, just show success
-                MessageBox.Show($"Exported {result.exportedCount} artwork file(s) to PNG.",
-                    "Information", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(this, $"Exported {result.exportedCount} artwork file(s) to PNG.",
+                    "Information", MessageBoxButton.OK, MessageBoxImage.None);
             }
             catch (Exception ex)
             {
                 progressWindow.AllowClose();
                 progressWindow.Close();
-                MessageBox.Show($"An error occurred: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(this, $"An error occurred: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.None);
             }
         }
 
@@ -212,11 +212,11 @@ namespace GDMENUCardManager
         private async void ClearDats_Click(object sender, RoutedEventArgs e)
         {
             // Confirmation dialog
-            var confirmResult = MessageBox.Show(
+            var confirmResult = MessageBox.Show(this,
                 "This will backup current DAT files and then clear ALL artwork and metadata entries.\n\nThis action cannot be undone. Continue?",
                 "Confirmation",
                 MessageBoxButton.OKCancel,
-                MessageBoxImage.Warning);
+                MessageBoxImage.None);
 
             if (confirmResult != MessageBoxResult.OK)
                 return;
@@ -242,13 +242,13 @@ namespace GDMENUCardManager
 
                 if (!result.success)
                 {
-                    MessageBox.Show(result.errorMessage, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show(this, result.errorMessage, "Error", MessageBoxButton.OK, MessageBoxImage.None);
                     return;
                 }
 
                 // Show success message first
-                MessageBox.Show("All DAT entries have been cleared.",
-                    "Information", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(this, "All DAT entries have been cleared.",
+                    "Information", MessageBoxButton.OK, MessageBoxImage.None);
 
                 // Close this window
                 this.Close();
@@ -263,7 +263,7 @@ namespace GDMENUCardManager
             {
                 progressWindow.AllowClose();
                 progressWindow.Close();
-                MessageBox.Show($"An error occurred: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(this, $"An error occurred: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.None);
             }
         }
 
@@ -274,11 +274,11 @@ namespace GDMENUCardManager
         private async void OverwriteDats_Click(object sender, RoutedEventArgs e)
         {
             // Confirmation dialog
-            var confirmResult = MessageBox.Show(
+            var confirmResult = MessageBox.Show(this,
                 "This will backup current DAT files and overwrite them with those from the SD card's openMenu disc image.\n\nContinue?",
                 "Confirmation",
                 MessageBoxButton.OKCancel,
-                MessageBoxImage.Warning);
+                MessageBoxImage.None);
 
             if (confirmResult != MessageBoxResult.OK)
                 return;
@@ -304,12 +304,12 @@ namespace GDMENUCardManager
 
                 if (!result.success)
                 {
-                    MessageBox.Show(result.errorMessage, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show(this, result.errorMessage, "Error", MessageBoxButton.OK, MessageBoxImage.None);
                     return;
                 }
 
-                MessageBox.Show("DAT files have been successfully overwritten with those from the SD card.",
-                    "Information", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(this, "DAT files have been successfully overwritten with those from the SD card.",
+                    "Information", MessageBoxButton.OK, MessageBoxImage.None);
 
                 // Close this window
                 this.Close();
@@ -324,7 +324,7 @@ namespace GDMENUCardManager
             {
                 progressWindow.AllowClose();
                 progressWindow.Close();
-                MessageBox.Show($"An error occurred: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(this, $"An error occurred: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.None);
             }
         }
 

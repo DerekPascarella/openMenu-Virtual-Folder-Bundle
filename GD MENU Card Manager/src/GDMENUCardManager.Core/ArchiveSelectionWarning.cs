@@ -20,7 +20,7 @@ namespace GDMENUCardManager.Core
 
             string archiveName = Path.GetFileName(item.ImageFile);
             return $"Archive \"{archiveName}\" contains {item.ArchiveImageEntries.Count} supported disc images. " +
-                "GDMENU Card Manager supports one disc image per archive. " +
+                "GD MENU Card Manager supports one disc image per archive. " +
                 $"Only the first image found, \"{item.SelectedArchiveEntry.FullName}\", will be added.";
         }
 

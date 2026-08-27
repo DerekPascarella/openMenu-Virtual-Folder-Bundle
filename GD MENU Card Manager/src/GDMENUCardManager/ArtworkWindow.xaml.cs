@@ -238,11 +238,11 @@ namespace GDMENUCardManager
             if (!HasUnsavedChanges)
                 return true;
 
-            var result = MessageBox.Show(
+            var result = MessageBox.Show(this,
                 "You have unsaved changes. Save before navigating?",
                 "Confirmation",
                 MessageBoxButton.YesNoCancel,
-                MessageBoxImage.Warning);
+                MessageBoxImage.None);
 
             if (result == MessageBoxResult.Cancel)
                 return false;
@@ -310,7 +310,7 @@ namespace GDMENUCardManager
                 Filter = "Image Files|*.png;*.jpg;*.jpeg;*.gif;*.webp;*.bmp;*.tiff;*.tga|All Files|*.*"
             };
 
-            if (fileDialog.ShowDialog() == true)
+            if (fileDialog.ShowDialog(this) == true)
             {
                 await LoadAndPreviewImage(fileDialog.FileName);
             }
@@ -372,11 +372,11 @@ namespace GDMENUCardManager
 
         private void DeleteEntry_Click(object sender, RoutedEventArgs e)
         {
-            var result = MessageBox.Show(
+            var result = MessageBox.Show(this,
                 $"Delete artwork entry for serial '{Serial}'?",
                 "Confirmation",
                 MessageBoxButton.YesNo,
-                MessageBoxImage.Warning);
+                MessageBoxImage.None);
 
             if (result == MessageBoxResult.Yes)
             {
@@ -479,11 +479,11 @@ namespace GDMENUCardManager
         {
             if (HasUnsavedChanges)
             {
-                var result = MessageBox.Show(
+                var result = MessageBox.Show(this,
                     "You have unsaved changes. Discard them?",
                     "Confirmation",
                     MessageBoxButton.YesNo,
-                    MessageBoxImage.Warning);
+                    MessageBoxImage.None);
 
                 if (result != MessageBoxResult.Yes)
                 {

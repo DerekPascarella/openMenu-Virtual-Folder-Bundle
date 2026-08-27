@@ -100,7 +100,7 @@ To accommodate the new openMenu, a modified version of [GD MENU Card Manager](ht
 
 ## Current Version
 
-The latest version of **openMenu Virtual Folder Bundle** is [1.6.3-ateam](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/releases/tag/1.6.3-ateam).
+The latest version of **openMenu Virtual Folder Bundle** is [1.6.4-ateam](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/releases/tag/1.6.4-ateam).
 
 ---
 
@@ -115,6 +115,10 @@ The latest version of **openMenu Virtual Folder Bundle** is [1.6.3-ateam](https:
 ---
 
 ## Changelog
+- **Version 1.6.4-ateam (2026-08-27)**
+  - **GD MENU Card Manager**
+    - Card Manager now stores SD card metadata in a single DISCDB.JSON database for drastically faster card loading (see [Issue 202](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/202)).
+    - Dialog boxes cleaned up (see [Issue 203](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/203)).
 - **Version 1.6.3-ateam (2026-08-19)**
   - **GD MENU Card Manager**
     - Button widths on numerous windows widened to properly fit text (see [Issue 193](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/193)).
@@ -631,7 +635,7 @@ Right-click selected games and choose **Title Case** to convert titles to Title 
 
 Double-click the **Region** cell to change a game's region flag. Any combination of `J`, `U`, and `E` is accepted (e.g., `J`, `UE`, `JUE`), with input automatically normalized (invalid characters are stripped, and an entry with nothing usable silently reverts to the previous value).
 
-Unlike other columns, the Region value lives inside the disc image itself. The edit is held in the application and applied when clicking **Save Changes**, at which point the `IP.BIN` region flag and region strings are rewritten so the change takes effect when launching from the BIOS, and the `region.txt` metadata file is updated to match. Region is editable for uncompressed `Game` type disc images, whether already on the SD card or newly added (new games are patched after being copied to the SD card, so the original source file is never modified). A manually edited region takes priority over the global **Region-Free Patch** option during the save that applies it. Note that on subsequent saves, the **Apply to existing games** option will re-patch the game to region-free like any other (see [Disc Image Options](#disc-image-options)). If a region change cannot be applied during a save, the value is reverted and a warning lists the affected games.
+Unlike other columns, the Region value lives inside the disc image itself. The edit is held in the application and applied when clicking **Save Changes**, at which point the `IP.BIN` region flag and region strings are rewritten so the change takes effect when launching from the BIOS, and the game's stored metadata (`DISCDB.JSON` and the `region.txt` file) is updated to match. Region is editable for uncompressed `Game` type disc images, whether already on the SD card or newly added (new games are patched after being copied to the SD card, so the original source file is never modified). A manually edited region takes priority over the global **Region-Free Patch** option during the save that applies it. Note that on subsequent saves, the **Apply to existing games** option will re-patch the game to region-free like any other (see [Disc Image Options](#disc-image-options)). If a region change cannot be applied during a save, the value is reverted and a warning lists the affected games.
 
 #### Virtual Folders (openMenu Only)
 
@@ -741,6 +745,7 @@ When the save proceeds, it:
 - Generates openMenu configuration, including a virtual folder structure where applicable.
 - Copies menu disc image files to folder `01`.
 - Generates `DISCLIST.TXT` and `DISCLIST.XLSX` containing a list of all disc titles.
+- Updates the `DISCDB.JSON` metadata database in the SD card root, along with the per-folder metadata text files kept for compatibility with older tools.
 
 A "Done!" message confirms successful completion.
 

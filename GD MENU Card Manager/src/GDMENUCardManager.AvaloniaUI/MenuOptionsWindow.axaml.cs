@@ -216,12 +216,12 @@ namespace GDMENUCardManager
 
                 await MessageBoxManager.GetMessageBoxStandard("Menu Options",
                     "Default style and theme settings applied.\n\nChanges take effect after clicking \"Save Changes\" in the main window.",
-                    icon: MsBox.Avalonia.Enums.Icon.Info).ShowWindowDialogAsync(this);
+                    icon: MsBox.Avalonia.Enums.Icon.None, windowStartupLocation: WindowStartupLocation.CenterOwner).ShowWindowDialogAsync(this);
             }
             catch (Exception ex)
             {
                 await MessageBoxManager.GetMessageBoxStandard("Error", ex.Message,
-                    icon: MsBox.Avalonia.Enums.Icon.Error).ShowWindowDialogAsync(this);
+                    icon: MsBox.Avalonia.Enums.Icon.None, windowStartupLocation: WindowStartupLocation.CenterOwner).ShowWindowDialogAsync(this);
             }
             finally
             {
@@ -271,12 +271,12 @@ namespace GDMENUCardManager
                 message += "\n\nChanges take effect after clicking \"Save Changes\" in the main window.";
 
                 await MessageBoxManager.GetMessageBoxStandard("Menu Options", message,
-                    icon: MsBox.Avalonia.Enums.Icon.Info).ShowWindowDialogAsync(this);
+                    icon: MsBox.Avalonia.Enums.Icon.None, windowStartupLocation: WindowStartupLocation.CenterOwner).ShowWindowDialogAsync(this);
             }
             catch (Exception ex)
             {
                 await MessageBoxManager.GetMessageBoxStandard("Error", ex.Message,
-                    icon: MsBox.Avalonia.Enums.Icon.Error).ShowWindowDialogAsync(this);
+                    icon: MsBox.Avalonia.Enums.Icon.None, windowStartupLocation: WindowStartupLocation.CenterOwner).ShowWindowDialogAsync(this);
             }
             finally
             {

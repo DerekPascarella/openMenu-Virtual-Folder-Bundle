@@ -125,7 +125,7 @@ namespace GDMENUCardManager
             catch (Exception ex)
             {
                 UpdateManager.CleanupStagingDirectory();
-                MessageBox.Show(this, $"Update failed: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(this, $"Update failed: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.None);
                 Close();
             }
         }

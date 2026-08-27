@@ -154,14 +154,14 @@ namespace GDMENUCardManager
                 else
                 {
                     var msgBox = MessageBoxManager.GetMessageBoxStandard("Information",
-                        "You are running the latest version.", MsBox.Avalonia.Enums.ButtonEnum.Ok, MsBox.Avalonia.Enums.Icon.Info);
+                        "You are running the latest version.", MsBox.Avalonia.Enums.ButtonEnum.Ok, MsBox.Avalonia.Enums.Icon.None, windowStartupLocation: WindowStartupLocation.CenterOwner);
                     await msgBox.ShowWindowDialogAsync(this);
                 }
             }
             catch
             {
                 var msgBox = MessageBoxManager.GetMessageBoxStandard("Information",
-                    "Could not check for updates. Please check your internet connection.", MsBox.Avalonia.Enums.ButtonEnum.Ok, MsBox.Avalonia.Enums.Icon.Warning);
+                    "Could not check for updates. Please check your internet connection.", MsBox.Avalonia.Enums.ButtonEnum.Ok, MsBox.Avalonia.Enums.Icon.None, windowStartupLocation: WindowStartupLocation.CenterOwner);
                 await msgBox.ShowWindowDialogAsync(this);
             }
             finally

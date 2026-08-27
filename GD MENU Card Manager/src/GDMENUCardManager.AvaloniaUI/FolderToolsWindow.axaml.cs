@@ -187,7 +187,7 @@ namespace GDMENUCardManager
             {
                 ContentTitle = "Confirmation",
                 ContentMessage = $"Delete unassigned artwork for '{row.Display}'? This cannot be undone once DAT files are saved.",
-                Icon = MsBox.Avalonia.Enums.Icon.Warning,
+                Icon = MsBox.Avalonia.Enums.Icon.None,
                 ShowInCenter = true,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 ButtonDefinitions = new ButtonDefinition[]
@@ -380,7 +380,7 @@ namespace GDMENUCardManager
             {
                 await MessageBoxManager.GetMessageBoxStandard("Information",
                     "Only printable ASCII characters (letters, numbers, and standard symbols) are supported by openMenu.",
-                    icon: MsBox.Avalonia.Enums.Icon.Warning).ShowWindowDialogAsync(this);
+                    icon: MsBox.Avalonia.Enums.Icon.None, windowStartupLocation: WindowStartupLocation.CenterOwner).ShowWindowDialogAsync(this);
                 node.Name = "PLEASE RENAME";
                 _editingOriginalName = null;
                 return;
@@ -533,7 +533,7 @@ namespace GDMENUCardManager
                 {
                     await MessageBoxManager.GetMessageBoxStandard("Information",
                         "Cannot move a folder into its own subfolder.",
-                        icon: MsBox.Avalonia.Enums.Icon.Warning).ShowWindowDialogAsync(this);
+                        icon: MsBox.Avalonia.Enums.Icon.None, windowStartupLocation: WindowStartupLocation.CenterOwner).ShowWindowDialogAsync(this);
                     return;
                 }
 

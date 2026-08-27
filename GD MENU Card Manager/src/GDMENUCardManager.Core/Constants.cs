@@ -24,12 +24,20 @@ namespace GDMENUCardManager.Core
         public const string DateTextFile = "date.txt";
         public const string RegionTextFile = "region.txt";
         public const string ShrunkTextFile = "shrunk.txt";
+        public const string DiscDatabaseFile = "DISCDB.JSON";
+        public static readonly string[] AllSidecarTextFiles = {
+            NameTextFile, SerialTextFile, FolderTextFile,
+            FolderAlt1TextFile, FolderAlt2TextFile, FolderAlt3TextFile,
+            FolderAlt4TextFile, FolderAlt5TextFile,
+            TypeTextFile, DiscTextFile, VgaTextFile,
+            VersionTextFile, DateTextFile, RegionTextFile, ShrunkTextFile
+        };
         //private const string InfoTextFile = "info.txt";
         public const string MenuConfigTextFile = "GDEMU.INI";
         public const string GdiShrinkBlacklistFile = "gdishrink_blacklist.txt";
         public const string PS1GameDBFile = "gamedb.json";
         public const string TosecDatFile = "tosec_dc.bin";
         public const string DefaultImageFileName = "disc";
-        public const string Version = "v1.6.3-ateam";
+        public const string Version = "v1.6.4-ateam";
     }
 }

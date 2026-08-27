@@ -70,11 +70,13 @@ namespace GDMENUCardManager.Core
             // Is compressed?
             string archiveSidecarName = null;
             string archiveSidecarSerial = null;
+            string compressedFile = null;
+            IReadOnlyList<ArchiveEntryInfo> archiveEntries = null;
             if (itemImageFile == null && files.Any(Helper.CompressedFileExpression))
             {
-                string compressedFile = files.First(Helper.CompressedFileExpression);
+                compressedFile = files.First(Helper.CompressedFileExpression);
 
-                var archiveEntries = await Task.Run(() =>
+                archiveEntries = await Task.Run(() =>
                     Helper.DependencyManager.GetArchiveEntries(compressedFile));
                 var imageEntries = archiveEntries
                     .Where(entry => Manager.supportedImageFormats.Any(format =>
@@ -540,29 +542,20 @@ namespace GDMENUCardManager.Core
             item.Name = ip.Name;
             item.ProductNumber = ip.ProductNumber;
 
-            if (archiveSidecarName != null)
+            if (!string.IsNullOrWhiteSpace(archiveSidecarName))
                 item.Name = archiveSidecarName;
-            if (archiveSidecarSerial != null)
+            if (!string.IsNullOrWhiteSpace(archiveSidecarSerial))
                 item.ProductNumber = archiveSidecarSerial;
+            if (archiveAddMode != ArchiveAddMode.DeferToSave && item.FileFormat == FileFormat.SevenZip)
+                await ApplyArchiveSidecarTextFilesAsync(item, ip, compressedFile, archiveEntries);
 
-            var itemNamePath = Path.Combine(item.FullFolderPath, Constants.NameTextFile);
-            if (await Helper.FileExistsAsync(itemNamePath))
-                item.Name = await Helper.ReadAllTextAsync(itemNamePath);
-
-            var itemSerialPath = Path.Combine(item.FullFolderPath, Constants.SerialTextFile);
-            if (await Helper.FileExistsAsync(itemSerialPath))
-                item.ProductNumber = await Helper.ReadAllTextAsync(itemSerialPath);
+            await ApplySidecarTextFilesAsync(item);
 
             item.Name = item.Name.Trim();
 
             if (item.FullFolderPath.StartsWith(Manager.sdPath, StringComparison.InvariantCultureIgnoreCase) && int.TryParse(Path.GetFileName(Path.GetDirectoryName(itemImageFile)), out int number))
             {
                 item.SdNumber = number;
-
-                // Only card folders carry a trustworthy marker. A stray shrunk.txt
-                // next to images on the PC must not flag the item.
-                if (await Helper.FileExistsAsync(Path.Combine(item.FullFolderPath, Constants.ShrunkTextFile)))
-                    item.WasShrunk = true;
             }
 
             //item.ImageFile = Path.GetFileName(item.ImageFile);
@@ -630,6 +623,144 @@ namespace GDMENUCardManager.Core
             return str;
         }
 
+
+        // One-time inheritance of every sidecar text value from the item's
+        // folder. Disk values win over parsed and in-archive values.
+        internal static async Task ApplySidecarTextFilesAsync(GdItem item)
+        {
+            var folder = item.FullFolderPath;
+
+            async Task<string> readSidecar(string fileName)
+            {
+                var p = Path.Combine(folder, fileName);
+                if (!await Helper.FileExistsAsync(p))
+                    return null;
+                return await Helper.ReadAllTextAsync(p);
+            }
+
+            // A present-but-blank name.txt is treated as no override at all,
+            // never as an override to an empty name: a blank Name fails
+            // DiscDbEntry.IsUsable and would permanently full-parse the folder.
+            var name = await readSidecar(Constants.NameTextFile);
+            if (!string.IsNullOrWhiteSpace(name))
+                item.Name = name;
+
+            var folderValue = await readSidecar(Constants.FolderTextFile);
+            if (folderValue != null)
+                item.Folder = folderValue.Trim();
+
+            var altFolders = new List<string>();
+            foreach (var altFileName in Constants.FolderAltTextFiles)
+            {
+                var altValue = await readSidecar(altFileName);
+                altValue = altValue?.Trim();
+                if (!string.IsNullOrEmpty(altValue))
+                    altFolders.Add(altValue);
+            }
+            if (altFolders.Count > 0)
+                item.AlternativeFolders = altFolders;
+
+            var type = await readSidecar(Constants.TypeTextFile);
+            if (type != null)
+                item.DiscType = GdItem.GetDiscTypeDisplayValue(type);
+
+            if (item.Ip != null)
+            {
+                var disc = (await readSidecar(Constants.DiscTextFile))?.Trim();
+                if (!string.IsNullOrEmpty(disc))
+                    item.Ip.Disc = disc;
+
+                var vga = (await readSidecar(Constants.VgaTextFile))?.Trim();
+                if (!string.IsNullOrEmpty(vga))
+                    item.Ip.Vga = vga == "1" || vga.Equals("true", StringComparison.OrdinalIgnoreCase);
+
+                var version = (await readSidecar(Constants.VersionTextFile))?.Trim();
+                if (version != null)
+                    item.Ip.Version = version;
+
+                var date = (await readSidecar(Constants.DateTextFile))?.Trim();
+                if (date != null)
+                    item.Ip.ReleaseDate = date;
+
+                var region = (await readSidecar(Constants.RegionTextFile))?.Trim().Replace(" ", string.Empty);
+                if (!string.IsNullOrEmpty(region))
+                    item.Ip.Region = region;
+            }
+
+            // Serial translation reads Ip.ReleaseDate, so this must run after
+            // the date.txt override above. A present-but-blank serial.txt is
+            // ignored for the same reason a blank name.txt is.
+            var serial = await readSidecar(Constants.SerialTextFile);
+            if (!string.IsNullOrWhiteSpace(serial))
+                item.ProductNumber = serial;
+
+            if (await Helper.FileExistsAsync(Path.Combine(folder, Constants.ShrunkTextFile)))
+                item.WasShrunk = true;
+        }
+
+        // Same inheritance as ApplySidecarTextFilesAsync, but sourced from sidecar
+        // text files stored inside the archive instead of the item's own folder.
+        // Called before the disk pass, so a disk sidecar still wins.
+        internal static async Task ApplyArchiveSidecarTextFilesAsync(
+            GdItem item,
+            IpBin ip,
+            string compressedFile,
+            IReadOnlyList<ArchiveEntryInfo> archiveEntries)
+        {
+            async Task<string> readSidecar(string fileName)
+            {
+                return await ReadArchiveSidecarTextAsync(
+                    compressedFile,
+                    archiveEntries,
+                    item.SelectedArchiveEntry,
+                    fileName);
+            }
+
+            var folderValue = await readSidecar(Constants.FolderTextFile);
+            if (folderValue != null)
+                item.Folder = folderValue.Trim();
+
+            var altFolders = new List<string>();
+            foreach (var altFileName in Constants.FolderAltTextFiles)
+            {
+                var altValue = await readSidecar(altFileName);
+                altValue = altValue?.Trim();
+                if (!string.IsNullOrEmpty(altValue))
+                    altFolders.Add(altValue);
+            }
+            if (altFolders.Count > 0)
+                item.AlternativeFolders = altFolders;
+
+            var type = await readSidecar(Constants.TypeTextFile);
+            if (type != null)
+                item.DiscType = GdItem.GetDiscTypeDisplayValue(type);
+
+            if (ip != null)
+            {
+                var disc = (await readSidecar(Constants.DiscTextFile))?.Trim();
+                if (!string.IsNullOrEmpty(disc))
+                    ip.Disc = disc;
+
+                var vga = (await readSidecar(Constants.VgaTextFile))?.Trim();
+                if (!string.IsNullOrEmpty(vga))
+                    ip.Vga = vga == "1" || vga.Equals("true", StringComparison.OrdinalIgnoreCase);
+
+                var version = (await readSidecar(Constants.VersionTextFile))?.Trim();
+                if (version != null)
+                    ip.Version = version;
+
+                var date = (await readSidecar(Constants.DateTextFile))?.Trim();
+                if (date != null)
+                    ip.ReleaseDate = date;
+
+                var region = (await readSidecar(Constants.RegionTextFile))?.Trim().Replace(" ", string.Empty);
+                if (!string.IsNullOrEmpty(region))
+                    ip.Region = region;
+            }
+
+            if (await readSidecar(Constants.ShrunkTextFile) != null)
+                item.WasShrunk = true;
+        }
 
         // Reads a sidecar text file stored inside the archive, beside the selected
         // image or at the archive root. The image's own directory wins over the root.
@@ -1035,24 +1166,13 @@ namespace GDMENUCardManager.Core
             item.Name = ip.Name;
             item.ProductNumber = ip.ProductNumber;
 
-            var itemNamePath = Path.Combine(item.FullFolderPath, Constants.NameTextFile);
-            if (await Helper.FileExistsAsync(itemNamePath))
-                item.Name = await Helper.ReadAllTextAsync(itemNamePath);
-
-            var itemSerialPath = Path.Combine(item.FullFolderPath, Constants.SerialTextFile);
-            if (await Helper.FileExistsAsync(itemSerialPath))
-                item.ProductNumber = await Helper.ReadAllTextAsync(itemSerialPath);
+            await ApplySidecarTextFilesAsync(item);
 
             item.Name = item.Name.Trim();
 
             if (item.FullFolderPath.StartsWith(Manager.sdPath, StringComparison.InvariantCultureIgnoreCase) && int.TryParse(new DirectoryInfo(item.FullFolderPath).Name, out int number))
             {
                 item.SdNumber = number;
-
-                // Only card folders carry a trustworthy marker. A stray shrunk.txt
-                // next to images on the PC must not flag the item.
-                if (await Helper.FileExistsAsync(Path.Combine(item.FullFolderPath, Constants.ShrunkTextFile)))
-                    item.WasShrunk = true;
             }
 
             Manager.UpdateItemLength(item);

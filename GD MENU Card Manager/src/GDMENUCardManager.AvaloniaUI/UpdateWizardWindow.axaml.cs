@@ -171,7 +171,7 @@ namespace GDMENUCardManager
             {
                 UpdateManager.CleanupStagingDirectory();
                 var msgBox = MessageBoxManager.GetMessageBoxStandard("Error",
-                    $"Update failed: {ex.Message}", ButtonEnum.Ok, MsBox.Avalonia.Enums.Icon.Error);
+                    $"Update failed: {ex.Message}", ButtonEnum.Ok, MsBox.Avalonia.Enums.Icon.None, windowStartupLocation: WindowStartupLocation.CenterOwner);
                 await msgBox.ShowWindowDialogAsync(this);
                 Close();
             }

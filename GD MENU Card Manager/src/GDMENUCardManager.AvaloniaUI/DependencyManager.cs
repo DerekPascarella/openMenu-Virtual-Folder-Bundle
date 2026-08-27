@@ -37,7 +37,7 @@ namespace GDMENUCardManager
 
         public async ValueTask<bool> ShowYesNoDialog(string caption, string text)
         {
-            return await MessageBoxManager.GetMessageBoxStandard(caption, text, ButtonEnum.YesNo).ShowWindowDialogAsync(getMainWindow()) == ButtonResult.Yes;
+            return await MessageBoxManager.GetMessageBoxStandard(caption, text, ButtonEnum.YesNo, windowStartupLocation: WindowStartupLocation.CenterOwner).ShowWindowDialogAsync(getMainWindow()) == ButtonResult.Yes;
         }
 
         public async ValueTask<ArchiveAddMode> ShowArchiveAddModeDialog(int compressedInputCount)
@@ -49,7 +49,7 @@ namespace GDMENUCardManager
 
         public async ValueTask ShowWarningDialog(string caption, string text)
         {
-            await MessageBoxManager.GetMessageBoxStandard(caption, text, ButtonEnum.Ok, Icon.Warning).ShowWindowDialogAsync(getMainWindow());
+            await MessageBoxManager.GetMessageBoxStandard(caption, text, ButtonEnum.Ok, Icon.None, windowStartupLocation: WindowStartupLocation.CenterOwner).ShowWindowDialogAsync(getMainWindow());
         }
 
         public async ValueTask<bool> ShowLockedFilesDialog(Dictionary<string, string> lockedFiles)
@@ -124,7 +124,7 @@ namespace GDMENUCardManager
                 "Confirmation",
                 sb.ToString(),
                 ButtonEnum.YesNo,
-                Icon.Warning).ShowWindowDialogAsync(getMainWindow());
+                Icon.None, windowStartupLocation: WindowStartupLocation.CenterOwner).ShowWindowDialogAsync(getMainWindow());
 
             return result == ButtonResult.Yes;
         }
@@ -155,7 +155,7 @@ namespace GDMENUCardManager
                 "Error",
                 sb.ToString(),
                 ButtonEnum.Ok,
-                Icon.Error).ShowWindowDialogAsync(getMainWindow());
+                Icon.None, windowStartupLocation: WindowStartupLocation.CenterOwner).ShowWindowDialogAsync(getMainWindow());
 
             var lifetime = App.Current.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime;
             lifetime?.Shutdown();

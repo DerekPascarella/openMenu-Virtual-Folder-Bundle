@@ -1086,11 +1086,18 @@ namespace GDMENUCardManager.Core
             PlayStationDB.LoadFrom(Path.Combine(currentAppPath, Constants.PS1GameDBFile));
         }
 
+        // The loaded card's DISCDB.JSON. Null means a legacy session with no
+        // database, in which case folders are read from their sidecar files.
+        private DiscDatabase discDb;
+        public bool IsDiscDbMode => discDb != null;
+
         public async Task LoadItemsFromCard()
         {
             ItemList.Clear();
             UndoManager.Clear();  // Clear undo history when loading new SD card
             MenuKindSelected = MenuKind.None;
+
+            discDb = await DiscDatabase.LoadAsync(sdPath);
 
             var toAdd = new List<Tuple<int, string>>();
             var rootDirs = await Helper.GetDirectoriesAsync(sdPath);
@@ -1102,6 +1109,49 @@ namespace GDMENUCardManager.Core
                 }
             }
 
+            // A DISCDB.JSON that exists but failed to parse could mean a migrated
+            // card whose database was damaged after its sidecar files were already
+            // deleted, or a legacy card that just happens to have a stray corrupt
+            // file sitting next to its sidecars. Only the first case can self-heal:
+            // if the lowest-numbered game folder has no name.txt, the card has
+            // already been migrated, so this session starts in database mode with
+            // an empty database. Every folder full-parses once, and the next save
+            // rewrites a complete file. A legacy card is left in legacy mode, same
+            // as today.
+            bool rebuildDbAfterLoad = false;
+            if (discDb == null && await Helper.FileExistsAsync(DiscDatabase.GetPath(sdPath)))
+            {
+                var firstGameFolder = toAdd.Where(x => x.Item1 > 1).OrderBy(x => x.Item1).FirstOrDefault();
+                if (firstGameFolder != null && !await Helper.FileExistsAsync(Path.Combine(firstGameFolder.Item2, Constants.NameTextFile)))
+                {
+                    discDb = new DiscDatabase();
+                }
+                else if (firstGameFolder != null)
+                {
+                    // The database exists but cannot be read while the text files
+                    // still can. The rebuild itself runs after the load completes,
+                    // once ItemList holds the legacy-loaded items.
+                    if (await Helper.DependencyManager.ShowYesNoDialog("Disc Database", "The DISCDB.JSON database on this card could not be read. Rebuild it from the text files?"))
+                    {
+                        try
+                        {
+                            await Helper.DeleteFileAsync(DiscDatabase.GetPath(sdPath));
+                        }
+                        catch
+                        {
+                        }
+                        rebuildDbAfterLoad = true;
+                    }
+                }
+            }
+
+            // Captured once, after the corrupt-database healing check above, so a
+            // re-entrant call to this method (the drive-change handler can call it
+            // again before this call finishes) reassigning the discDb field mid-loop
+            // never makes this call resolve later folders against a different
+            // card's database. Mirrors the toAdd capture above, for the same reason.
+            var db = discDb;
+
             var invalid = new List<string>();
             bool isFirstItem = true;
 
@@ -1110,7 +1160,17 @@ namespace GDMENUCardManager.Core
                 {
                     GdItem itemToAdd = null;
 
-                    if (EnableLazyLoading)//load item without reading ip.bin. only read name.txt+serial.txt. will be null if no name.txt or empty
+                    DiscDbEntry dbEntry = null;
+                    if (db != null)
+                        db.Items.TryGetValue(Path.GetFileName(item.Item2), out dbEntry);
+
+                    if (dbEntry != null)
+                        try
+                        {
+                            itemToAdd = await LoadItemFromDb(item.Item1, item.Item2, dbEntry);
+                        }
+                        catch { }
+                    else if (EnableLazyLoading)//load item without reading ip.bin. only read name.txt+serial.txt. will be null if no name.txt or empty
                         try
                         {
                             itemToAdd = await LazyLoadItemFromCard(item.Item1, item.Item2);
@@ -1146,6 +1206,18 @@ namespace GDMENUCardManager.Core
 
             if (invalid.Any())
                 throw new Exception(string.Join(Environment.NewLine, invalid));
+
+            // A card with no game folders and no database starts in database
+            // mode. The file is created on first save.
+            if (discDb == null && !toAdd.Any(x => x.Item1 > 1))
+                discDb = new DiscDatabase();
+
+            // Consented rebuild of an unreadable database, now that this load has
+            // populated ItemList from the (legacy) text files. A failure here is
+            // safe to swallow: the bad file is already deleted, so the next load
+            // takes the normal migration-prompt path instead.
+            if (rebuildDbAfterLoad)
+                try { await PerformDiscDbMigration(); } catch { }
 
             //todo implement menu fallback? to default or forced mode (in config)
             //if (MenuKindSelected == MenuKind.None) { }
@@ -1246,7 +1318,145 @@ namespace GDMENUCardManager.Core
 
                 // Re-read cache to pick up any user-customized values LoadIP may have clobbered
                 await SyncIpFromCacheFiles(item);
+
+                if (discDb != null)
+                    MergeScanResultIntoDb(item);
             }
+
+            if (discDb != null)
+                await discDb.SaveAsync(sdPath);
+        }
+
+        // Database counterpart of WriteCacheFiles + SyncIpFromCacheFiles:
+        // values already in the entry win over freshly parsed ones, then the
+        // entry is refreshed from the item.
+        private void MergeScanResultIntoDb(GdItem item)
+        {
+            // The menu folder never carries metadata (mirrors
+            // PerformDiscDbMigration's own menuAtIndexZero check). A
+            // re-added folder 01 can still queue for a scan (name.txt and
+            // serial.txt present, one of the five IP-data files missing),
+            // and its parsed result must never reach the database, or a
+            // later load would try to serve the menu from a cached entry.
+            if (MenuKindSelected != MenuKind.None && ItemList.Count > 0 && item == ItemList[0] && item.SdNumber == 1)
+                return;
+
+            var key = Path.GetFileName(item.FullFolderPath);
+            discDb.Items.TryGetValue(key, out var entry);
+
+            if (entry != null && item.Ip != null)
+            {
+                if (entry.Disc != null) item.Ip.Disc = entry.Disc;
+                if (entry.Vga != null) item.Ip.Vga = entry.Vga.Value;
+                if (entry.Version != null) item.Ip.Version = entry.Version;
+                if (entry.Date != null) item.Ip.ReleaseDate = entry.Date;
+                if (entry.Region != null)
+                {
+                    item.Ip.Region = entry.Region;
+                    item.ImageRegion = GdItem.NormalizeRegion(entry.Region);
+                }
+                item.NotifyIpChanged();
+            }
+
+            var newEntry = CreateDbEntry(item);
+            if (newEntry.IsUsable)
+                discDb.Items[key] = newEntry;
+            else
+                discDb.Items.Remove(key);
+
+            // Coalesces the final entry's values back into the live item.Ip,
+            // the same way SyncIpFromCacheFiles does for the legacy branch,
+            // so the grid shows the same values legacy mode would show
+            // after a scan (e.g., Disc "1/1" instead of a blank field left by
+            // a failed parse) rather than the raw, uncoalesced defaults.
+            item.Ip.Disc = newEntry.Disc;
+            item.Ip.Vga = newEntry.Vga.Value;
+            item.Ip.Version = newEntry.Version;
+            item.Ip.ReleaseDate = newEntry.Date;
+            item.Ip.Region = newEntry.Region;
+            item.NotifyIpChanged();
+        }
+
+        // True when the card is old-format: no database file and at least one
+        // numbered game folder. Folder 01 alone does not count. The menu
+        // folder never carries metadata.
+        public async Task<bool> CheckDiscDbMigrationNeeded()
+        {
+            if (string.IsNullOrEmpty(sdPath) || !Directory.Exists(sdPath))
+                return false;
+
+            if (await Helper.FileExistsAsync(DiscDatabase.GetPath(sdPath)))
+                return false;
+
+            var dirs = await Helper.GetDirectoriesAsync(sdPath);
+            return dirs.Any(x => int.TryParse(Path.GetFileName(x), out var n) && n > 1);
+        }
+
+        private DiscDbEntry CreateDbEntry(GdItem item)
+        {
+            return new DiscDbEntry
+            {
+                Name = item.Name,
+                Serial = item.ProductNumber?.Trim(),
+                Type = item.GetDiscTypeFileValue(),
+                Disc = item.Ip != null ? (item.Ip.Disc ?? "1/1") : null,
+                Vga = item.Ip != null ? (bool?)item.Ip.Vga : null,
+                Region = item.Ip != null ? (item.Ip.Region ?? string.Empty) : null,
+                Version = item.Ip != null ? (item.Ip.Version ?? string.Empty) : null,
+                Date = item.Ip != null ? (item.Ip.ReleaseDate ?? string.Empty) : null,
+                Folder = item.Folder ?? string.Empty,
+                AltFolders = item.AlternativeFolders?.Where(x => !string.IsNullOrWhiteSpace(x)).ToList(),
+                Shrunk = item.WasShrunk
+            };
+        }
+
+        // One-time migration. Sidecar text files are never touched, so an
+        // older version of the app can still read the card.
+        public async Task PerformDiscDbMigration()
+        {
+            if (!Directory.Exists(sdPath))
+                throw new Exception($"The SD card is no longer accessible at \"{sdPath}\".\n\nPlease reconnect the SD card and try again.");
+
+            bool menuAtIndexZero = MenuKindSelected != MenuKind.None && ItemList.Count > 0 && ItemList[0].SdNumber == 1;
+
+            // A folder with no serial (or no name) produces an entry that
+            // LoadAsync would drop as unusable on the very next read. Such an
+            // entry is never written at all. The folder simply has no
+            // database entry and full-parses on every load, exactly like it
+            // did before migration existed.
+            var db = new DiscDatabase();
+            foreach (var item in ItemList.Skip(menuAtIndexZero ? 1 : 0))
+                if (item.SdNumber > 0)
+                {
+                    var entry = CreateDbEntry(item);
+                    if (entry.IsUsable)
+                        db.Items[Path.GetFileName(item.FullFolderPath)] = entry;
+                }
+
+            await db.SaveAsync(sdPath);
+
+            // Read the file back to confirm the write actually landed before
+            // switching the card into database mode.
+            var verifyDb = await DiscDatabase.LoadAsync(sdPath);
+            if (verifyDb == null || verifyDb.Items.Count != db.Items.Count)
+            {
+                // Leaving a valid-looking file in place would stop
+                // CheckDiscDbMigrationNeeded from re-prompting on the next
+                // load, even though migration did not actually succeed.
+                // Best-effort only: the card may be misbehaving, so a
+                // failure here must not mask the verify failure below.
+                try
+                {
+                    await Helper.DeleteFileAsync(DiscDatabase.GetPath(sdPath));
+                }
+                catch
+                {
+                }
+
+                throw new Exception($"The database file at \"{DiscDatabase.GetPath(sdPath)}\" did not verify after being written.\n\nMigration was aborted.");
+            }
+
+            discDb = db;
         }
 
         // Only writes files that don't already exist (preserves user edits)
@@ -1421,6 +1631,63 @@ namespace GDMENUCardManager.Core
         }
 
 
+        // Database-mode counterpart of LazyLoadItemFromCard. Metadata comes
+        // from the entry. Image files and sizes always come from disk so an
+        // out-of-band image replacement is picked up on the next load.
+        private async Task<GdItem> LoadItemFromDb(int sdNumber, string folderPath, DiscDbEntry entry)
+        {
+            var fileInfos = await Task.Run(() => new DirectoryInfo(folderPath).GetFiles());
+
+            FileInfo imageFile = null;
+            foreach (var file in fileInfos)
+            {
+                if (file.Name.StartsWith("."))
+                    continue;
+
+                if (supportedImageFormats.Any(x => x.Equals(file.Extension, StringComparison.OrdinalIgnoreCase)))
+                {
+                    imageFile = file;
+                    break;
+                }
+            }
+
+            if (imageFile == null)
+                throw new Exception("No valid image found on folder");
+
+            var item = new GdItem
+            {
+                Guid = Guid.NewGuid().ToString(),
+                FullFolderPath = folderPath,
+                FileFormat = FileFormat.Uncompressed,
+                SdNumber = sdNumber,
+                Name = entry.Name.Trim(),
+                Folder = entry.Folder ?? string.Empty,
+                AlternativeFolders = entry.AltFolders?.Where(x => !string.IsNullOrWhiteSpace(x)).ToList() ?? new List<string>(),
+                DiscType = GdItem.GetDiscTypeDisplayValue(entry.Type),
+                Length = ByteSizeLib.ByteSize.FromBytes(fileInfos.Sum(x => x.Length)),
+                CanApplyGDIShrink = imageFile.Extension.Equals(".gdi", StringComparison.InvariantCultureIgnoreCase),
+                WasShrunk = entry.Shrunk,
+            };
+
+            if (entry.HasIpData)
+            {
+                item.Ip = new IpBin
+                {
+                    Disc = !string.IsNullOrWhiteSpace(entry.Disc) ? entry.Disc : "1/1",
+                    Vga = entry.Vga.Value,
+                    Version = entry.Version,
+                    ReleaseDate = entry.Date,
+                    Region = entry.Region
+                };
+            }
+            // ProductNumber set after Ip so serial translation can see ReleaseDate
+            item.ProductNumber = entry.Serial;
+
+            item.ImageFiles.Add(imageFile.Name);
+
+            return item;
+        }
+
         private async Task<GdItem> LazyLoadItemFromCard(int sdNumber, string folderPath)
         {
             var files = await Helper.GetFilesAsync(folderPath);
@@ -1431,7 +1698,7 @@ namespace GDMENUCardManager.Core
                 itemName = await Helper.ReadAllTextAsync(nameFile);
 
             // Cached "name.txt" file is required.
-            if (string.IsNullOrWhiteSpace(nameFile))
+            if (string.IsNullOrWhiteSpace(itemName))
                 return null;
 
             var itemSerial = string.Empty;
@@ -1937,6 +2204,17 @@ namespace GDMENUCardManager.Core
                             lockCheckProgress.Close();
                         }
 
+                        if (discDb != null)
+                        {
+                            var dbPath = DiscDatabase.GetPath(sdPath);
+                            if (File.Exists(dbPath))
+                            {
+                                var dbLock = Helper.CheckFileAccessibility(dbPath);
+                                if (dbLock != null)
+                                    lockedFiles[dbPath] = dbLock;
+                            }
+                        }
+
                         if (lockedFiles.Count == 0)
                             break; // All files accessible, proceed with save
 
@@ -2182,7 +2460,7 @@ namespace GDMENUCardManager.Core
                     // Write serial number into folder.
                     var itemSerialPath = Path.Combine(item.FullFolderPath, Constants.SerialTextFile);
                     if (!await Helper.FileExistsAsync(itemSerialPath) || (await Helper.ReadAllTextAsync(itemSerialPath)).Trim() != item.ProductNumber)
-                        await Helper.WriteTextFileAsync(itemSerialPath, item.ProductNumber.Trim());
+                        await Helper.WriteTextFileAsync(itemSerialPath, item.ProductNumber?.Trim() ?? string.Empty);
 
                     // Marks folders whose disc was shrunk so later saves do not offer
                     // them again. A stale marker under an unshrunk disc gets removed.
@@ -2221,8 +2499,10 @@ namespace GDMENUCardManager.Core
                         }
                     }
 
-                    // Write disc type into folder (openMenu only).
-                    if (MenuKindSelected == MenuKind.openMenu)
+                    // Write disc type into folder (openMenu only). Database-mode cards
+                    // get these six files refreshed for both menu kinds, since the
+                    // database itself always carries them regardless of menu kind.
+                    if (MenuKindSelected == MenuKind.openMenu || discDb != null)
                     {
                         var itemTypePath = Path.Combine(item.FullFolderPath, Constants.TypeTextFile);
                         var typeValue = item.GetDiscTypeFileValue();
@@ -2268,6 +2548,19 @@ namespace GDMENUCardManager.Core
                     //    if (!await Helper.FileExistsAsync(itemInfoPath) || (await Helper.ReadAllTextAsync(itemInfoPath)).Trim() != newTarget)
                     //        await Helper.WriteTextFileAsync(itemInfoPath, newTarget);
                     //}
+                }
+
+                if (discDb != null)
+                {
+                    discDb.Items.Clear();
+                    foreach (var item in ItemList.Skip(menuCurrentlyAtIndexZero ? 1 : 0))
+                        if (item.SdNumber > 0)
+                        {
+                            var dbEntry = CreateDbEntry(item);
+                            if (dbEntry.IsUsable)
+                                discDb.Items[Path.GetFileName(item.FullFolderPath)] = dbEntry;
+                        }
+                    await discDb.SaveAsync(sdPath);
                 }
 
                 if (containsCompressedFile || savePatchChangedFlags)
@@ -2461,6 +2754,21 @@ namespace GDMENUCardManager.Core
                 }
                 catch
                 {
+                }
+
+                if (discDb != null)
+                {
+                    try
+                    {
+                        var dbTmpPath = DiscDatabase.GetPath(sdPath) + ".tmp";
+                        if (File.Exists(dbTmpPath))
+                            File.Delete(dbTmpPath);
+                    }
+                    catch
+                    {
+                        // The card may be gone, or the file may be locked. Left behind,
+                        // it is only litter: the next successful save overwrites it.
+                    }
                 }
             }
         }
@@ -3539,7 +3847,7 @@ namespace GDMENUCardManager.Core
                                         // The non-shrink branch copies the whole extracted folder,
                                         // sidecar text files included. Carry them into the shrink
                                         // output so the recognize pass below still sees them.
-                                        foreach (var sidecarFile in new[] { Constants.NameTextFile, Constants.SerialTextFile })
+                                        foreach (var sidecarFile in Constants.AllSidecarTextFiles)
                                         {
                                             var sidecarSource = Path.Combine(tempExtractDir, sidecarFile);
                                             if (await Helper.FileExistsAsync(sidecarSource))

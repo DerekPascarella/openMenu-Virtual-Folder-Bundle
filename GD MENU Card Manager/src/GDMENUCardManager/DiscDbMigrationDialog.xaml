@@ -1,0 +1,48 @@
+<Window x:Class="GDMENUCardManager.DiscDbMigrationDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="Disc Database Migration" SizeToContent="Height" Width="500"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Message -->
+        <StackPanel Grid.Row="0">
+            <TextBlock TextWrapping="Wrap" Margin="0 0 0 15">
+                This SD card stores game metadata as individual text files inside each
+                numbered folder. GD MENU Card Manager now also uses a single DISCDB.JSON
+                database file in the root of the SD card.
+            </TextBlock>
+
+            <TextBlock TextWrapping="Wrap" Margin="0 0 0 10">
+                A one-time migration will:
+            </TextBlock>
+
+            <StackPanel Margin="20 0 0 15">
+                <TextBlock Text="&#x2022; Create DISCDB.JSON in the root of the SD card."/>
+                <TextBlock Text="&#x2022; Keep the old text files for compatibility with other tools."/>
+                <TextBlock Text="&#x2022; Drastically speed up reading the SD card."/>
+            </StackPanel>
+
+            <TextBlock TextWrapping="Wrap">
+                This migration will not cause any change in openMenu functionality and
+                only serves to improve SD card read performance in GD MENU Card Manager. Click
+                Cancel to load the card without migrating and be asked again next time.
+            </TextBlock>
+        </StackPanel>
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 20 0 0">
+            <Button Content="Cancel" Click="CancelButton_Click" Width="110" Padding="15,8" Margin="0 0 10 0"
+                    ToolTip="Load the card without migrating"/>
+            <Button Content="Proceed" Click="ProceedButton_Click" Width="110" Padding="15,8" IsDefault="True"
+                    ToolTip="Migrate this card to DISCDB.JSON"/>
+        </StackPanel>
+    </Grid>
+</Window>

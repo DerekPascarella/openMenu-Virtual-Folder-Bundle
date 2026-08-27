@@ -466,7 +466,28 @@ namespace GDMENUCardManager
 
             try
             {
+                bool migrationApproved = false;
+                if (await Manager.CheckDiscDbMigrationNeeded())
+                {
+                    var migrationDialog = new DiscDbMigrationDialog();
+                    migrationDialog.Owner = this;
+                    migrationDialog.ShowDialog();
+                    migrationApproved = migrationDialog.Proceed;
+                }
+
                 await Manager.LoadItemsFromCard();
+
+                if (migrationApproved)
+                {
+                    try
+                    {
+                        await Manager.PerformDiscDbMigration();
+                    }
+                    catch (Exception ex)
+                    {
+                        await Helper.DependencyManager.ShowWarningDialog("Disc Database Migration", $"The database could not be created. The card was loaded without migrating.\n\n{ex.Message}");
+                    }
+                }
 
                 // Check if any items need metadata scan (old SD cards without cache files)
                 var itemsNeedingScan = Manager.GetItemsNeedingMetadataScan();
@@ -503,7 +524,7 @@ namespace GDMENUCardManager
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Problem loading the following folder(s):\n\n{ex.Message}", "Information", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(this, $"Problem loading the following folder(s):\n\n{ex.Message}", "Information", MessageBoxButton.OK, MessageBoxImage.None);
             }
             finally
             {
@@ -556,7 +577,7 @@ namespace GDMENUCardManager
             {
                 case DatFileStatus.BothMissing:
                     {
-                        var result = MessageBox.Show(
+                        var result = MessageBox.Show(this,
                             "BOX.DAT and ICON.DAT were not found in the expected location.\n\n" +
                             "These files are required for artwork display in openMenu.\n\n" +
                             "Click Yes to create empty DAT files.\n\n" +
@@ -564,7 +585,7 @@ namespace GDMENUCardManager
                             "Click Cancel to proceed without artwork features.",
                             "Confirmation",
                             MessageBoxButton.YesNoCancel,
-                            MessageBoxImage.Warning);
+                            MessageBoxImage.None);
 
                         if (result == MessageBoxResult.Yes)
                         {
@@ -572,7 +593,7 @@ namespace GDMENUCardManager
                             var (success, error) = Manager.CreateEmptyDatFiles();
                             if (!success)
                             {
-                                MessageBox.Show($"Failed to create DAT files: {error}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                                MessageBox.Show(this, $"Failed to create DAT files: {error}", "Error", MessageBoxButton.OK, MessageBoxImage.None);
                                 Manager.ArtworkDisabled = true;
                             }
                         }
@@ -591,7 +612,7 @@ namespace GDMENUCardManager
 
                 case DatFileStatus.BoxMissingIconExists:
                     {
-                        var result = MessageBox.Show(
+                        var result = MessageBox.Show(this,
                             "BOX.DAT was not found but ICON.DAT exists.\n\n" +
                             "BOX.DAT is required for artwork management.\n\n" +
                             "Click Yes to create an empty BOX.DAT file.\n\n" +
@@ -599,7 +620,7 @@ namespace GDMENUCardManager
                             "Click Cancel to proceed without artwork features.",
                             "Confirmation",
                             MessageBoxButton.YesNoCancel,
-                            MessageBoxImage.Warning);
+                            MessageBoxImage.None);
 
                         if (result == MessageBoxResult.Yes)
                         {
@@ -607,7 +628,7 @@ namespace GDMENUCardManager
                             var (success, error) = Manager.CreateEmptyBoxDat();
                             if (!success)
                             {
-                                MessageBox.Show($"Failed to create BOX.DAT: {error}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                                MessageBox.Show(this, $"Failed to create BOX.DAT: {error}", "Error", MessageBoxButton.OK, MessageBoxImage.None);
                                 Manager.ArtworkDisabled = true;
                             }
                         }
@@ -624,7 +645,7 @@ namespace GDMENUCardManager
 
                 case DatFileStatus.BoxExistsIconMissing:
                     {
-                        var result = MessageBox.Show(
+                        var result = MessageBox.Show(this,
                             "ICON.DAT was not found but BOX.DAT exists.\n\n" +
                             "ICON.DAT can be generated from BOX.DAT by downscaling the artwork.\n\n" +
                             "Click Yes to generate ICON.DAT from BOX.DAT (recommended).\n\n" +
@@ -632,7 +653,7 @@ namespace GDMENUCardManager
                             "Click Cancel to proceed without artwork features.",
                             "Confirmation",
                             MessageBoxButton.YesNoCancel,
-                            MessageBoxImage.Question);
+                            MessageBoxImage.None);
 
                         if (result == MessageBoxResult.Yes)
                         {
@@ -640,7 +661,7 @@ namespace GDMENUCardManager
                             var (success, error) = Manager.GenerateIconDatFromBox();
                             if (!success)
                             {
-                                MessageBox.Show($"Failed to generate ICON.DAT: {error}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                                MessageBox.Show(this, $"Failed to generate ICON.DAT: {error}", "Error", MessageBoxButton.OK, MessageBoxImage.None);
                                 Manager.ArtworkDisabled = true;
                             }
                         }
@@ -657,7 +678,7 @@ namespace GDMENUCardManager
 
                 case DatFileStatus.SerialsMismatch:
                     {
-                        var result = MessageBox.Show(
+                        var result = MessageBox.Show(this,
                             "ICON.DAT entries don't match BOX.DAT entries.\n\n" +
                             "This can happen if the files were modified independently.\n\n" +
                             "Click Yes to regenerate ICON.DAT from BOX.DAT (recommended).\n\n" +
@@ -665,7 +686,7 @@ namespace GDMENUCardManager
                             "Click Cancel to proceed without artwork features.",
                             "Confirmation",
                             MessageBoxButton.YesNoCancel,
-                            MessageBoxImage.Warning);
+                            MessageBoxImage.None);
 
                         if (result == MessageBoxResult.Yes)
                         {
@@ -673,7 +694,7 @@ namespace GDMENUCardManager
                             var (success, error) = Manager.GenerateIconDatFromBox();
                             if (!success)
                             {
-                                MessageBox.Show($"Failed to regenerate ICON.DAT: {error}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                                MessageBox.Show(this, $"Failed to regenerate ICON.DAT: {error}", "Error", MessageBoxButton.OK, MessageBoxImage.None);
                             }
                         }
                         else if (result == MessageBoxResult.Cancel)
@@ -733,12 +754,12 @@ namespace GDMENUCardManager
 
                 if (await Manager.Save(TempFolder))
                 {
-                    MessageBox.Show(this, "Done!", "Information", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show(this, "Done!", "Information", MessageBoxButton.OK, MessageBoxImage.None);
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(this, ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.None);
             }
             finally
             {
@@ -1055,7 +1076,7 @@ namespace GDMENUCardManager
                     if (result.UnsupportedRedumpGdi.Count > 0)
                     {
                         MessageBox.Show(this, LegacyRedumpGdiDetector.BuildMessage(result.UnsupportedRedumpGdi),
-                            "Information", MessageBoxButton.OK, MessageBoxImage.Information);
+                            "Information", MessageBoxButton.OK, MessageBoxImage.None);
                     }
                 }
             }
@@ -1067,7 +1088,7 @@ namespace GDMENUCardManager
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(this, ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.None);
             }
             finally
             {
@@ -1096,7 +1117,7 @@ namespace GDMENUCardManager
                     ? "1 disc image doesn't have a Serial ID assigned to it."
                     : $"{count} disc images don't have Serial IDs assigned to them.";
                 msg += "\n\nA valid openMenu configuration requires all disc images are assigned a Serial ID.";
-                MessageBox.Show(this, msg, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(this, msg, "Error", MessageBoxButton.OK, MessageBoxImage.None);
                 return;
             }
 
@@ -1119,7 +1140,7 @@ namespace GDMENUCardManager
                 if ((string)btn.CommandParameter == nameof(TempFolder) && !string.IsNullOrEmpty(TempFolder))
                     dialog.SelectedPath = TempFolder;
 
-                if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                if (dialog.ShowDialog(new Win32Window(this)) == System.Windows.Forms.DialogResult.OK)
                 {
                     TempFolder = dialog.SelectedPath;
                     SaveTempFolderConfig();
@@ -1129,7 +1150,7 @@ namespace GDMENUCardManager
 
         private void ButtonResetTempFolder_Click(object sender, RoutedEventArgs e)
         {
-            var result = MessageBox.Show(this, "Reset the Temporary Folder path to default?", "Confirmation", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            var result = MessageBox.Show(this, "Reset the Temporary Folder path to default?", "Confirmation", MessageBoxButton.YesNo, MessageBoxImage.None);
             if (result == MessageBoxResult.Yes)
             {
                 TempFolder = Path.GetTempPath();
@@ -1167,7 +1188,7 @@ namespace GDMENUCardManager
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(this, ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.None);
             }
             IsBusy = false;
         }
@@ -1209,7 +1230,7 @@ namespace GDMENUCardManager
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(this, ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.None);
             }
             finally
             {
@@ -1234,11 +1255,11 @@ namespace GDMENUCardManager
             var sortDescription = MenuKindSelected == MenuKind.openMenu
                 ? "Your disc images will be automatically sorted in alphanumeric order based on a combination of Folder and Title.\n\nDo you want to continue?"
                 : "Your disc images will be automatically sorted in alphanumeric order based on Title.\n\nDo you want to continue?";
-            var result = MessageBox.Show(
+            var result = MessageBox.Show(this,
                 sortDescription,
                 "Confirmation",
                 MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
+                MessageBoxImage.None);
 
             if (result != MessageBoxResult.Yes)
                 return;
@@ -1250,7 +1271,7 @@ namespace GDMENUCardManager
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(this, ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.None);
             }
             IsBusy = false;
         }
@@ -1297,11 +1318,11 @@ namespace GDMENUCardManager
                     }
                 }
 
-                MessageBox.Show($"{count} item(s) renamed", "Information", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(this, $"{count} item(s) renamed", "Information", MessageBoxButton.OK, MessageBoxImage.None);
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(this, ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.None);
             }
             finally
             {
@@ -1334,7 +1355,7 @@ namespace GDMENUCardManager
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(this, ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.None);
             }
         }
 
@@ -1393,17 +1414,17 @@ namespace GDMENUCardManager
                             msg += $"\n\n{conflictsRemoved} additional folder path(s) were automatically removed because they became duplicates of their disc image's primary folder path after renaming.";
                         msg += "\n\nClick 'Save Changes' to write updates to SD card.";
 
-                        MessageBox.Show(msg, "Information", MessageBoxButton.OK, MessageBoxImage.Information);
+                        MessageBox.Show(this, msg, "Information", MessageBoxButton.OK, MessageBoxImage.None);
                     }
                     else
                     {
-                        MessageBox.Show("No changes were made.", "Information", MessageBoxButton.OK, MessageBoxImage.Information);
+                        MessageBox.Show(this, "No changes were made.", "Information", MessageBoxButton.OK, MessageBoxImage.None);
                     }
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(this, ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.None);
             }
         }
 
@@ -1420,7 +1441,7 @@ namespace GDMENUCardManager
             catch (ProgressWindowClosedException) { }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(this, ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.None);
             }
             finally
             {
@@ -1465,7 +1486,7 @@ namespace GDMENUCardManager
             using (var dialog = new System.Windows.Forms.FolderBrowserDialog())
             {
                 dialog.Description = "Select SD Card Folder";
-                if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                if (dialog.ShowDialog(new Win32Window(this)) == System.Windows.Forms.DialogResult.OK)
                 {
                     var selectedPath = dialog.SelectedPath;
 
@@ -1481,7 +1502,7 @@ namespace GDMENUCardManager
                             "You may proceed, but the folder may not work as expected.",
                             "Information",
                             MessageBoxButton.OK,
-                            MessageBoxImage.Information);
+                            MessageBoxImage.None);
                     }
 
                     // Set the custom path
@@ -1734,7 +1755,7 @@ namespace GDMENUCardManager
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(this, ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.None);
             }
             IsBusy = false;
         }
@@ -1748,7 +1769,7 @@ namespace GDMENUCardManager
             // Only allow in openMenu mode
             if (MenuKindSelected != MenuKind.openMenu)
             {
-                MessageBox.Show("Assign Folder Path is only available in openMenu mode.", "Information", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(this, "Assign Folder Path is only available in openMenu mode.", "Information", MessageBoxButton.OK, MessageBoxImage.None);
                 return;
             }
 
@@ -1760,7 +1781,7 @@ namespace GDMENUCardManager
 
             if (selectedItems.Count == 0)
             {
-                MessageBox.Show("No valid items selected.", "Information", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(this, "No valid items selected.", "Information", MessageBoxButton.OK, MessageBoxImage.None);
                 return;
             }
 
@@ -1794,8 +1815,8 @@ namespace GDMENUCardManager
                         item.AlternativeFolders.Contains(folderPath)).ToList();
                     if (conflicting.Count > 0)
                     {
-                        MessageBox.Show("This folder path is already assigned to this disc image as an additional folder path.",
-                            "Information", MessageBoxButton.OK, MessageBoxImage.Information);
+                        MessageBox.Show(this, "This folder path is already assigned to this disc image as an additional folder path.",
+                            "Information", MessageBoxButton.OK, MessageBoxImage.None);
                         return;
                     }
                 }
@@ -1829,8 +1850,8 @@ namespace GDMENUCardManager
 
             if (MenuKindSelected != MenuKind.openMenu)
             {
-                MessageBox.Show("Additional folder paths are only available in openMenu mode.",
-                    "Information", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(this, "Additional folder paths are only available in openMenu mode.",
+                    "Information", MessageBoxButton.OK, MessageBoxImage.None);
                 return;
             }
 
@@ -2032,9 +2053,9 @@ namespace GDMENUCardManager
                 (propertyName == nameof(GdItem.Name) || propertyName == nameof(GdItem.ProductNumber) || propertyName == nameof(GdItem.Folder)) &&
                 !Helper.IsValidPrintableAscii(newStr))
             {
-                MessageBox.Show(
+                MessageBox.Show(this,
                     "Only printable ASCII characters (letters, numbers, and standard symbols) are supported by openMenu.",
-                    "Information", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    "Information", MessageBoxButton.OK, MessageBoxImage.None);
                 // Revert the editing element
                 var revertValue = oldValue as string ?? "";
                 if (e.EditingElement is TextBox revertTb)
@@ -2379,7 +2400,7 @@ namespace GDMENUCardManager
                         var view = System.Windows.Data.CollectionViewSource.GetDefaultView(Manager.ItemList);
                         if (!view.Cast<object>().Any())
                         {
-                            MessageBox.Show("Nothing to show for the currently applied filter.", "Information", MessageBoxButton.OK, MessageBoxImage.Information);
+                            MessageBox.Show(this, "Nothing to show for the currently applied filter.", "Information", MessageBoxButton.OK, MessageBoxImage.None);
                             ClearFilterFromGrid();
                         }
                     }
@@ -2398,7 +2419,7 @@ namespace GDMENUCardManager
                 dialog.Filter = fileFilterList;
                 dialog.Multiselect = true;
                 dialog.CheckFileExists = true;
-                if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                if (dialog.ShowDialog(new Win32Window(this)) == System.Windows.Forms.DialogResult.OK)
                 {
                     IsBusy = true;
 
@@ -2448,7 +2469,7 @@ namespace GDMENUCardManager
                     if (unsupportedRedumpGdi.Any())
                     {
                         MessageBox.Show(this, LegacyRedumpGdiDetector.BuildMessage(unsupportedRedumpGdi),
-                            "Information", MessageBoxButton.OK, MessageBoxImage.Information);
+                            "Information", MessageBoxButton.OK, MessageBoxImage.None);
                     }
 
                     // Check for serial translations that were applied
@@ -2481,7 +2502,7 @@ namespace GDMENUCardManager
                 var view = System.Windows.Data.CollectionViewSource.GetDefaultView(Manager.ItemList);
                 if (!view.Cast<object>().Any())
                 {
-                    MessageBox.Show("Nothing to show for the currently applied filter.", "Information", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show(this, "Nothing to show for the currently applied filter.", "Information", MessageBoxButton.OK, MessageBoxImage.None);
                     ClearFilterFromGrid();
                 }
             }
@@ -2585,7 +2606,7 @@ namespace GDMENUCardManager
             if (dg1.SelectedIndex == -1 || !searchInGrid(dg1.SelectedIndex))
             {
                 if (!searchInGrid(0))
-                    MessageBox.Show("No matches found.", "Information", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show(this, "No matches found.", "Information", MessageBoxButton.OK, MessageBoxImage.None);
             }
         }
 
@@ -2660,7 +2681,7 @@ namespace GDMENUCardManager
             bool hasMatches = Manager.ItemList.Any(item => FilterInItem(item, filterText));
             if (!hasMatches)
             {
-                MessageBox.Show("No matches found.", "Information", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(this, "No matches found.", "Information", MessageBoxButton.OK, MessageBoxImage.None);
                 return;
             }
 
@@ -2709,9 +2730,9 @@ namespace GDMENUCardManager
                 // Validate printable ASCII
                 if (!string.IsNullOrWhiteSpace(comboBox.Text) && !Helper.IsValidPrintableAscii(comboBox.Text))
                 {
-                    MessageBox.Show(
+                    MessageBox.Show(this,
                         "Only printable ASCII characters (letters, numbers, and standard symbols) are supported by openMenu.",
-                        "Information", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        "Information", MessageBoxButton.OK, MessageBoxImage.None);
                     comboBox.Text = _originalFolderValue ?? string.Empty;
                     e.Handled = true;
                     return;
@@ -2747,9 +2768,9 @@ namespace GDMENUCardManager
                 // Validate printable ASCII against the raw text
                 if (!Helper.IsValidPrintableAscii(textBeforeBinding))
                 {
-                    MessageBox.Show(
+                    MessageBox.Show(this,
                         "Only printable ASCII characters (letters, numbers, and standard symbols) are supported by openMenu.",
-                        "Information", MessageBoxButton.OK, MessageBoxImage.Warning);
+                        "Information", MessageBoxButton.OK, MessageBoxImage.None);
                     item.Folder = _originalFolderValue ?? string.Empty;
                     comboBox.Text = _originalFolderValue ?? string.Empty;
                     _originalFolderValue = null;
@@ -2760,8 +2781,8 @@ namespace GDMENUCardManager
                 var newFolder = comboBox.Text?.Trim() ?? string.Empty;
                 if (!string.IsNullOrEmpty(newFolder) && item.AlternativeFolders.Contains(newFolder))
                 {
-                    MessageBox.Show("This folder path is already assigned to this disc image as an additional folder path.",
-                        "Information", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show(this, "This folder path is already assigned to this disc image as an additional folder path.",
+                        "Information", MessageBoxButton.OK, MessageBoxImage.None);
                     item.Folder = _originalFolderValue ?? string.Empty;
                     comboBox.Text = _originalFolderValue ?? string.Empty;
                 }

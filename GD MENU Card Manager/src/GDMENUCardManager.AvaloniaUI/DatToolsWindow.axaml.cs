@@ -147,7 +147,7 @@ namespace GDMENUCardManager
             {
                 ContentTitle = "Confirmation",
                 ContentMessage = "This will backup current DAT files and merge entries from the selected folder.\n\nContinue?",
-                Icon = MsBox.Avalonia.Enums.Icon.Warning,
+                Icon = MsBox.Avalonia.Enums.Icon.None,
                 ShowInCenter = true,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 ButtonDefinitions = new ButtonDefinition[]
@@ -298,7 +298,7 @@ namespace GDMENUCardManager
             {
                 ContentTitle = "Confirmation",
                 ContentMessage = "This will backup current DAT files and then clear ALL artwork and metadata entries.\n\nThis action cannot be undone. Continue?",
-                Icon = MsBox.Avalonia.Enums.Icon.Warning,
+                Icon = MsBox.Avalonia.Enums.Icon.None,
                 ShowInCenter = true,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 ButtonDefinitions = new ButtonDefinition[]
@@ -366,7 +366,7 @@ namespace GDMENUCardManager
             {
                 ContentTitle = "Confirmation",
                 ContentMessage = "This will backup current DAT files and overwrite them with those from the SD card's openMenu disc image.\n\nContinue?",
-                Icon = MsBox.Avalonia.Enums.Icon.Warning,
+                Icon = MsBox.Avalonia.Enums.Icon.None,
                 ShowInCenter = true,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 ButtonDefinitions = new ButtonDefinition[]
@@ -429,14 +429,14 @@ namespace GDMENUCardManager
         private async Task ShowError(string message)
         {
             await MessageBoxManager.GetMessageBoxStandard("Error", message,
-                MsBox.Avalonia.Enums.ButtonEnum.Ok, MsBox.Avalonia.Enums.Icon.Error)
+                MsBox.Avalonia.Enums.ButtonEnum.Ok, MsBox.Avalonia.Enums.Icon.None, windowStartupLocation: WindowStartupLocation.CenterOwner)
                 .ShowWindowDialogAsync(this);
         }
 
         private async Task ShowInfo(string message)
         {
             await MessageBoxManager.GetMessageBoxStandard("Information", message,
-                MsBox.Avalonia.Enums.ButtonEnum.Ok, MsBox.Avalonia.Enums.Icon.Info)
+                MsBox.Avalonia.Enums.ButtonEnum.Ok, MsBox.Avalonia.Enums.Icon.None, windowStartupLocation: WindowStartupLocation.CenterOwner)
                 .ShowWindowDialogAsync(this);
         }
 

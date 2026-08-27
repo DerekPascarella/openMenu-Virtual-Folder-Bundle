@@ -261,7 +261,7 @@ namespace GDMENUCardManager
             {
                 ContentTitle = "Confirmation",
                 ContentMessage = "You have unsaved changes. Save before navigating?",
-                Icon = MsBox.Avalonia.Enums.Icon.Warning,
+                Icon = MsBox.Avalonia.Enums.Icon.None,
                 ShowInCenter = true,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 ButtonDefinitions = new ButtonDefinition[]
@@ -427,7 +427,7 @@ namespace GDMENUCardManager
             {
                 ContentTitle = "Confirmation",
                 ContentMessage = $"Delete artwork entry for serial '{Serial}'?",
-                Icon = MsBox.Avalonia.Enums.Icon.Warning,
+                Icon = MsBox.Avalonia.Enums.Icon.None,
                 ShowInCenter = true,
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 ButtonDefinitions = new ButtonDefinition[]
@@ -544,7 +544,7 @@ namespace GDMENUCardManager
                 {
                     ContentTitle = "Confirmation",
                     ContentMessage = "You have unsaved changes. Discard them?",
-                    Icon = MsBox.Avalonia.Enums.Icon.Warning,
+                    Icon = MsBox.Avalonia.Enums.Icon.None,
                     ShowInCenter = true,
                     WindowStartupLocation = WindowStartupLocation.CenterOwner,
                     ButtonDefinitions = new ButtonDefinition[]

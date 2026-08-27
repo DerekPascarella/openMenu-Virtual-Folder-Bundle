@@ -158,7 +158,7 @@ namespace GDMENUCardManager
                 Title = "Select Music File",
                 Filter = "Audio Files|*.wav;*.mp3;*.ogg;*.flac|All Files|*.*"
             };
-            if (fileDialog.ShowDialog() == true)
+            if (fileDialog.ShowDialog(this) == true)
             {
                 SelectedSourcePath = fileDialog.FileName;
             }
@@ -185,11 +185,11 @@ namespace GDMENUCardManager
 
                 MessageBox.Show(this,
                     "Default style and theme settings applied.\n\nChanges take effect after clicking \"Save Changes\" in the main window.",
-                    "Menu Options", MessageBoxButton.OK, MessageBoxImage.Information);
+                    "Menu Options", MessageBoxButton.OK, MessageBoxImage.None);
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(this, ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.None);
             }
             finally
             {
@@ -239,11 +239,11 @@ namespace GDMENUCardManager
                 }
                 message += "\n\nChanges take effect after clicking \"Save Changes\" in the main window.";
 
-                MessageBox.Show(this, message, "Menu Options", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(this, message, "Menu Options", MessageBoxButton.OK, MessageBoxImage.None);
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(this, ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.None);
             }
             finally
             {
