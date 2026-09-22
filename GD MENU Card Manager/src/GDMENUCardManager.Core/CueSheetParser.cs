@@ -64,7 +64,7 @@ namespace GDMENUCardManager.Core
                     case "FILE":
                         if (parts.Length >= 2)
                         {
-                            currentBinFile = parts[1];
+                            currentBinFile = Helper.ResolveActualFileName(CueDirectory, parts[1]);
                         }
                         break;
 

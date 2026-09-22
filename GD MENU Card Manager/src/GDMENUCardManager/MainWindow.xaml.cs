@@ -213,6 +213,12 @@ namespace GDMENUCardManager
             set { Manager.EnableLockCheck = value; RaisePropertyChanged(); SaveLockCheckConfig(); }
         }
 
+        public bool EnableFatSort
+        {
+            get { return Manager.EnableFatSort; }
+            set { Manager.EnableFatSort = value; RaisePropertyChanged(); SaveFatSortConfig(); }
+        }
+
         private readonly string fileFilterList;
 
         public MainWindow()
@@ -270,6 +276,8 @@ namespace GDMENUCardManager
                 Manager.TruncateMenuGDI = truncateMenuGDI;
             if (bool.TryParse(ConfigurationManager.AppSettings["LockCheck"], out bool lockCheck))
                 Manager.EnableLockCheck = lockCheck;
+            if (bool.TryParse(ConfigurationManager.AppSettings["FatSort"], out bool fatSort))
+                Manager.EnableFatSort = fatSort;
 
             // Disc Image Options
             if (bool.TryParse(ConfigurationManager.AppSettings["EnableGDIShrink"], out bool gdiShrink))
@@ -920,6 +928,22 @@ namespace GDMENUCardManager
             {
                 var config = ConfigurationManager.OpenExeConfiguration(System.Configuration.ConfigurationUserLevel.None);
                 SetOrAddSetting(config, "LockCheck", Manager.EnableLockCheck.ToString());
+                config.Save(System.Configuration.ConfigurationSaveMode.Modified);
+                ConfigurationManager.RefreshSection("appSettings");
+            }
+            catch
+            {
+                // Ignore errors saving config
+            }
+        }
+
+        private void SaveFatSortConfig()
+        {
+            if (Core.Manager.ConfigReadOnly) return;
+            try
+            {
+                var config = ConfigurationManager.OpenExeConfiguration(System.Configuration.ConfigurationUserLevel.None);
+                SetOrAddSetting(config, "FatSort", Manager.EnableFatSort.ToString());
                 config.Save(System.Configuration.ConfigurationSaveMode.Modified);
                 ConfigurationManager.RefreshSection("appSettings");
             }

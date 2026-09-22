@@ -106,6 +106,13 @@ namespace GDMENUCardManager
 
         public bool ShowBgmHint => !CanApplyBgm;
 
+        private bool _serialSdWarning;
+        public bool SerialSdWarning
+        {
+            get => _serialSdWarning;
+            set { _serialSdWarning = value; RaisePropertyChanged(); }
+        }
+
         public event PropertyChangedEventHandler PropertyChanged;
 
         private void RaisePropertyChanged([CallerMemberName] string name = null)
@@ -123,6 +130,7 @@ namespace GDMENUCardManager
             _forceStyleTheme = _config.ForceStyleTheme;
             _style = _config.Style;
             _bgmEnabled = _config.BgmEnabled;
+            _serialSdWarning = _config.SerialSdWarning;
             RefreshBgmState(_config);
 
             RefreshThemes(_config.ThemeId);
@@ -253,6 +261,27 @@ namespace GDMENUCardManager
                     progressWindow.AllowClose();
                     progressWindow.Close();
                 }
+            }
+        }
+
+        private async void ApplyMiscButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                IsEnabled = false;
+                await _menuOptions.ApplyMiscAsync(SerialSdWarning);
+
+                MessageBox.Show(this,
+                    "Miscellaneous settings applied.\n\nChanges take effect after clicking \"Save Changes\" in the main window.",
+                    "Menu Options", MessageBoxButton.OK, MessageBoxImage.None);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.None);
+            }
+            finally
+            {
+                IsEnabled = true;
             }
         }
 

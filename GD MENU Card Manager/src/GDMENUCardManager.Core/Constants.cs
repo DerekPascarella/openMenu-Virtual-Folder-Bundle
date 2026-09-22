@@ -38,6 +38,6 @@ namespace GDMENUCardManager.Core
         public const string PS1GameDBFile = "gamedb.json";
         public const string TosecDatFile = "tosec_dc.bin";
         public const string DefaultImageFileName = "disc";
-        public const string Version = "v1.6.4-ateam";
+        public const string Version = "v1.7.0-ateam";
     }
 }

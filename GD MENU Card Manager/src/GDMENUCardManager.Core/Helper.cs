@@ -53,6 +53,56 @@ namespace GDMENUCardManager.Core
             return Task.Run(() => Directory.Exists(path));
         }
 
+        /// <summary>
+        /// The volume that holds a path, or null when it cannot be determined.
+        /// </summary>
+        public static DriveInfo GetDriveInfoForPath(string path)
+        {
+            try
+            {
+                // On Windows, Path.GetPathRoot returns "D:\" and DriveInfo takes it directly.
+                var pathRoot = Path.GetPathRoot(path);
+                if (!string.IsNullOrEmpty(pathRoot) && pathRoot != "/" && pathRoot != "\\")
+                    return new DriveInfo(pathRoot);
+
+                // Linux/macOS: find the mount that contains this path.
+                var fullPath = Path.GetFullPath(path);
+                // Normalize path with trailing separator to prevent /mnt/sd matching /mnt/sdcard
+                if (!fullPath.EndsWith(Path.DirectorySeparatorChar))
+                    fullPath += Path.DirectorySeparatorChar;
+
+                // Use case-sensitive comparison on Linux/macOS, case-insensitive on Windows
+                var comparison = Environment.OSVersion.Platform == PlatformID.Win32NT
+                    ? StringComparison.OrdinalIgnoreCase
+                    : StringComparison.Ordinal;
+
+                DriveInfo driveInfo = null;
+                foreach (var drive in DriveInfo.GetDrives())
+                {
+                    if (drive.IsReady)
+                    {
+                        var mountPath = drive.RootDirectory.FullName;
+                        if (!mountPath.EndsWith(Path.DirectorySeparatorChar))
+                            mountPath += Path.DirectorySeparatorChar;
+
+                        if (fullPath.StartsWith(mountPath, comparison))
+                        {
+                            // Find the longest matching mount point (most specific)
+                            if (driveInfo == null || mountPath.Length > driveInfo.RootDirectory.FullName.Length)
+                            {
+                                driveInfo = drive;
+                            }
+                        }
+                    }
+                }
+                return driveInfo;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         public static Task MoveFileAsync(string from, string to)
         {
             return Task.Run(() => File.Move(from, to, overwrite: true));
@@ -66,6 +116,43 @@ namespace GDMENUCardManager.Core
         public static Task<bool> FileExistsAsync(string path)
         {
             return Task.Run(() => File.Exists(path));
+        }
+
+        // Maps a referenced filename to its real spelling on disk. On a case-sensitive
+        // filesystem a .gdi or .cue may name "TRACK04.RAW" while the file is "track04.raw".
+        // The exact name always wins; the folder is only scanned when it is absent.
+        public static string ResolveActualPath(string path)
+        {
+            if (File.Exists(path))
+                return path;
+
+            var folder = Path.GetDirectoryName(path);
+            var name = Path.GetFileName(path);
+            if (string.IsNullOrEmpty(folder) || string.IsNullOrEmpty(name) || !Directory.Exists(folder))
+                return path;
+
+            string match = null;
+            foreach (var candidate in Directory.EnumerateFiles(folder))
+            {
+                if (!Path.GetFileName(candidate).Equals(name, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                if (match != null)
+                    return path;
+                match = candidate;
+            }
+
+            return match ?? path;
+        }
+
+        // Same as ResolveActualPath for a name relative to folder, keeping any subfolder
+        // prefix the manifest used.
+        public static string ResolveActualFileName(string folder, string fileName)
+        {
+            var leaf = Path.GetFileName(fileName);
+            if (string.IsNullOrEmpty(leaf))
+                return fileName;
+            var prefix = fileName.Substring(0, fileName.Length - leaf.Length);
+            return prefix + Path.GetFileName(ResolveActualPath(Path.Combine(folder, fileName)));
         }
 
         public static Task<FileAttributes> GetAttributesAsync(string path)

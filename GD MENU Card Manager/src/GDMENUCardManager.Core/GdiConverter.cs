@@ -232,7 +232,7 @@ namespace GDMENUCardManager.Core
                     case "FILE":
                         if (parts.Length >= 2)
                         {
-                            currentDataFile = parts[1];
+                            currentDataFile = Helper.ResolveActualFileName(cueData.Directory, parts[1]);
                         }
                         break;
 

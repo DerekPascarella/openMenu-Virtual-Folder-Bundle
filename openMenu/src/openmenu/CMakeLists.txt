@@ -13,6 +13,10 @@ set(OPENMENU_SOURCES
         src/main.c
         src/backend/bgm.c
         src/backend/boot_defaults.c
+        src/backend/dcnow_net.c
+        src/backend/dcnow_fetch.c
+        src/backend/dcnow_vmu.c
+        src/backend/online_time_sync.c
         src/backend/gdemu_control.c
         src/backend/gdemu_sdk.c
         src/backend/last_game.c
@@ -24,10 +28,13 @@ set(OPENMENU_SOURCES
         src/ui/dc/font_bmf.c
         src/ui/dc/font_smooth.c
         src/ui/dc/input.c
+        src/ui/dc/mouse.c
         src/ui/dc/pvr_texture.c
         src/ui/animation.c
         src/ui/draw_kos.c
         src/ui/marquee.c
+        src/ui/menu_mouse.c
+        src/ui/mouse_scrollbar.c
         src/ui/theme_manager.c
         src/ui/ui_grid.c
         src/ui/ui_line_desc.c
@@ -35,6 +42,7 @@ set(OPENMENU_SOURCES
         src/ui/ui_menu_credits.c
         src/ui/ui_scroll.c
         src/ui/ui_folders.c
+        src/ui/ui_dcnow.c
         src/vm2/vm2_api.c
 )
 
@@ -56,6 +64,7 @@ target_link_libraries(openmenu
         openmenu_settings
         openmenu_shared
         uthash
+        ppp
 )
 
 if (NOT DEFINED KOS_OBJCOPY)

@@ -19,6 +19,8 @@ uint8_t* sf_folders_art;
 uint8_t* sf_folder_art;
 uint8_t* sf_folders_item_details;
 uint8_t* sf_marquee_speed;
+uint8_t* sf_mouse_cursor_speed;
+uint8_t* sf_mouse_scroll_speed;
 uint8_t* sf_disc_details;
 uint8_t* sf_clock;
 uint8_t* sf_vm2_send_all;
@@ -35,6 +37,10 @@ uint8_t* sf_last_game;
 uint8_t* sf_last_game_product;
 uint8_t* sf_last_game_folder;
 uint8_t* sf_last_game_filter;
+uint8_t* sf_dcnow;
+uint8_t* sf_dcnow_refresh;
+uint8_t* sf_dcnow_vmu;
+uint8_t* sf_online_time_sync;
 
 void
 settings_sanitize() {
@@ -111,6 +117,14 @@ settings_sanitize() {
         sf_marquee_speed[0] = MARQUEE_SPEED_MEDIUM;
     }
 
+    if ((sf_mouse_cursor_speed[0] < MOUSE_SPEED_START) || (sf_mouse_cursor_speed[0] > MOUSE_SPEED_END)) {
+        sf_mouse_cursor_speed[0] = MOUSE_SPEED_MEDIUM;
+    }
+
+    if ((sf_mouse_scroll_speed[0] < MOUSE_SPEED_START) || (sf_mouse_scroll_speed[0] > MOUSE_SPEED_END)) {
+        sf_mouse_scroll_speed[0] = MOUSE_SPEED_MEDIUM;
+    }
+
     if ((sf_disc_details[0] < DISC_DETAILS_START) || (sf_disc_details[0] > DISC_DETAILS_END)) {
         sf_disc_details[0] = DISC_DETAILS_SHOW;
     }
@@ -154,6 +168,22 @@ settings_sanitize() {
 
     if ((sf_remember_last_game[0] < REMEMBER_LAST_GAME_START) || (sf_remember_last_game[0] > REMEMBER_LAST_GAME_END)) {
         sf_remember_last_game[0] = REMEMBER_LAST_GAME_OFF;
+    }
+
+    if ((sf_dcnow[0] < DCNOW_START) || (sf_dcnow[0] > DCNOW_END)) {
+        sf_dcnow[0] = DCNOW_OFF;
+    }
+
+    if ((sf_dcnow_refresh[0] < DCNOW_REFRESH_START) || (sf_dcnow_refresh[0] > DCNOW_REFRESH_END)) {
+        sf_dcnow_refresh[0] = DCNOW_REFRESH_OFF;
+    }
+
+    if ((sf_dcnow_vmu[0] < DCNOW_VMU_START) || (sf_dcnow_vmu[0] > DCNOW_VMU_END)) {
+        sf_dcnow_vmu[0] = DCNOW_VMU_OFF;
+    }
+
+    if ((sf_online_time_sync[0] < ONLINE_TIME_SYNC_START) || (sf_online_time_sync[0] > ONLINE_TIME_SYNC_END)) {
+        sf_online_time_sync[0] = ONLINE_TIME_SYNC_OFF;
     }
 
     /* Off means nothing is remembered, so turning it back on later starts

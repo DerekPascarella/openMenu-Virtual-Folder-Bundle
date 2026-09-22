@@ -9,6 +9,7 @@
 #include "backend/bgm.h"
 #include "backend/cb_loader.h"
 #include "backend/controls.p1.h"
+#include "backend/dcnow_net.h"
 #include "backend/gdemu_sdk.h"
 #include "backend/gdmenu_binary.h"
 #include "backend/last_game.h"
@@ -170,6 +171,7 @@ bloom_launch(gd_item* disc) {
 
     /* Committed to launching, hand it a quiet AICA */
     bgm_shutdown();
+    dcnow_net_shutdown(); /* The next program must not inherit a live modem or adapter */
 
     fs_seek(fd, 0, SEEK_END);
     bloom_size = fs_tell(fd);
@@ -206,6 +208,7 @@ bleem_launch(gd_item* disc) {
 
     /* Committed to launching, hand it a quiet AICA */
     bgm_shutdown();
+    dcnow_net_shutdown(); /* The next program must not inherit a live modem or adapter */
 
     fs_seek(fd, 0, SEEK_END);
     bleem_size = fs_tell(fd);
@@ -240,6 +243,7 @@ dreamcast_launch_disc(gd_item* disc) {
 
     /* Hand the next program a quiet AICA */
     bgm_shutdown();
+    dcnow_net_shutdown(); /* The next program must not inherit a live modem or adapter */
 
     /* For non-game discs (audio CDs, etc.), just mount and exit to BIOS */
     if (!strcmp(disc->type, "other")) {
@@ -348,6 +352,7 @@ dreamcast_launch_cb(gd_item* disc) {
 
     /* Committed to launching, hand it a quiet AICA */
     bgm_shutdown();
+    dcnow_net_shutdown(); /* The next program must not inherit a live modem or adapter */
 
     fs_seek(fd, 0, SEEK_END);
     cb_size = fs_tell(fd);

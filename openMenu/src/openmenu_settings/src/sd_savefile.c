@@ -73,6 +73,12 @@ static sd_var_entry_t sd_variables[] = {
     {NULL, 12, SFV_REMEMBER_LAST_GAME},  /* sf_last_game_product */
     {NULL, 4, SFV_REMEMBER_LAST_GAME},   /* sf_last_game_folder (4 x uint8) */
     {NULL, 4, SFV_REMEMBER_LAST_GAME},   /* sf_last_game_filter (4 x uint8) */
+    {NULL, 1, SFV_DCNOW},                /* sf_dcnow */
+    {NULL, 1, SFV_DCNOW},                /* sf_dcnow_refresh */
+    {NULL, 1, SFV_DCNOW_VMU},            /* sf_dcnow_vmu */
+    {NULL, 1, SFV_ONLINE_TIME_SYNC},     /* sf_online_time_sync */
+    {NULL, 1, SFV_MOUSE_SPEEDS},         /* sf_mouse_cursor_speed */
+    {NULL, 1, SFV_MOUSE_SPEEDS},         /* sf_mouse_scroll_speed */
 };
 #define SD_VAR_COUNT (sizeof(sd_variables) / sizeof(sd_variables[0]))
 
@@ -112,6 +118,12 @@ sd_init_var_pointers(void) {
     sd_variables[30].var_ptr = sf_last_game_product;
     sd_variables[31].var_ptr = sf_last_game_folder;
     sd_variables[32].var_ptr = sf_last_game_filter;
+    sd_variables[33].var_ptr = sf_dcnow;
+    sd_variables[34].var_ptr = sf_dcnow_refresh;
+    sd_variables[35].var_ptr = sf_dcnow_vmu;
+    sd_variables[36].var_ptr = sf_online_time_sync;
+    sd_variables[37].var_ptr = sf_mouse_cursor_speed;
+    sd_variables[38].var_ptr = sf_mouse_scroll_speed;
 }
 
 /* Calculate total data size for current version */
@@ -423,6 +435,20 @@ sd_savefile_load(void) {
             memset(sf_last_game_product, 0, sf_last_game_product_length);
             memset(sf_last_game_folder, 0, sf_last_game_folder_length);
             memset(sf_last_game_filter, 0, sf_last_game_filter_length);
+        }
+        if (header.version < SFV_DCNOW) {
+            sf_dcnow[0] = DCNOW_OFF;
+            sf_dcnow_refresh[0] = DCNOW_REFRESH_OFF;
+        }
+        if (header.version < SFV_DCNOW_VMU) {
+            sf_dcnow_vmu[0] = DCNOW_VMU_OFF;
+        }
+        if (header.version < SFV_ONLINE_TIME_SYNC) {
+            sf_online_time_sync[0] = ONLINE_TIME_SYNC_OFF;
+        }
+        if (header.version < SFV_MOUSE_SPEEDS) {
+            sf_mouse_cursor_speed[0] = MOUSE_SPEED_MEDIUM;
+            sf_mouse_scroll_speed[0] = MOUSE_SPEED_MEDIUM;
         }
 
         /* Let settings_sanitize() handle defaults for any new variables */

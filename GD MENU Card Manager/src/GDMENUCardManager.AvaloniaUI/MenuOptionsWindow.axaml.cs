@@ -92,6 +92,13 @@ namespace GDMENUCardManager
 
         public bool ShowBgmHint => !CanApplyBgm;
 
+        private bool _serialSdWarning;
+        public bool SerialSdWarning
+        {
+            get => _serialSdWarning;
+            set { _serialSdWarning = value; RaisePropertyChanged(); }
+        }
+
         public new event PropertyChangedEventHandler PropertyChanged;
 
         private void RaisePropertyChanged([CallerMemberName] string name = null)
@@ -117,6 +124,7 @@ namespace GDMENUCardManager
             _forceStyleTheme = _config.ForceStyleTheme;
             _style = _config.Style;
             _bgmEnabled = _config.BgmEnabled;
+            _serialSdWarning = _config.SerialSdWarning;
             UpdateStyleRadios();
             RefreshBgmState(_config);
 
@@ -286,6 +294,28 @@ namespace GDMENUCardManager
                     progressWindow.AllowClose();
                     progressWindow.Close();
                 }
+            }
+        }
+
+        private async void ApplyMiscButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                IsEnabled = false;
+                await _menuOptions.ApplyMiscAsync(SerialSdWarning);
+
+                await MessageBoxManager.GetMessageBoxStandard("Menu Options",
+                    "Miscellaneous settings applied.\n\nChanges take effect after clicking \"Save Changes\" in the main window.",
+                    icon: MsBox.Avalonia.Enums.Icon.None, windowStartupLocation: WindowStartupLocation.CenterOwner).ShowWindowDialogAsync(this);
+            }
+            catch (Exception ex)
+            {
+                await MessageBoxManager.GetMessageBoxStandard("Error", ex.Message,
+                    icon: MsBox.Avalonia.Enums.Icon.None, windowStartupLocation: WindowStartupLocation.CenterOwner).ShowWindowDialogAsync(this);
+            }
+            finally
+            {
+                IsEnabled = true;
             }
         }
 

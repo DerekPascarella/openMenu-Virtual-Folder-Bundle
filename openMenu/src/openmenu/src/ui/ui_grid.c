@@ -23,6 +23,7 @@
 #include "ui/draw_prototypes.h"
 #include "ui/font_prototypes.h"
 #include "ui/ui_common.h"
+#include "ui/ui_dcnow.h"
 #include "ui/ui_menu_credits.h"
 
 #include "ui/ui_grid.h"
@@ -124,6 +125,7 @@ static theme_color* current_theme_colors;
 static region region_current = REGION_NTSC_U;
 static enum draw_state draw_current = DRAW_UI;
 static bool serial_vmu_boot_checked = false;
+static bool dcnow_boot_started = false;
 
 static void
 recalculate_aspect(CFG_ASPECT aspect) {
@@ -893,6 +895,9 @@ FUNCTION_INPUT(UI_NAME, handle_input) {
         case DRAW_CREDITS: {
             handle_input_credits(input_current);
         } break;
+        case DRAW_DCNOW: {
+            handle_input_dcnow(input_current);
+        } break;
         case DRAW_MULTIDISC: {
             handle_input_multidisc(input_current);
         } break;
@@ -939,6 +944,9 @@ FUNCTION(UI_NAME, drawOP) {
             /* Credits on top */
             draw_credits_op();
         } break;
+        case DRAW_DCNOW: {
+            draw_dcnow_op();
+        } break;
         case DRAW_MULTIDISC: {
             /* Multidisc choice on top */
             draw_multidisc_op();
@@ -983,6 +991,10 @@ FUNCTION(UI_NAME, drawTR) {
         serial_vmu_check_boot_backup(&draw_current, current_theme_colors, &navigate_timeout,
                                      current_theme_colors->menu_highlight_color);
     }
+    if (!dcnow_boot_started && draw_current == DRAW_UI) {
+        dcnow_boot_started = true;
+        dcnow_boot_autostart();
+    }
 
     switch (draw_current) {
         case DRAW_MENU: {
@@ -992,6 +1004,9 @@ FUNCTION(UI_NAME, drawTR) {
         case DRAW_CREDITS: {
             /* Credits on top */
             draw_credits_tr();
+        } break;
+        case DRAW_DCNOW: {
+            draw_dcnow_tr();
         } break;
         case DRAW_MULTIDISC: {
             /* Multidisc choice on top */
@@ -1027,4 +1042,9 @@ FUNCTION(UI_NAME, drawTR) {
             /* always drawn */
         } break;
     }
+    draw_hangup_overlay(current_theme_colors, current_theme_colors->menu_highlight_color);
+    draw_device_warnings(current_theme_colors, current_theme_colors->menu_highlight_color, UI_GRID3);
+#if DEBUG_VMU_SYNC
+    draw_vmu_sync_debug(current_theme_colors);
+#endif
 }

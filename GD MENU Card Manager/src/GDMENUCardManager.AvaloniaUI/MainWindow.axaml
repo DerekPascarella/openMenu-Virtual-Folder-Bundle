@@ -175,17 +175,17 @@
             </Button>
           </Grid>
           <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right" IsEnabled="{Binding !IsBusy, Mode=OneWay}">
-            <Button Padding="10 5" Margin="10 0 0 0" Click="ButtonFolderTools_Click"
-                    IsVisible="{Binding MenuKindSelected, Converter={StaticResource IsOpenMenuMode}}" ToolTip.Tip="Folder artwork and batch folder move/rename tools"
-                    IsEnabled="{Binding HasSdPath}">Folder Tools</Button>
-            <Button Padding="10 5" Margin="10 0 0 0" Click="ButtonDatTools_Click"
-                    IsVisible="{Binding MenuKindSelected, Converter={StaticResource IsOpenMenuMode}}" ToolTip.Tip="Various DAT file maintenance tasks"
-                    IsEnabled="{Binding HasSdPath}">DAT Tools</Button>
+            <Button Padding="10 5" Click="ButtonDiscImageOptions_Click" ToolTip.Tip="Various disc image modification options"
+                    IsEnabled="{Binding HasSdPath}">Disc Image Options</Button>
             <Button Padding="10 5" Margin="10 0 0 0" Click="ButtonMenuOptions_Click"
                     IsVisible="{Binding MenuKindSelected, Converter={StaticResource IsOpenMenuMode}}"
                     ToolTip.Tip="Default boot style/theme and background music for the openMenu disc">Menu Options</Button>
-            <Button Padding="10 5" Click="ButtonDiscImageOptions_Click" ToolTip.Tip="Various disc image modification options"
-                    IsEnabled="{Binding HasSdPath}">Disc Image Options</Button>
+            <Button Padding="10 5" Margin="10 0 0 0" Click="ButtonDatTools_Click"
+                    IsVisible="{Binding MenuKindSelected, Converter={StaticResource IsOpenMenuMode}}" ToolTip.Tip="Various DAT file maintenance tasks"
+                    IsEnabled="{Binding HasSdPath}">DAT Tools</Button>
+            <Button Padding="10 5" Margin="10 0 0 0" Click="ButtonFolderTools_Click"
+                    IsVisible="{Binding MenuKindSelected, Converter={StaticResource IsOpenMenuMode}}" ToolTip.Tip="Folder artwork and batch folder move/rename tools"
+                    IsEnabled="{Binding HasSdPath}">Folder Tools</Button>
           </StackPanel>
           <Button x:Name="ButtonSort" DockPanel.Dock="Right" HorizontalAlignment="Right" Padding="10 5" Margin="0 0 10 0" Click="ButtonSort_Click" ToolTip.Tip="Sort list by folder path + title">
             <Button.IsEnabled>
@@ -384,8 +384,8 @@
           <ColumnDefinition Width="auto"/>
           <ColumnDefinition Width="auto"/>
           <ColumnDefinition Width="auto"/>
-          <ColumnDefinition Width="1*"/>
           <ColumnDefinition Width="auto"/>
+          <ColumnDefinition Width="1*"/>
           <ColumnDefinition Width="auto"/>
           <ColumnDefinition Width="auto"/>
           <ColumnDefinition Width="auto"/>
@@ -417,14 +417,15 @@
         </Button>
 
         <CheckBox Grid.Column="4" Name="cbLockCheck" VerticalAlignment="Center" Margin="10 0" IsChecked="{Binding EnableLockCheck, Mode=TwoWay}" ToolTip.Tip="Check for locked files/folders before saving">File/Folder Lock Check</CheckBox>
-        <Button Grid.Column="5" Margin="10 0" Padding="0 10" FontWeight="Bold" Click="ButtonSaveChanges_Click" ToolTip.Tip="Save changes to SD card" IsEnabled="{Binding !IsFilterActive}">Save Changes</Button>
-        <Button Grid.Column="6" Margin="0 0 5 0" Padding="10 10" Click="ButtonUndo_Click" ToolTip.Tip="Undo last change"
+        <CheckBox Grid.Column="5" Name="cbFatSort" VerticalAlignment="Center" Margin="0 0 10 0" IsChecked="{Binding EnableFatSort, Mode=TwoWay}" ToolTip.Tip="Perform a FAT sort of the SD card after saving (not required by GDEMU, but keeps the root directory entries in numeric order)">FAT Sort</CheckBox>
+        <Button Grid.Column="6" Margin="10 0" Padding="0 10" FontWeight="Bold" Click="ButtonSaveChanges_Click" ToolTip.Tip="Save changes to SD card" IsEnabled="{Binding !IsFilterActive}">Save Changes</Button>
+        <Button Grid.Column="7" Margin="0 0 5 0" Padding="10 10" Click="ButtonUndo_Click" ToolTip.Tip="Undo last change"
                 IsEnabled="{Binding Manager.UndoManager.CanUndo}">Undo</Button>
-        <Button Grid.Column="7" Margin="5 0 10 0" Padding="10 10" Click="ButtonRedo_Click" ToolTip.Tip="Redo last change"
+        <Button Grid.Column="8" Margin="5 0 10 0" Padding="10 10" Click="ButtonRedo_Click" ToolTip.Tip="Redo last change"
                 IsEnabled="{Binding Manager.UndoManager.CanRedo}">Redo</Button>
-        <Button Grid.Column="8" Margin="10 0" Padding="10 10" ToolTip.Tip="Load info from files that are already on sd card" Click="ButtonPreload_Click" IsVisible="False">Preload</Button>
-        <Button Grid.Column="9" Margin="10 0" Padding="10 10" Click="ButtonSort_Click" IsVisible="False">Sort List</Button>
-        <Button Grid.Column="10" Margin="10 0" Padding="10 10" Click="ButtonBatchRename_Click" IsVisible="False">Batch Rename</Button>
+        <Button Grid.Column="9" Margin="10 0" Padding="10 10" ToolTip.Tip="Load info from files that are already on sd card" Click="ButtonPreload_Click" IsVisible="False">Preload</Button>
+        <Button Grid.Column="10" Margin="10 0" Padding="10 10" Click="ButtonSort_Click" IsVisible="False">Sort List</Button>
+        <Button Grid.Column="11" Margin="10 0" Padding="10 10" Click="ButtonBatchRename_Click" IsVisible="False">Batch Rename</Button>
       </Grid>
     </Grid>
 

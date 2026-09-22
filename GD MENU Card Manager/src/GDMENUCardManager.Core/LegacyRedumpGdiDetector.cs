@@ -72,7 +72,7 @@ namespace GDMENUCardManager.Core
 
                 return CheckTrackLayout(lines, trackFileName =>
                 {
-                    var file = new FileInfo(Path.Combine(gdiFolder, trackFileName));
+                    var file = new FileInfo(Helper.ResolveActualPath(Path.Combine(gdiFolder, trackFileName)));
                     return file.Exists ? file.Length : (long?)null;
                 });
             }

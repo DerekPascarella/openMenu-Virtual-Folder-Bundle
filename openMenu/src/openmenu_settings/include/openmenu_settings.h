@@ -67,6 +67,14 @@ extern uint8_t* sf_marquee_speed;
 #define sf_marquee_speed_type   CRAYON_TYPE_UINT8
 #define sf_marquee_speed_length 1
 
+extern uint8_t* sf_mouse_cursor_speed;
+#define sf_mouse_cursor_speed_type   CRAYON_TYPE_UINT8
+#define sf_mouse_cursor_speed_length 1
+
+extern uint8_t* sf_mouse_scroll_speed;
+#define sf_mouse_scroll_speed_type   CRAYON_TYPE_UINT8
+#define sf_mouse_scroll_speed_length 1
+
 extern uint8_t* sf_disc_details;
 #define sf_disc_details_type   CRAYON_TYPE_UINT8
 #define sf_disc_details_length 1
@@ -106,6 +114,22 @@ extern uint8_t* sf_music;
 extern uint8_t* sf_honor_defaults;
 #define sf_honor_defaults_type   CRAYON_TYPE_UINT8
 #define sf_honor_defaults_length 1
+
+extern uint8_t* sf_dcnow;
+#define sf_dcnow_type   CRAYON_TYPE_UINT8
+#define sf_dcnow_length 1
+
+extern uint8_t* sf_dcnow_refresh;
+#define sf_dcnow_refresh_type   CRAYON_TYPE_UINT8
+#define sf_dcnow_refresh_length 1
+
+extern uint8_t* sf_dcnow_vmu;
+#define sf_dcnow_vmu_type   CRAYON_TYPE_UINT8
+#define sf_dcnow_vmu_length 1
+
+extern uint8_t* sf_online_time_sync;
+#define sf_online_time_sync_type   CRAYON_TYPE_UINT8
+#define sf_online_time_sync_length 1
 
 extern uint8_t* sf_recently_played;
 #define sf_recently_played_type   CRAYON_TYPE_UINT8
@@ -195,6 +219,10 @@ enum savefile_version {
     SFV_HONOR_DEFAULTS,
     SFV_RECENTLY_PLAYED,
     SFV_REMEMBER_LAST_GAME,
+    SFV_DCNOW,
+    SFV_DCNOW_VMU,
+    SFV_ONLINE_TIME_SYNC,
+    SFV_MOUSE_SPEEDS,
     SFV_LATEST_PLUS_ONE // DON'T REMOVE
 };
 
@@ -340,6 +368,14 @@ typedef enum CFG_MARQUEE_SPEED {
     MARQUEE_SPEED_END = MARQUEE_SPEED_FAST
 } CFG_MARQUEE_SPEED;
 
+typedef enum CFG_MOUSE_SPEED {
+    MOUSE_SPEED_START = 0,
+    MOUSE_SPEED_SLOW = MOUSE_SPEED_START,
+    MOUSE_SPEED_MEDIUM,
+    MOUSE_SPEED_FAST,
+    MOUSE_SPEED_END = MOUSE_SPEED_FAST
+} CFG_MOUSE_SPEED;
+
 typedef enum CFG_DISC_DETAILS {
     DISC_DETAILS_START = 0,
     DISC_DETAILS_SHOW = DISC_DETAILS_START,
@@ -437,6 +473,62 @@ typedef enum CFG_HONOR_DEFAULTS {
     HONOR_DEFAULTS_END = HONOR_DEFAULTS_ON
 } CFG_HONOR_DEFAULTS;
 
+typedef enum CFG_DCNOW {
+    DCNOW_START = 0,
+    DCNOW_OFF = DCNOW_START,
+    DCNOW_ON,
+    DCNOW_AUTO_CONNECT,
+    DCNOW_END = DCNOW_AUTO_CONNECT
+} CFG_DCNOW;
+
+typedef enum CFG_DCNOW_REFRESH {
+    DCNOW_REFRESH_START = 0,
+    DCNOW_REFRESH_OFF = DCNOW_REFRESH_START,
+    DCNOW_REFRESH_10,
+    DCNOW_REFRESH_20,
+    DCNOW_REFRESH_30,
+    DCNOW_REFRESH_45,
+    DCNOW_REFRESH_60,
+    DCNOW_REFRESH_END = DCNOW_REFRESH_60
+} CFG_DCNOW_REFRESH;
+
+/* Refresh period in seconds for the current setting, zero when off. */
+static inline int
+dcnow_refresh_seconds(int setting) {
+    static const int seconds[] = {0, 10, 20, 30, 45, 60};
+    if (setting < DCNOW_REFRESH_START || setting > DCNOW_REFRESH_END) {
+        return 0;
+    }
+    return seconds[setting];
+}
+
+typedef enum CFG_DCNOW_VMU {
+    DCNOW_VMU_START = 0,
+    DCNOW_VMU_OFF = DCNOW_VMU_START,
+    DCNOW_VMU_ON,
+    DCNOW_VMU_END = DCNOW_VMU_ON
+} CFG_DCNOW_VMU;
+
+/* Off, then one entry per UTC offset from UTC-12 to UTC+14. */
+typedef enum CFG_ONLINE_TIME_SYNC {
+    ONLINE_TIME_SYNC_START = 0,
+    ONLINE_TIME_SYNC_OFF = ONLINE_TIME_SYNC_START,
+    ONLINE_TIME_SYNC_END = 38
+} CFG_ONLINE_TIME_SYNC;
+
+/* The chosen offset in minutes east of UTC, 0 for Off or a bad value. */
+static inline int
+online_time_sync_minutes(int setting) {
+    static const int minutes[] = {0,    -720, -660, -600, -570, -540, -480, -420, -360, -300, -240, -210, -180,
+                                  -120, -60,  0,    60,   120,  180,  210,  240,  270,  300,  330,  345,  360,
+                                  390,  420,  480,  525,  540,  570,  600,  630,  660,  720,  765,  780,  840};
+    _Static_assert(sizeof(minutes) / sizeof(minutes[0]) == ONLINE_TIME_SYNC_END + 1, "offset table size");
+    if (setting < ONLINE_TIME_SYNC_START || setting > ONLINE_TIME_SYNC_END) {
+        return 0;
+    }
+    return minutes[setting];
+}
+
 typedef CFG_REGION region;
 
 /* COMPACTION_TEST_START */
@@ -451,7 +543,8 @@ enum draw_state {
     DRAW_SAVELOAD,
     DRAW_COMPACTION_TEST,
     DRAW_SERIAL_VMU,
-    DRAW_RECENT_MANAGE
+    DRAW_RECENT_MANAGE,
+    DRAW_DCNOW
 };
 
 /* COMPACTION_TEST_END */

@@ -3,6 +3,7 @@ add_library(openmenu_settings
         src/openmenu_savefile.c
         src/openmenu_settings.c
         src/sd_savefile.c
+        src/vmu_sync_debug.c
 )
 target_sources(openmenu_settings
         PUBLIC

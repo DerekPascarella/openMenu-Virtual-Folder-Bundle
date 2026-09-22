@@ -165,7 +165,7 @@ namespace GDMENUCardManager.Core
 
             foreach (var track in dataTracks)
             {
-                var trackPath = Path.Combine(baseFolder, track);
+                var trackPath = Helper.ResolveActualPath(Path.Combine(baseFolder, track));
                 if (File.Exists(trackPath))
                 {
                     result.Details.Add($"Processing track: {track}");
@@ -434,7 +434,7 @@ namespace GDMENUCardManager.Core
 
             foreach (var ext in possibleExtensions)
             {
-                var dataPath = basePath + ext;
+                var dataPath = Helper.ResolveActualPath(basePath + ext);
                 if (File.Exists(dataPath))
                     return dataPath;
             }

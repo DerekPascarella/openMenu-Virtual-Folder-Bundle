@@ -400,6 +400,7 @@
                     <ColumnDefinition Width="auto"/>
                     <ColumnDefinition Width="auto"/>
                     <ColumnDefinition Width="auto"/>
+                    <ColumnDefinition Width="auto"/>
                     <ColumnDefinition Width="1*"/>
                     <ColumnDefinition Width="auto"/>
                     <ColumnDefinition Width="auto"/>
@@ -425,14 +426,15 @@
                     </Viewbox>
                 </Button>
                 <CheckBox Grid.Column="4" x:Name="cbLockCheck" VerticalAlignment="Center" Margin="10 0" IsChecked="{Binding EnableLockCheck, Mode=TwoWay}" ToolTip="Check for locked files/folders before saving">File/Folder Lock Check</CheckBox>
-                <Button Grid.Column="5" Margin="10 0" Padding="0 10" Click="ButtonSaveChanges_Click" FontWeight="Bold" ToolTip="Save changes to SD card" IsEnabled="{Binding IsNotFilterActive, Mode=OneWay}">Save Changes</Button>
-                <Button Grid.Column="6" Margin="0 0 5 0" Padding="10 10" Click="ButtonUndo_Click" ToolTip="Undo last change"
+                <CheckBox Grid.Column="5" x:Name="cbFatSort" VerticalAlignment="Center" Margin="0 0 10 0" IsChecked="{Binding EnableFatSort, Mode=TwoWay}" ToolTip="Perform a FAT sort of the SD card after saving (not required by GDEMU, but keeps the root directory entries in numeric order)">FAT Sort</CheckBox>
+                <Button Grid.Column="6" Margin="10 0" Padding="0 10" Click="ButtonSaveChanges_Click" FontWeight="Bold" ToolTip="Save changes to SD card" IsEnabled="{Binding IsNotFilterActive, Mode=OneWay}">Save Changes</Button>
+                <Button Grid.Column="7" Margin="0 0 5 0" Padding="10 10" Click="ButtonUndo_Click" ToolTip="Undo last change"
                         IsEnabled="{Binding Manager.UndoManager.CanUndo, Mode=OneWay}">Undo</Button>
-                <Button Grid.Column="7" Margin="5 0 10 0" Padding="10 10" Click="ButtonRedo_Click" ToolTip="Redo last change"
+                <Button Grid.Column="8" Margin="5 0 10 0" Padding="10 10" Click="ButtonRedo_Click" ToolTip="Redo last change"
                         IsEnabled="{Binding Manager.UndoManager.CanRedo, Mode=OneWay}">Redo</Button>
-                <Button Grid.Column="8" Margin="10 0" Padding="10 10" ToolTip="Load info from files that are already on sd card" Click="ButtonPreload_Click" Visibility="Collapsed">Preload</Button>
-                <Button Grid.Column="9" Margin="10 0" Padding="10 10" Click="ButtonSort_Click" Visibility="Collapsed">Sort List</Button>
-                <Button Grid.Column="10" Margin="10 0" Padding="10 10" Click="ButtonBatchRename_Click" Visibility="Collapsed">Batch Rename</Button>
+                <Button Grid.Column="9" Margin="10 0" Padding="10 10" ToolTip="Load info from files that are already on sd card" Click="ButtonPreload_Click" Visibility="Collapsed">Preload</Button>
+                <Button Grid.Column="10" Margin="10 0" Padding="10 10" Click="ButtonSort_Click" Visibility="Collapsed">Sort List</Button>
+                <Button Grid.Column="11" Margin="10 0" Padding="10 10" Click="ButtonBatchRename_Click" Visibility="Collapsed">Batch Rename</Button>
             </Grid>
         </Grid>
 

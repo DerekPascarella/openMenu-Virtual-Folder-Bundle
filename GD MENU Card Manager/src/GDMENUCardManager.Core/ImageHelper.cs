@@ -1109,12 +1109,12 @@ namespace GDMENUCardManager.Core
                 if (ext == ".ccd")
                 {
 
-                    var img = Path.ChangeExtension(filePath, ".img");
+                    var img = Helper.ResolveActualPath(Path.ChangeExtension(filePath, ".img"));
                     if (!File.Exists(img))
                         throw new Exception("Missing file: " + img);
                     item.ImageFiles.Add(Path.GetFileName(img));
 
-                    var sub = Path.ChangeExtension(filePath, ".sub");
+                    var sub = Helper.ResolveActualPath(Path.ChangeExtension(filePath, ".sub"));
                     if (File.Exists(sub))
                         item.ImageFiles.Add(Path.GetFileName(sub));
 
@@ -1122,7 +1122,7 @@ namespace GDMENUCardManager.Core
                 }
                 else if (ext == ".mds")
                 {
-                    var mdf = Path.ChangeExtension(filePath, ".mdf");
+                    var mdf = Helper.ResolveActualPath(Path.ChangeExtension(filePath, ".mdf"));
                     if (!File.Exists(mdf))
                         throw new Exception("Missing file: " + mdf);
                     item.ImageFiles.Add(Path.GetFileName(mdf));
@@ -1387,13 +1387,14 @@ namespace GDMENUCardManager.Core
         private static async Task<string[]> GetGdiFileListAsync(string gdiFilePath)
         {
             var tracks = new List<string>();
+            var folder = Path.GetDirectoryName(gdiFilePath);
 
             var files = await File.ReadAllLinesAsync(gdiFilePath);
             foreach (var item in files.Skip(1))
             {
                 var m = RegularExpressions.GdiRegexp.Match(item);
                 if (m.Success)
-                    tracks.Add(m.Groups[1].Value);
+                    tracks.Add(Helper.ResolveActualFileName(folder, m.Groups[1].Value));
             }
             return tracks.ToArray();
         }

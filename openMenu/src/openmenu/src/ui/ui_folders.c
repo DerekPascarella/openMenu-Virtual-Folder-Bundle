@@ -25,12 +25,15 @@
 #include <openmenu_settings.h>
 #include "backend/last_game.h"
 #include "dc/input.h"
+#include "dc/mouse.h"
 #include "texture/txr_manager.h"
 #include "ui/draw_prototypes.h"
 #include "ui/font_prototypes.h"
 #include "ui/marquee.h"
+#include "ui/menu_mouse.h"
 #include "ui/theme_manager.h"
 #include "ui/ui_common.h"
+#include "ui/ui_dcnow.h"
 #include "ui/ui_menu_credits.h"
 
 #include "ui/ui_folders.h"
@@ -109,7 +112,10 @@ static int current_selected_item = 0;
 static int current_starting_index = 0;
 static int navigate_timeout = INPUT_TIMEOUT_INITIAL;
 static enum draw_state draw_current = DRAW_UI;
+static mouse_scroll_state_t wheel_scroll;
+static uint32_t wheel_scroll_identity;
 static bool serial_vmu_boot_checked = false;
+static bool dcnow_boot_started = false;
 
 /* Recently played view state. The view is entered from the pinned root
  * entry and behaves like a one level deep folder. */
@@ -132,7 +138,117 @@ static char cusor_step = -5;
 #define Y_ADJUST_TEXT   4
 #define Y_ADJUST_CRSR   3
 
+static struct {
+    bool open;
+    bool cheats;
+    int x, y, width, height;
+    int selection, index, list_len;
+    unsigned int slot, identity;
+    const gd_item** list;
+} disc_options;
+
 /* Helper functions */
+
+static dimen_RECT
+folder_row_rect(int row) {
+    int threshold = cur_theme->list_marquee_threshold ? cur_theme->list_marquee_threshold : 49;
+    dimen_RECT rect = {
+        .x = cur_theme->list_x ? cur_theme->list_x : 12,
+        .y = (cur_theme->list_y ? cur_theme->list_y : 68) + Y_ADJUST_TEXT - Y_ADJUST_CRSR + row * ITEM_SPACING,
+        .w = X_ADJUST_TEXT * 2 + threshold * FONT_CHAR_WIDTH,
+        .h = CURSOR_HEIGHT,
+    };
+    if (cur_theme->items_per_page > 0 && list_len > cur_theme->items_per_page) {
+        rect.w -= 4;
+    }
+    return rect;
+}
+
+static mouse_scrollbar_t
+folder_scrollbar(void) {
+    dimen_RECT row = folder_row_rect(0);
+    int page = cur_theme->items_per_page;
+    mouse_scrollbar_t bar = {row.x + row.w,   row.y, 4, (page - 1) * ITEM_SPACING + CURSOR_HEIGHT, row.y, 0, 0,
+                             list_len - page, page};
+    if (page <= 0 || list_len <= page) {
+        bar.maximum = 0;
+        return bar;
+    }
+    bar.thumb_height = (int)((int64_t)bar.height * page / list_len);
+    if (bar.thumb_height < 16) {
+        bar.thumb_height = 16;
+    }
+    if (bar.thumb_height > bar.height) {
+        bar.thumb_height = bar.height;
+    }
+    int offset = current_starting_index;
+    if (offset < 0) {
+        offset = 0;
+    } else if (offset > bar.maximum) {
+        offset = bar.maximum;
+    }
+    bar.thumb_y += (int)((int64_t)(bar.height - bar.thumb_height) * offset / bar.maximum);
+    return bar;
+}
+
+static uint32_t
+folder_scrollbar_identity(void) {
+    list_view view;
+    list_view_get(&view);
+    int state[] = {view.kind, view.drill_type, view.drill_num, in_recent_view, draw_current};
+    uint32_t hash = menu_mouse_hash(2166136261u, state, sizeof(state));
+    hash = menu_mouse_hash(hash, &list_current, sizeof(list_current));
+    if (view.folder_path) {
+        hash = menu_mouse_hash(hash, view.folder_path, strlen(view.folder_path));
+    }
+    return hash;
+}
+
+static int
+mouse_list_row(int x, int y) {
+    if (x < 0 || x >= 640 || y < 0 || y >= 480 || cur_theme->items_per_page <= 0) {
+        return -1;
+    }
+    dimen_RECT rect = folder_row_rect(0);
+    if (x < rect.x || x >= rect.x + rect.w || y < rect.y) {
+        return -1;
+    }
+    int row = (y - rect.y) / ITEM_SPACING;
+    int index = current_starting_index + row;
+    if (row >= cur_theme->items_per_page || index < 0 || index >= list_len || (y - rect.y) % ITEM_SPACING >= rect.h) {
+        return -1;
+    }
+    return index;
+}
+
+static void
+mouse_select_row(int index) {
+    if (index >= 0 && index < list_len && index != current_selected_item) {
+        current_selected_item = index;
+        marquee_reset();
+    }
+}
+
+static void
+mouse_scroll_list(int steps) {
+    int page = cur_theme->items_per_page;
+    if (page <= 0 || list_len <= page) {
+        return;
+    }
+    int max_start = list_len - page;
+    int64_t start = (int64_t)current_starting_index + steps;
+    if (start < 0) {
+        start = 0;
+    } else if (start > max_start) {
+        start = max_start;
+    }
+    current_starting_index = (int)start;
+    if (current_selected_item < current_starting_index) {
+        mouse_select_row(current_starting_index);
+    } else if (current_selected_item >= current_starting_index + page) {
+        mouse_select_row(current_starting_index + page - 1);
+    }
+}
 
 static void
 draw_bg_layers(void) {
@@ -156,6 +272,17 @@ draw_gamelist(void) {
     int visible_items = (list_len - current_starting_index) < cur_theme->items_per_page
                             ? (list_len - current_starting_index)
                             : cur_theme->items_per_page;
+    dimen_RECT first_row = folder_row_rect(0);
+    int list_x = first_row.x;
+    int list_y = first_row.y - Y_ADJUST_TEXT + Y_ADJUST_CRSR;
+    int marquee_threshold = cur_theme->list_marquee_threshold ? cur_theme->list_marquee_threshold : 49;
+    const int scrollbar_width = 4;
+    bool show_scrollbar = cur_theme->items_per_page > 0 && list_len > cur_theme->items_per_page;
+    int cursor_width = first_row.w;
+    int text_width = cur_theme->list_marquee_threshold * FONT_CHAR_WIDTH;
+    if (show_scrollbar) {
+        text_width = marquee_threshold * FONT_CHAR_WIDTH - scrollbar_width;
+    }
 
 #ifndef STANDALONE_BINARY
     int hide_multidisc = sf_multidisc[0];
@@ -186,10 +313,6 @@ draw_gamelist(void) {
 
         if (is_selected) {
             uint32_t cursor_color = (cur_theme->cursor_color & 0x00FFFFFF) | PVR_PACK_ARGB(cusor_alpha, 0, 0, 0);
-            int list_x = cur_theme->list_x ? cur_theme->list_x : 12;
-            int list_y = cur_theme->list_y ? cur_theme->list_y : 68;
-            int marquee_threshold = cur_theme->list_marquee_threshold ? cur_theme->list_marquee_threshold : 49;
-            int cursor_width = (X_ADJUST_TEXT * 2) + (marquee_threshold * FONT_CHAR_WIDTH);
             draw_draw_quad(list_x, list_y + Y_ADJUST_TEXT + (i * ITEM_SPACING) - Y_ADJUST_CRSR, cursor_width,
                            CURSOR_HEIGHT, cursor_color);
 
@@ -203,36 +326,41 @@ draw_gamelist(void) {
             int name_len = strlen(buffer);
 
             /* Folder rows are wrapped in brackets by the list builder. */
-            if (buffer[0] == '[' && name_len > 2) {
+            if (buffer[0] == '[' && name_len > 2 && (!show_scrollbar || buffer[name_len - 1] == ']')) {
                 char* inner_start = &buffer[1];
                 char* bracket_end = strrchr(buffer, ']');
-                if (bracket_end && bracket_end > inner_start) {
+                if (bracket_end && bracket_end > inner_start
+                    && (!show_scrollbar || text_width >= 2 * FONT_CHAR_WIDTH)) {
                     int inner_len = bracket_end - inner_start;
 
-                    int inner_threshold = cur_theme->list_marquee_threshold - 2;
-                    if (inner_len > inner_threshold) {
+                    int inner_width = text_width - 2 * FONT_CHAR_WIDTH;
+                    if (inner_len * FONT_CHAR_WIDTH > inner_width) {
                         /* Brackets stay put while the name slides between them */
-                        marquee_tick((inner_len - inner_threshold) * FONT_CHAR_WIDTH);
+                        marquee_tick(inner_len * FONT_CHAR_WIDTH - inner_width);
 
                         int tx = list_x + X_ADJUST_TEXT;
                         int ty = list_y + Y_ADJUST_TEXT + (i * ITEM_SPACING);
                         char saved_char = *bracket_end;
                         *bracket_end = '\0';
                         font_bmp_draw_main(tx, ty, "[");
-                        font_bmp_draw_window(tx + FONT_CHAR_WIDTH, ty, inner_threshold * FONT_CHAR_WIDTH,
-                                             marquee_offset_px(), inner_start);
-                        font_bmp_draw_main(tx + (cur_theme->list_marquee_threshold - 1) * FONT_CHAR_WIDTH, ty, "]");
+                        font_bmp_draw_window(tx + FONT_CHAR_WIDTH, ty, inner_width, marquee_offset_px(), inner_start);
+                        font_bmp_draw_main(tx + text_width - FONT_CHAR_WIDTH, ty, "]");
                         *bracket_end = saved_char;
                     } else {
                         font_bmp_draw_main(list_x + X_ADJUST_TEXT, list_y + Y_ADJUST_TEXT + (i * ITEM_SPACING), buffer);
                     }
                 } else {
-                    font_bmp_draw_main(list_x + X_ADJUST_TEXT, list_y + Y_ADJUST_TEXT + (i * ITEM_SPACING), buffer);
+                    if (show_scrollbar) {
+                        font_bmp_draw_window(list_x + X_ADJUST_TEXT, list_y + Y_ADJUST_TEXT + (i * ITEM_SPACING),
+                                             text_width, 0, buffer);
+                    } else {
+                        font_bmp_draw_main(list_x + X_ADJUST_TEXT, list_y + Y_ADJUST_TEXT + (i * ITEM_SPACING), buffer);
+                    }
                 }
-            } else if (name_len > cur_theme->list_marquee_threshold) {
-                marquee_tick((name_len - cur_theme->list_marquee_threshold) * FONT_CHAR_WIDTH);
-                font_bmp_draw_window(list_x + X_ADJUST_TEXT, list_y + Y_ADJUST_TEXT + (i * ITEM_SPACING),
-                                     cur_theme->list_marquee_threshold * FONT_CHAR_WIDTH, marquee_offset_px(), buffer);
+            } else if (name_len * FONT_CHAR_WIDTH > text_width) {
+                marquee_tick(name_len * FONT_CHAR_WIDTH - text_width);
+                font_bmp_draw_window(list_x + X_ADJUST_TEXT, list_y + Y_ADJUST_TEXT + (i * ITEM_SPACING), text_width,
+                                     marquee_offset_px(), buffer);
             } else {
                 font_bmp_draw_main(list_x + X_ADJUST_TEXT, list_y + Y_ADJUST_TEXT + (i * ITEM_SPACING), buffer);
             }
@@ -240,20 +368,39 @@ draw_gamelist(void) {
             font_bmp_set_color(cur_theme->colors.text_color);
 
             int name_len = strlen(buffer);
-            if (name_len > cur_theme->list_marquee_threshold) {
-                if (buffer[0] == '[' && name_len > 2) {
-                    /* Truncate inside the brackets so the row still reads as a folder. */
-                    buffer[cur_theme->list_marquee_threshold - 1] = ']';
-                    buffer[cur_theme->list_marquee_threshold] = '\0';
+            int tx = list_x + X_ADJUST_TEXT;
+            int ty = list_y + Y_ADJUST_TEXT + (i * ITEM_SPACING);
+            if (show_scrollbar && name_len * FONT_CHAR_WIDTH > text_width) {
+                if (buffer[0] == '[' && name_len > 2 && text_width >= 2 * FONT_CHAR_WIDTH) {
+                    char* bracket_end = strrchr(buffer, ']');
+                    if (bracket_end && bracket_end[1] == '\0') {
+                        *bracket_end = '\0';
+                    }
+                    font_bmp_draw_main(tx, ty, "[");
+                    font_bmp_draw_window(tx + FONT_CHAR_WIDTH, ty, text_width - 2 * FONT_CHAR_WIDTH, 0, &buffer[1]);
+                    font_bmp_draw_main(tx + text_width - FONT_CHAR_WIDTH, ty, "]");
                 } else {
-                    buffer[cur_theme->list_marquee_threshold] = '\0';
+                    font_bmp_draw_window(tx, ty, text_width, 0, buffer);
                 }
+            } else {
+                if (name_len > cur_theme->list_marquee_threshold) {
+                    if (buffer[0] == '[' && name_len > 2) {
+                        /* Truncate inside the brackets so the row still reads as a folder. */
+                        buffer[cur_theme->list_marquee_threshold - 1] = ']';
+                        buffer[cur_theme->list_marquee_threshold] = '\0';
+                    } else {
+                        buffer[cur_theme->list_marquee_threshold] = '\0';
+                    }
+                }
+                font_bmp_draw_main(tx, ty, buffer);
             }
-
-            int list_x = cur_theme->list_x ? cur_theme->list_x : 12;
-            int list_y = cur_theme->list_y ? cur_theme->list_y : 68;
-            font_bmp_draw_main(list_x + X_ADJUST_TEXT, list_y + Y_ADJUST_TEXT + (i * ITEM_SPACING), buffer);
         }
+    }
+
+    if (show_scrollbar) {
+        mouse_scrollbar_t bar = folder_scrollbar();
+        uint32_t scrollbar_color = cur_theme->colors.menu_highlight_color | PVR_PACK_ARGB(255, 0, 0, 0);
+        draw_draw_quad(bar.x, bar.thumb_y, bar.width, bar.thumb_height, scrollbar_color);
     }
 
     if (cusor_alpha == 255) {
@@ -472,33 +619,6 @@ draw_clock(void) {
     font_bmp_draw_main(right_x, clock_y, clock_buf);
 }
 
-/* VMU_SYNC_DEBUG_START */
-#if DEBUG_VMU_SYNC
-/* VMU Time Sync Debug Display - enable DEBUG_VMU_SYNC in openmenu_debug.h */
-static void
-draw_vmu_sync_debug(void) {
-#ifdef _arch_dreamcast
-    /* Only show if VMU Time Sync is enabled */
-    if (sf_vmu_time_sync[0] != VMU_TIME_SYNC_ON) {
-        return;
-    }
-
-    /* Draw debug info at bottom of screen */
-    font_bmp_begin_draw();
-    font_bmp_set_color(PVR_PACK_ARGB(255, 255, 255, 0)); /* Yellow text */
-
-    /* Draw header and five lines of debug info */
-    font_bmp_draw_main(10, 375, "--- VMU TIME SYNC DEBUG (0=OK, -999=not called) ---");
-    font_bmp_draw_main(10, 390, get_vmu_sync_debug_line1());
-    font_bmp_draw_main(10, 405, get_vmu_sync_debug_line2());
-    font_bmp_draw_main(10, 420, get_vmu_sync_debug_line3());
-    font_bmp_draw_main(10, 435, get_vmu_sync_debug_line4());
-    font_bmp_draw_main(10, 450, get_vmu_sync_debug_line5());
-#endif
-}
-#endif
-/* VMU_SYNC_DEBUG_END */
-
 /* Navigation functions */
 
 static void
@@ -605,6 +725,7 @@ leave_recent_view(void) {
 
 static void
 run_cb(void) {
+    mouse_reset();
     /* printf("run_cb: Starting\n"); */
     const gd_item* item = list_current[current_selected_item];
     int disc_set = gd_item_disc_total(item->disc);
@@ -661,6 +782,7 @@ menu_accept(void) {
         return;
     }
 
+    mouse_reset();
     const gd_item* item = list_current[current_selected_item];
 
     if (!strncmp(item->disc, "DIR", 3)) {
@@ -847,6 +969,209 @@ menu_go_back(void) {
     }
 }
 
+static bool
+disc_options_valid(void) {
+    if (!disc_options.open || draw_current != DRAW_UI || disc_options.list != list_current
+        || disc_options.list_len != list_len || disc_options.index < 0 || disc_options.index >= list_len) {
+        return false;
+    }
+    const gd_item* item = list_current[disc_options.index];
+    return item->slot_num == disc_options.slot && gd_item_recent_hash(item) == disc_options.identity
+           && strncmp(item->disc, "DIR", 3) != 0 && (strcmp(item->type, "game") == 0) == disc_options.cheats;
+}
+
+static void
+open_disc_options(int index, int x, int y) {
+    if (index < 0 || index >= list_len || !strncmp(list_current[index]->disc, "DIR", 3)) {
+        return;
+    }
+    const gd_item* item = list_current[index];
+    disc_options.cheats = strcmp(item->type, "game") == 0;
+    disc_options.width = 160;
+    disc_options.height = disc_options.cheats ? 78 : 54;
+    if (x + disc_options.width + 2 > 606) {
+        x -= disc_options.width + 2;
+    }
+    if (y + disc_options.height + 2 > 446) {
+        y -= disc_options.height + 2;
+    }
+    if (x < 36) {
+        x = 36;
+    } else if (x > 604 - disc_options.width) {
+        x = 604 - disc_options.width;
+    }
+    if (y < 36) {
+        y = 36;
+    } else if (y > 444 - disc_options.height) {
+        y = 444 - disc_options.height;
+    }
+    disc_options.x = x;
+    disc_options.y = y;
+    disc_options.index = index;
+    disc_options.slot = item->slot_num;
+    disc_options.identity = gd_item_recent_hash(item);
+    disc_options.list = list_current;
+    disc_options.list_len = list_len;
+    disc_options.selection = 0;
+    disc_options.open = true;
+    navigate_timeout = 0;
+    direction_current = false;
+    direction_last = false;
+    menu_mouse_invalidate();
+}
+
+static int
+disc_options_row(int x, int y) {
+    int top = disc_options.y + 26;
+    int count = disc_options.cheats ? 2 : 1;
+    if (x < disc_options.x + 8 || x >= disc_options.x + disc_options.width - 8 || y < top || y >= top + count * 24) {
+        return -1;
+    }
+    return (y - top) / 24;
+}
+
+static void
+activate_disc_options(void) {
+    if (!disc_options_valid()) {
+        disc_options.open = false;
+        return;
+    }
+    mouse_select_row(disc_options.index);
+    disc_options.open = false;
+    if (disc_options.cheats && disc_options.selection == 0) {
+        menu_cb();
+    } else {
+        menu_exit();
+    }
+}
+
+static bool
+handle_disc_options(enum control input) {
+    const mouse_frame_t* mouse = mouse_get_state();
+    if (!disc_options_valid() || !mouse->present || mouse->changed) {
+        disc_options.open = false;
+        return true;
+    }
+    bool outside = mouse->x < disc_options.x - 2 || mouse->x >= disc_options.x + disc_options.width + 2
+                   || mouse->y < disc_options.y - 2 || mouse->y >= disc_options.y + disc_options.height + 2;
+    if (outside && (mouse->pressed & (MOUSE_LEFT | MOUSE_RIGHT))) {
+        disc_options.open = false;
+        return true;
+    }
+    int row = disc_options_row(mouse->x, mouse->y);
+    if (mouse->pressed & MOUSE_RIGHT) {
+        return true;
+    }
+    if (mouse->pressed & MOUSE_LEFT) {
+        if (row >= 0) {
+            disc_options.selection = row;
+            activate_disc_options();
+        }
+        return true;
+    }
+    if (mouse->pressed || mouse->wheel) {
+        return true;
+    }
+    if (mouse->moved && row >= 0) {
+        disc_options.selection = row;
+    }
+    direction_last = direction_current;
+    direction_current = input == UP || input == DOWN;
+    if (input == B) {
+        disc_options.open = false;
+    } else if (input == A) {
+        activate_disc_options();
+    } else if (direction_current && (!direction_held || navigate_timeout <= 0)) {
+        int count = disc_options.cheats ? 2 : 1;
+        disc_options.selection = (disc_options.selection + (input == DOWN ? 1 : count - 1)) % count;
+        navigate_timeout = direction_held ? INPUT_TIMEOUT_REPEAT : INPUT_TIMEOUT_INITIAL;
+    }
+    return true;
+}
+
+static bool
+handle_mouse_ui(void) {
+    const mouse_frame_t* mouse = mouse_get_state();
+    if (!mouse->present) {
+        wheel_scroll.remainder = 0;
+        return mouse_scrollbar_read(NULL, 0, NULL);
+    }
+    uint32_t identity = folder_scrollbar_identity();
+    if (mouse->changed || identity != wheel_scroll_identity) {
+        wheel_scroll.remainder = 0;
+    }
+    wheel_scroll_identity = identity;
+    mouse_scrollbar_t bar = folder_scrollbar();
+    if (mouse_scrollbar_read(&bar, identity, &current_starting_index)) {
+        wheel_scroll.remainder = 0;
+        mouse_scroll_list(0);
+        return true;
+    }
+    int row = mouse_list_row(mouse->x, mouse->y);
+    if (mouse->pressed & MOUSE_THIRD) {
+        menu_settings();
+        return true;
+    }
+    if (mouse->pressed & MOUSE_RIGHT) {
+        if (row >= 0) {
+            if (strncmp(list_current[row]->disc, "DIR", 3) != 0) {
+                mouse_select_row(row);
+                open_disc_options(row, mouse->x, mouse->y);
+            }
+        } else {
+            menu_go_back();
+        }
+        return true;
+    }
+    if (mouse->pressed & MOUSE_LEFT) {
+        if (row >= 0) {
+            mouse_select_row(row);
+            menu_accept();
+        }
+        return true;
+    }
+    if (mouse->wheel) {
+        int steps = mouse_scroll_steps(mouse->wheel, &wheel_scroll);
+        if (steps) {
+            mouse_scroll_list(steps);
+        }
+        if (bar.maximum <= 0 || (current_starting_index == 0 && mouse->wheel < 0)
+            || (current_starting_index >= bar.maximum && mouse->wheel > 0)) {
+            wheel_scroll.remainder = 0;
+        }
+        return true;
+    }
+    if (mouse->moved && row >= 0) {
+        mouse_select_row(row);
+    }
+    return false;
+}
+
+static void
+draw_disc_options(void) {
+    if (!disc_options_valid()) {
+        disc_options.open = false;
+        return;
+    }
+    int x = disc_options.x;
+    int y = disc_options.y;
+    int width = disc_options.width;
+    int height = disc_options.height;
+    z_set_cond(205.0f);
+    draw_draw_quad(x - 2, y - 2, width + 4, height + 4, cur_theme->colors.menu_bkg_border_color);
+    draw_draw_quad(x, y, width, height, cur_theme->colors.menu_bkg_color);
+    draw_draw_quad(x, y, width, 20, cur_theme->colors.menu_bkg_border_color);
+    font_bmp_begin_draw();
+    font_bmp_set_color(cur_theme->menu_title_color);
+    font_bmp_draw_main(x + width / 2 - 48, y + 2, "Disc Options");
+    int count = disc_options.cheats ? 2 : 1;
+    for (int i = 0; i < count; i++) {
+        font_bmp_set_color(i == disc_options.selection ? cur_theme->colors.menu_highlight_color
+                                                       : cur_theme->colors.menu_text_color);
+        font_bmp_draw_main(x + 8, y + 28 + i * 24, disc_options.cheats && i == 0 ? "Use Cheats" : "Exit to BIOS");
+    }
+}
+
 /* Quick-jump: check for Shift+Key and jump to first matching item */
 static void
 handle_keyboard_quickjump(void) {
@@ -993,6 +1318,10 @@ FUNCTION(UI_NAME, init) {
 }
 
 FUNCTION(UI_NAME, setup) {
+    mouse_reset();
+    wheel_scroll.remainder = 0;
+    menu_mouse_invalidate();
+    disc_options.open = false;
     in_recent_view = false;
     recent_return_pos = 0;
 
@@ -1034,22 +1363,28 @@ FUNCTION(UI_NAME, drawTR) {
     draw_gameart();
     draw_item_details();
     draw_clock();
-#if DEBUG_VMU_SYNC
-    draw_vmu_sync_debug(); /* Enable DEBUG_VMU_SYNC in openmenu_debug.h */
-#endif
 
     /* Check for pending Serial VMU backup on first frame */
     if (!serial_vmu_boot_checked && draw_current == DRAW_UI) {
         serial_vmu_boot_checked = true;
         serial_vmu_check_boot_backup(&draw_current, &cur_theme->colors, &navigate_timeout, cur_theme->menu_title_color);
     }
+    if (!dcnow_boot_started && draw_current == DRAW_UI) {
+        dcnow_boot_started = true;
+        dcnow_boot_autostart();
+    }
 
-    switch (draw_current) {
+    enum draw_state render_owner = draw_current;
+    menu_mouse_begin(render_owner);
+    switch (render_owner) {
         case DRAW_MENU: {
             draw_menu_tr();
         } break;
         case DRAW_CREDITS: {
             draw_credits_tr();
+        } break;
+        case DRAW_DCNOW: {
+            draw_dcnow_tr();
         } break;
         case DRAW_MULTIDISC: {
             draw_multidisc_tr();
@@ -1084,17 +1419,60 @@ FUNCTION(UI_NAME, drawTR) {
             /* Game list and artwork already drawn above */
         } break;
     }
+    if (draw_current != render_owner) {
+        menu_mouse_invalidate();
+        mouse_reset();
+    } else {
+        menu_mouse_end();
+    }
+    if (disc_options.open) {
+        draw_disc_options();
+    }
+    draw_hangup_overlay(&cur_theme->colors, cur_theme->menu_title_color);
+    draw_device_warnings(&cur_theme->colors, cur_theme->menu_title_color, UI_FOLDERS);
+#if DEBUG_VMU_SYNC
+    draw_vmu_sync_debug(&cur_theme->colors);
+#endif
+    mouse_draw_cursor(cur_theme->colors.menu_text_color, cur_theme->colors.menu_bkg_color);
 }
 
 FUNCTION_INPUT(UI_NAME, handle_input) {
     enum control input_current = button;
+    if (disc_options.open) {
+        wheel_scroll.remainder = 0;
+        if (mouse_scrollbar_read(NULL, 0, NULL)) {
+            navigate_timeout--;
+            return;
+        }
+        handle_disc_options(input_current);
+        navigate_timeout--;
+        return;
+    }
+    enum draw_state owner = draw_current;
+    if (owner == DRAW_UI) {
+        if (handle_mouse_ui()) {
+            navigate_timeout--;
+            return;
+        }
+    } else {
+        wheel_scroll.remainder = 0;
+        handle_mouse_menu(&input_current);
+    }
+    if (input_current == A
+        && (owner == DRAW_MULTIDISC || owner == DRAW_EXIT || owner == DRAW_CODEBREAKER || owner == DRAW_PSX_LAUNCHER
+            || owner == DRAW_SERIAL_VMU)) {
+        mouse_reset();
+    }
 
-    switch (draw_current) {
+    switch (owner) {
         case DRAW_MENU: {
             handle_input_menu(input_current);
         } break;
         case DRAW_CREDITS: {
             handle_input_credits(input_current);
+        } break;
+        case DRAW_DCNOW: {
+            handle_input_dcnow(input_current);
         } break;
         case DRAW_MULTIDISC: {
             handle_input_multidisc(input_current);

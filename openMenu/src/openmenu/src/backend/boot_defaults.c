@@ -1,13 +1,14 @@
 /*
  * File: boot_defaults.c
  * Project: backend
- * Description: Boot style/theme override from /cd/DEFAULTS.INI
+ * Description: Boot options from /cd/DEFAULTS.INI
  *
  * GDMENUCardManager can bake a DEFAULTS.INI into the menu disc naming a
- * style and theme that should win over the savefile at boot. The user can
- * opt back out on the console with the Honor Menu Defaults setting. Only
- * the style and theme variables are ever touched here, every other saved
- * setting is honored as loaded.
+ * style and theme that should win over the savefile at boot, plus disc
+ * options that do not alter saved settings. The user can opt back out of
+ * style and theme overrides with the Honor Menu Defaults setting. Only the
+ * style and theme variables are ever touched here, every other saved setting
+ * is honored as loaded.
  */
 
 #include <stdint.h>
@@ -26,6 +27,7 @@
 #define DEFAULTS_FILE "/cd/DEFAULTS.INI"
 
 static int defaults_present = 0;
+static int serial_sd_warning = 0;
 
 /* The style and theme that were active before the override, so turning
  * Honor Menu Defaults off can bring them back without a reboot */
@@ -42,7 +44,9 @@ static char ini_theme[16];
 static int
 read_defaults_ini(void* user, const char* section, const char* name, const char* value) {
     (void)user;
-    if (strcasecmp(section, "DEFAULTS") == 0) {
+    if (strcasecmp(section, "MISC") == 0 && strcasecmp(name, "serial_sd_warning") == 0) {
+        serial_sd_warning = strcmp(value, "1") == 0;
+    } else if (strcasecmp(section, "DEFAULTS") == 0) {
         if (strcasecmp(name, "STYLE") == 0) {
             strncpy(ini_style, value, sizeof(ini_style) - 1);
         } else if (strcasecmp(name, "THEME") == 0) {
@@ -149,6 +153,8 @@ apply_theme(int style) {
 
 void
 boot_defaults_apply(void) {
+    serial_sd_warning = 0;
+
     file_t fd = fs_open(DEFAULTS_FILE, O_RDONLY);
     if (fd == -1) {
         return;
@@ -222,6 +228,11 @@ boot_defaults_apply(void) {
 
     /* clamps anything odd and derives the packed sf_region for customs */
     settings_sanitize();
+}
+
+int
+boot_defaults_serial_sd_warning_enabled(void) {
+    return serial_sd_warning;
 }
 
 int

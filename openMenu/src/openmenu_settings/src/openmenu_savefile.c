@@ -6,6 +6,7 @@
 #include <dc/maple.h>
 #include <dc/maple/vmu.h>
 #include <dc/video.h>
+#include <kos/genwait.h>
 #include <kos/thread.h>
 #include <stdlib.h>
 
@@ -27,34 +28,57 @@ debug_flash_sf(uint8_t r, uint8_t g, uint8_t b) {
 
 #include <crayon_savefile/savefile.h>
 #include <stdbool.h>
+#include <string.h>
 
 #include "openmenu_savefile.h"
 #include "openmenu_settings.h"
+#include "vmu_sync_debug.h"
 
 /* Images and such */
-#if __has_include("openmenu_lcd.h") && __has_include("openmenu_pal.h") && __has_include("openmenu_vmu.h")
+#if __has_include("openmenu_lcd.h")                                                                                    \
+                  && __has_include(                                                                                    \
+                      "openmenu_pal.h")                                                                                \
+                      && __has_include(                                                                                \
+                          "openmenu_vmu.h")                                                                            \
+                          && __has_include(                                                                            \
+                              "openmenu_lcd_dcnow_off.h")                                                              \
+                              && __has_include("openmenu_lcd_dcnow_on.h")                                              \
+                                               && __has_include("openmenu_lcd_access_dcnow_off.h")                     \
+                                                                && __has_include("openmenu_lcd_access_dcnow_on.h")
 #include "openmenu_lcd.h"
 #include "openmenu_lcd_access.h"
+#include "openmenu_lcd_access_dcnow_off.h"
+#include "openmenu_lcd_access_dcnow_on.h"
+#include "openmenu_lcd_dcnow_off.h"
+#include "openmenu_lcd_dcnow_on.h"
 #include "openmenu_pal.h"
 #include "openmenu_vmu.h"
 
-#define OPENMENU_ICON       (openmenu_icon)
-#define OPENMENU_LCD        (openmenu_lcd)
-#define OPENMENU_LCD_ACCESS (openmenu_lcd_access)
-#define OPENMENU_PAL        (openmenu_pal)
-#define OPENMENU_ICONS      (1)
+#define OPENMENU_ICON  (openmenu_icon)
+#define OPENMENU_PAL   (openmenu_pal)
+#define OPENMENU_ICONS (1)
 #else
-#define OPENMENU_ICON       (NULL)
-#define OPENMENU_LCD        (NULL)
-#define OPENMENU_LCD_ACCESS (NULL)
-#define OPENMENU_PAL        (NULL)
-#define OPENMENU_ICONS      (0)
+#define OPENMENU_ICON  (NULL)
+#define OPENMENU_PAL   (NULL)
+#define OPENMENU_ICONS (0)
 #endif
 
 static crayon_savefile_details_t savefile_details;
 static bool savefile_was_migrated = false;
 static int8_t startup_device_id = -1; /* Device we loaded settings from at startup */
 static bool loaded_from_sd = false;   /* True if settings were loaded from SD at startup */
+static bool vmu_time_sync_warning;
+
+bool
+vmu_time_sync_warning_pending(void) {
+    return vmu_time_sync_warning;
+}
+
+void
+vmu_time_sync_warning_dismiss(void) {
+    vmu_time_sync_warning = false;
+}
+
 #ifdef _arch_dreamcast
 static uint8_t vmu_screens_bitmap = 0;
 
@@ -62,7 +86,6 @@ static uint8_t vmu_screens_bitmap = 0;
  * empty slots so we also check dev->valid */
 static bool
 has_any_vmu(void) {
-    thd_sleep(1000); /* Allow maple bus to settle before enumeration */
     for (int i = 0; i < 8; i++) {
         maple_device_t* dev = maple_enum_type(i, MAPLE_FUNC_MEMCARD);
         if (dev != NULL && dev->valid) {
@@ -70,6 +93,31 @@ has_any_vmu(void) {
         }
     }
     return false;
+}
+#endif
+
+/* Which icon set the VMUs get: 0 plain, 1 Dreamcast Now! offline, 2 online. */
+static int lcd_variant = 0;
+static bool lcd_owned = false;         /* The app draws the LCD itself */
+static volatile bool lcd_busy = false; /* The access icon is up for a write */
+
+#if defined(_arch_dreamcast) && OPENMENU_ICONS
+static void*
+lcd_logo(void) {
+    switch (lcd_variant) {
+        case 1: return openmenu_lcd_dcnow_off;
+        case 2: return openmenu_lcd_dcnow_on;
+        default: return openmenu_lcd;
+    }
+}
+
+static void*
+lcd_access(void) {
+    switch (lcd_variant) {
+        case 1: return openmenu_lcd_access_dcnow_off;
+        case 2: return openmenu_lcd_access_dcnow_on;
+        default: return openmenu_lcd_access;
+    }
 }
 #endif
 
@@ -91,6 +139,8 @@ savefile_defaults() {
     sf_folders_art[0] = FOLDERS_ART_ON;
     sf_folder_art[0] = FOLDER_ART_ON;
     sf_marquee_speed[0] = MARQUEE_SPEED_MEDIUM;
+    sf_mouse_cursor_speed[0] = MOUSE_SPEED_MEDIUM;
+    sf_mouse_scroll_speed[0] = MOUSE_SPEED_MEDIUM;
     sf_disc_details[0] = DISC_DETAILS_SHOW;
     sf_folders_item_details[0] = FOLDERS_ITEM_DETAILS_ON;
     sf_clock[0] = CLOCK_12HOUR;
@@ -108,6 +158,10 @@ savefile_defaults() {
     memset(sf_last_game_product, 0, sf_last_game_product_length);
     memset(sf_last_game_folder, 0, sf_last_game_folder_length);
     memset(sf_last_game_filter, 0, sf_last_game_filter_length);
+    sf_dcnow[0] = DCNOW_OFF;
+    sf_dcnow_refresh[0] = DCNOW_REFRESH_OFF;
+    sf_dcnow_vmu[0] = DCNOW_VMU_OFF;
+    sf_online_time_sync[0] = ONLINE_TIME_SYNC_OFF;
 }
 
 /* Called by crayon_savefile_deserialise_savedata() when loading a save written
@@ -184,6 +238,20 @@ update_savefile(void** loaded_variables, crayon_savefile_version_t loaded_versio
         memset(sf_last_game_folder, 0, sf_last_game_folder_length);
         memset(sf_last_game_filter, 0, sf_last_game_filter_length);
     }
+    if (loaded_version < SFV_DCNOW) {
+        sf_dcnow[0] = DCNOW_OFF;
+        sf_dcnow_refresh[0] = DCNOW_REFRESH_OFF;
+    }
+    if (loaded_version < SFV_DCNOW_VMU) {
+        sf_dcnow_vmu[0] = DCNOW_VMU_OFF;
+    }
+    if (loaded_version < SFV_ONLINE_TIME_SYNC) {
+        sf_online_time_sync[0] = ONLINE_TIME_SYNC_OFF;
+    }
+    if (loaded_version < SFV_MOUSE_SPEEDS) {
+        sf_mouse_cursor_speed[0] = MOUSE_SPEED_MEDIUM;
+        sf_mouse_scroll_speed[0] = MOUSE_SPEED_MEDIUM;
+    }
     return 0;
 }
 
@@ -212,7 +280,7 @@ setup_savefile_internal(crayon_savefile_details_t* details, bool skip_vmu_lcd) {
 #if defined(_arch_dreamcast) && OPENMENU_ICONS
     if (!skip_vmu_lcd) {
         vmu_screens_bitmap = crayon_peripheral_dreamcast_get_screens();
-        crayon_peripheral_vmu_display_icon(vmu_screens_bitmap, OPENMENU_LCD);
+        crayon_peripheral_vmu_display_icon(vmu_screens_bitmap, lcd_logo());
     }
 
     savefile_details.icon_anim_count = OPENMENU_ICONS;
@@ -281,6 +349,17 @@ setup_savefile_internal(crayon_savefile_details_t* details, bool skip_vmu_lcd) {
                                  SFV_REMEMBER_LAST_GAME, VAR_STILL_PRESENT);
     crayon_savefile_add_variable(details, &sf_last_game_filter, sf_last_game_filter_type, sf_last_game_filter_length,
                                  SFV_REMEMBER_LAST_GAME, VAR_STILL_PRESENT);
+    crayon_savefile_add_variable(details, &sf_dcnow, sf_dcnow_type, sf_dcnow_length, SFV_DCNOW, VAR_STILL_PRESENT);
+    crayon_savefile_add_variable(details, &sf_dcnow_refresh, sf_dcnow_refresh_type, sf_dcnow_refresh_length, SFV_DCNOW,
+                                 VAR_STILL_PRESENT);
+    crayon_savefile_add_variable(details, &sf_dcnow_vmu, sf_dcnow_vmu_type, sf_dcnow_vmu_length, SFV_DCNOW_VMU,
+                                 VAR_STILL_PRESENT);
+    crayon_savefile_add_variable(details, &sf_online_time_sync, sf_online_time_sync_type, sf_online_time_sync_length,
+                                 SFV_ONLINE_TIME_SYNC, VAR_STILL_PRESENT);
+    crayon_savefile_add_variable(details, &sf_mouse_cursor_speed, sf_mouse_cursor_speed_type,
+                                 sf_mouse_cursor_speed_length, SFV_MOUSE_SPEEDS, VAR_STILL_PRESENT);
+    crayon_savefile_add_variable(details, &sf_mouse_scroll_speed, sf_mouse_scroll_speed_type,
+                                 sf_mouse_scroll_speed_length, SFV_MOUSE_SPEEDS, VAR_STILL_PRESENT);
 
     if (crayon_savefile_solidify(details)) {
         return 1;
@@ -346,7 +425,7 @@ savefile_init() {
                     DFLASH_SF(0, 128, 0);
 #if OPENMENU_ICONS
                     vmu_screens_bitmap = crayon_peripheral_dreamcast_get_screens();
-                    crayon_peripheral_vmu_display_icon(vmu_screens_bitmap, OPENMENU_LCD);
+                    crayon_peripheral_vmu_display_icon(vmu_screens_bitmap, lcd_logo());
 #endif
                     if (sf_vmu_time_sync[0] == VMU_TIME_SYNC_ON) {
                         sync_rtc_from_vmu();
@@ -406,7 +485,7 @@ savefile_init() {
                 /* VMU is present and valid, show LCD icon */
 #if OPENMENU_ICONS
                 vmu_screens_bitmap = crayon_peripheral_dreamcast_get_screens();
-                crayon_peripheral_vmu_display_icon(vmu_screens_bitmap, OPENMENU_LCD);
+                crayon_peripheral_vmu_display_icon(vmu_screens_bitmap, lcd_logo());
 #endif
 
                 return; /* Done - loaded from VMU */
@@ -415,14 +494,14 @@ savefile_init() {
              * then fall through to defaults */
 #if OPENMENU_ICONS
             vmu_screens_bitmap = crayon_peripheral_dreamcast_get_screens();
-            crayon_peripheral_vmu_display_icon(vmu_screens_bitmap, OPENMENU_LCD);
+            crayon_peripheral_vmu_display_icon(vmu_screens_bitmap, lcd_logo());
 #endif
         } else {
             /* VMU present but find_first_valid_savefile_device failed -
              * still show LCD icon since we know VMU exists */
 #if OPENMENU_ICONS
             vmu_screens_bitmap = crayon_peripheral_dreamcast_get_screens();
-            crayon_peripheral_vmu_display_icon(vmu_screens_bitmap, OPENMENU_LCD);
+            crayon_peripheral_vmu_display_icon(vmu_screens_bitmap, lcd_logo());
 #endif
         }
     }
@@ -500,7 +579,10 @@ static void*
 vmu_icon_restore_thread(void* param) {
     (void)param;
     thd_sleep(1500); /* 1.5 seconds */
-    crayon_peripheral_vmu_display_icon(vmu_screens_bitmap, OPENMENU_LCD);
+    if (!lcd_owned) {
+        crayon_peripheral_vmu_display_icon(vmu_screens_bitmap, lcd_logo());
+    }
+    lcd_busy = false;
     return NULL;
 }
 #endif
@@ -508,34 +590,6 @@ vmu_icon_restore_thread(void* param) {
 #ifdef _arch_dreamcast
 /* Epoch delta: seconds between Jan 1, 1950 and Jan 1, 1970 */
 #define DC_EPOCH_DELTA 631152000
-
-/* VMU_SYNC_DEBUG_START */
-#if 0
-/* VMU Time Sync Debug Info - disabled, enable for debugging VMU clock issues */
-typedef struct {
-    int slots_checked;         /* Number of slots iterated (always 8) */
-    int memcards_found;        /* Devices with MAPLE_FUNC_MEMCARD */
-    int clocks_found;          /* Devices with MAPLE_FUNC_CLOCK */
-    int device_found_idx;      /* Index of device used (-1 if none) */
-    int device_port;           /* Port of found device */
-    int device_unit;           /* Unit of found device */
-    uint32_t device_functions; /* Functions bitmap of found device */
-    char device_product[32];   /* Device product name from maple info */
-    int vmu_get_result;        /* Result from vmu_get_datetime() */
-    time_t vmu_time_value;     /* Time value returned from VMU */
-    int rtc_set_result;        /* Result from rtc_set_unix_secs() */
-    int flashrom_result;       /* Result from update_flashrom_syscfg_date() */
-    int final_result;          /* Final sync result (0=success, -1=fail) */
-    char status_msg[64];       /* Human-readable status */
-    /* Raw clock response capture */
-    int raw_cmd_result;        /* Result from maple_docmd_block (-999=not called) */
-    int raw_response_len;      /* Length of response in 32-bit words */
-    uint8_t raw_clock_bytes[16]; /* Raw bytes from clock read response */
-} vmu_sync_debug_t;
-
-static vmu_sync_debug_t vmu_sync_debug = {0};
-#endif
-/* VMU_SYNC_DEBUG_END */
 
 /**
  * CRC calculation for flashrom blocks (matches KOS flashrom_calc_crc).
@@ -677,16 +731,130 @@ cleanup:
     return rv;
 }
 
-/* sync RTC from first VMU with clock; also updates flashrom SYSCFG date.
- * returns 0 on success, -1 if no clock VMU found or sync failed */
+/* Sets the console clock, then the SYSCFG date the BIOS checks at boot so it
+ * does not ask for the time. Returns 0 when the clock was set. */
+int8_t
+set_rtc_and_syscfg(time_t local_time) {
+    if (rtc_set_unix_secs(local_time) != 0) {
+        return -1;
+    }
+    /* If the flash ROM write fails the time is still set. The user may just
+     * see the BIOS date screen on the next boot. */
+    update_flashrom_syscfg_date(local_time);
+    return 0;
+}
+
+static bool
+vmu_decode_datetime(const uint8_t* reply, time_t* result) {
+    uint32_t function;
+    if (reply[0] != MAPLE_RESPONSE_DATATRF || reply[3] != 3) {
+        return false;
+    }
+    memcpy(&function, reply + 4, sizeof(function));
+    if (function != MAPLE_FUNC_CLOCK) {
+        return false;
+    }
+
+    const uint8_t* dt = reply + 8;
+    unsigned year = dt[0] | (dt[1] << 8);
+    unsigned month = dt[2];
+    if (year > 9999 || month < 1 || month > 12 || dt[4] > 23 || dt[5] > 59 || dt[6] > 59) {
+        return false;
+    }
+    static const uint8_t month_days[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+    unsigned days = month_days[month - 1];
+    if (month == 2 && year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)) {
+        days++;
+    }
+    if (dt[3] < 1 || dt[3] > days) {
+        return false;
+    }
+
+    /* The weekday is calculated from the date, including for VM2 replies. */
+    struct tm local = {0};
+    local.tm_year = (int)year - 1900;
+    local.tm_mon = month - 1;
+    local.tm_mday = dt[3];
+    local.tm_hour = dt[4];
+    local.tm_min = dt[5];
+    local.tm_sec = dt[6];
+    *result = mktime(&local);
+    return *result != (time_t)-1;
+}
+
+static void
+vmu_clock_reply(maple_state_t* state, maple_frame_t* frame) {
+    (void)state;
+    genwait_wake_all(frame);
+}
+
+static int
+vmu_get_datetime_checked(maple_device_t* dev, time_t* result) {
+    *result = (time_t)-1;
+    for (unsigned attempt = 0; attempt < 3; attempt++) {
+        if (!dev->valid
+            || (dev->info.functions & (MAPLE_FUNC_MEMCARD | MAPLE_FUNC_CLOCK))
+                   != (MAPLE_FUNC_MEMCARD | MAPLE_FUNC_CLOCK)) {
+            return MAPLE_EFAIL;
+        }
+        if (maple_frame_lock(&dev->frame) == 0) {
+            break;
+        }
+        if (attempt == 2) {
+            return MAPLE_EAGAIN;
+        }
+        thd_sleep(20);
+    }
+
+    maple_frame_t* frame = &dev->frame;
+    maple_frame_init(frame);
+    /* KOS resends this payload when a device replies with AGAIN. */
+    uint32_t send[2] = {MAPLE_FUNC_CLOCK, 0};
+    frame->cmd = MAPLE_COMMAND_BREAD;
+    frame->dst_port = dev->port;
+    frame->dst_unit = dev->unit;
+    frame->length = 2;
+    frame->callback = vmu_clock_reply;
+    frame->send_buf = send;
+
+    /* Queue and sleep atomically so an early reply cannot miss the waiter. */
+    uint32_t irq = irq_disable();
+    maple_queue_frame(frame);
+    int waited = genwait_wait(frame, "vmu_clock_read", 10000, NULL);
+    uint8_t reply[16];
+    bool received = frame->state == MAPLE_FRAME_RESPONDED;
+    if (received) {
+        memcpy(reply, frame->recv_buf, sizeof(reply));
+        maple_frame_unlock(frame);
+    } else {
+        maple_queue_remove(frame);
+        frame->state = MAPLE_FRAME_VACANT;
+    }
+    frame->callback = NULL;
+    frame->send_buf = NULL;
+    irq_restore(irq);
+
+    if (!received) {
+        return waited < 0 ? MAPLE_ETIMEOUT : MAPLE_EFAIL;
+    }
+    return vmu_decode_datetime(reply, result) ? MAPLE_EOK : MAPLE_EFAIL;
+}
+
+/* Returns 0 when a VMU sets the console clock, or -1 if synchronization fails. */
 int8_t
 sync_rtc_from_vmu(void) {
-    /* Find first VMU with clock capability */
+    vmu_time_sync_warning = false;
+#if DEBUG_VMU_SYNC
+    return vmu_sync_debug_query();
+#else
+    bool attached = false;
+    bool received_time = false;
     for (int i = 0; i < 8; i++) {
         maple_device_t* dev = maple_enum_type(i, MAPLE_FUNC_MEMCARD);
         if (dev == NULL || !dev->valid) {
             continue;
         }
+        attached = true;
 
         /* Check if device has clock function */
         if (!(dev->info.functions & MAPLE_FUNC_CLOCK)) {
@@ -695,183 +863,32 @@ sync_rtc_from_vmu(void) {
 
         /* Try to get VMU time */
         time_t vmu_time;
-        int result = vmu_get_datetime(dev, &vmu_time);
+        int result = vmu_get_datetime_checked(dev, &vmu_time);
         if (result != MAPLE_EOK || vmu_time == (time_t)-1) {
             continue;
         }
+        received_time = true;
 
         /* Set Dreamcast RTC */
-        if (rtc_set_unix_secs(vmu_time) == 0) {
-            /* Also update flashrom syscfg date to prevent BIOS time prompt.
-             * This is best-effort - if it fails, the time is still synced,
-             * the user just might see the BIOS date/time screen on next boot. */
-            update_flashrom_syscfg_date(vmu_time);
+        if (set_rtc_and_syscfg(vmu_time) == 0) {
             return 0; /* Success */
         }
     }
+    vmu_time_sync_warning = attached && !received_time;
     return -1; /* No suitable VMU found or sync failed */
-}
-
-/* VMU_SYNC_DEBUG_START */
-#if 0
-/**
- * Debug version of sync_rtc_from_vmu with detailed logging.
- * Enable by changing #if 0 to #if 1 above.
- */
-int8_t
-sync_rtc_from_vmu_debug(void) {
-    /* Reset debug info */
-    memset(&vmu_sync_debug, 0, sizeof(vmu_sync_debug));
-    vmu_sync_debug.device_found_idx = -1;
-    vmu_sync_debug.vmu_time_value = (time_t)-1;
-    vmu_sync_debug.vmu_get_result = -999;
-    vmu_sync_debug.rtc_set_result = -999;
-    vmu_sync_debug.flashrom_result = -999;
-    vmu_sync_debug.final_result = -1;
-    vmu_sync_debug.raw_cmd_result = -999;
-
-    for (int i = 0; i < 8; i++) {
-        vmu_sync_debug.slots_checked = i + 1;
-
-        maple_device_t* dev = maple_enum_type(i, MAPLE_FUNC_MEMCARD);
-        if (dev == NULL) continue;
-
-        vmu_sync_debug.memcards_found++;
-
-        if (!(dev->info.functions & MAPLE_FUNC_CLOCK)) continue;
-
-        vmu_sync_debug.clocks_found++;
-        vmu_sync_debug.device_found_idx = i;
-        vmu_sync_debug.device_port = dev->port;
-        vmu_sync_debug.device_unit = dev->unit;
-        vmu_sync_debug.device_functions = dev->info.functions;
-        strncpy(vmu_sync_debug.device_product, dev->info.product_name, 30);
-        vmu_sync_debug.device_product[30] = '\0';
-
-        time_t vmu_time;
-        int result = vmu_get_datetime(dev, &vmu_time);
-        vmu_sync_debug.vmu_get_result = result;
-        vmu_sync_debug.vmu_time_value = vmu_time;
-
-        /* Capture raw clock response bytes from frame buffer */
-        memcpy(vmu_sync_debug.raw_clock_bytes, dev->frame.recv_buf, 16);
-        vmu_sync_debug.raw_cmd_result = result;
-        vmu_sync_debug.raw_response_len = dev->frame.recv_buf[3];
-
-        if (result != MAPLE_EOK || vmu_time == (time_t)-1) {
-            snprintf(vmu_sync_debug.status_msg, sizeof(vmu_sync_debug.status_msg),
-                     "vmu_get_datetime failed: %d", result);
-            continue;
-        }
-
-        int rtc_result = rtc_set_unix_secs(vmu_time);
-        vmu_sync_debug.rtc_set_result = rtc_result;
-
-        if (rtc_result == 0) {
-            vmu_sync_debug.flashrom_result = update_flashrom_syscfg_date(vmu_time);
-            vmu_sync_debug.final_result = 0;
-            snprintf(vmu_sync_debug.status_msg, sizeof(vmu_sync_debug.status_msg),
-                     "OK: Port %c Unit %d", 'A' + dev->port, dev->unit);
-            return 0;
-        } else {
-            snprintf(vmu_sync_debug.status_msg, sizeof(vmu_sync_debug.status_msg),
-                     "rtc_set failed: %d", rtc_result);
-        }
-    }
-
-    if (vmu_sync_debug.clocks_found == 0) {
-        if (vmu_sync_debug.memcards_found == 0) {
-            snprintf(vmu_sync_debug.status_msg, sizeof(vmu_sync_debug.status_msg),
-                     "No memory cards found in any slot");
-        } else {
-            snprintf(vmu_sync_debug.status_msg, sizeof(vmu_sync_debug.status_msg),
-                     "Found %d memcard(s) but none have clock", vmu_sync_debug.memcards_found);
-        }
-    }
-    return -1;
-}
-
-const char*
-get_vmu_sync_debug_line1(void) {
-    static char buf[96];
-    snprintf(buf, sizeof(buf),
-             "Slots:%d MemCards:%d WithClock:%d UsedIdx:%d Port:%c Unit:%d",
-             vmu_sync_debug.slots_checked,
-             vmu_sync_debug.memcards_found,
-             vmu_sync_debug.clocks_found,
-             vmu_sync_debug.device_found_idx,
-             'A' + vmu_sync_debug.device_port,
-             vmu_sync_debug.device_unit);
-    return buf;
-}
-
-const char*
-get_vmu_sync_debug_line2(void) {
-    static char buf[96];
-    snprintf(buf, sizeof(buf),
-             "vmu_get_datetime():%d UnixTime:%ld rtc_set():%d flashrom:%d",
-             vmu_sync_debug.vmu_get_result,
-             (long)vmu_sync_debug.vmu_time_value,
-             vmu_sync_debug.rtc_set_result,
-             vmu_sync_debug.flashrom_result);
-    return buf;
-}
-
-const char*
-get_vmu_sync_debug_line3(void) {
-    static char buf[96];
-    snprintf(buf, sizeof(buf), "SyncResult:%d %s",
-             vmu_sync_debug.final_result,
-             vmu_sync_debug.status_msg);
-    return buf;
-}
-
-const char*
-get_vmu_sync_debug_line4(void) {
-    static char buf[96];
-    if (vmu_sync_debug.device_found_idx < 0) {
-        return "Device: (none found)";
-    }
-    snprintf(buf, sizeof(buf), "Funcs:0x%08X Product:[%s]",
-             (unsigned int)vmu_sync_debug.device_functions,
-             vmu_sync_debug.device_product);
-    return buf;
-}
-
-const char*
-get_vmu_sync_debug_line5(void) {
-    static char buf[128];
-    if (vmu_sync_debug.raw_cmd_result == -999) {
-        return "Raw: (not queried)";
-    }
-    snprintf(buf, sizeof(buf),
-             "Raw[%d]: %02X%02X%02X%02X %02X%02X%02X%02X %02X%02X%02X%02X%02X%02X%02X%02X",
-             vmu_sync_debug.raw_response_len,
-             vmu_sync_debug.raw_clock_bytes[0],
-             vmu_sync_debug.raw_clock_bytes[1],
-             vmu_sync_debug.raw_clock_bytes[2],
-             vmu_sync_debug.raw_clock_bytes[3],
-             vmu_sync_debug.raw_clock_bytes[4],
-             vmu_sync_debug.raw_clock_bytes[5],
-             vmu_sync_debug.raw_clock_bytes[6],
-             vmu_sync_debug.raw_clock_bytes[7],
-             vmu_sync_debug.raw_clock_bytes[8],
-             vmu_sync_debug.raw_clock_bytes[9],
-             vmu_sync_debug.raw_clock_bytes[10],
-             vmu_sync_debug.raw_clock_bytes[11],
-             vmu_sync_debug.raw_clock_bytes[12],
-             vmu_sync_debug.raw_clock_bytes[13],
-             vmu_sync_debug.raw_clock_bytes[14],
-             vmu_sync_debug.raw_clock_bytes[15]);
-    return buf;
-}
 #endif
-/* VMU_SYNC_DEBUG_END */
+}
 
 #else
 /* Non-Dreamcast stub */
 int8_t
 sync_rtc_from_vmu(void) {
+    return -1;
+}
+
+int8_t
+set_rtc_and_syscfg(time_t local_time) {
+    (void)local_time;
     return -1;
 }
 #endif
@@ -885,7 +902,8 @@ savefile_save() {
     if (vmu_screens_bitmap != 0) {
         uint8_t single_device = (1 << savefile_details.save_device_id) & vmu_screens_bitmap;
         if (single_device) {
-            crayon_peripheral_vmu_display_icon(single_device, OPENMENU_LCD_ACCESS);
+            lcd_busy = true;
+            crayon_peripheral_vmu_display_icon(single_device, lcd_access());
         }
     }
 #endif
@@ -942,7 +960,8 @@ savefile_save_to_device(int8_t device_id) {
     if (vmu_screens_bitmap != 0) {
         uint8_t single_device = (1 << device_id) & vmu_screens_bitmap;
         if (single_device) {
-            crayon_peripheral_vmu_display_icon(single_device, OPENMENU_LCD_ACCESS);
+            lcd_busy = true;
+            crayon_peripheral_vmu_display_icon(single_device, lcd_access());
         }
     }
 #endif
@@ -980,7 +999,8 @@ savefile_load_from_device(int8_t device_id) {
     if (vmu_screens_bitmap != 0) {
         uint8_t single_device = (1 << device_id) & vmu_screens_bitmap;
         if (single_device) {
-            crayon_peripheral_vmu_display_icon(single_device, OPENMENU_LCD_ACCESS);
+            lcd_busy = true;
+            crayon_peripheral_vmu_display_icon(single_device, lcd_access());
         }
     }
 #endif
@@ -1412,3 +1432,54 @@ compaction_test_get_status(void) {
 #endif
 
 /* COMPACTION_TEST_END */
+
+/* Every call repaints. The app calls this when the icon changes and again
+ * when it hands the LCD back with the same variant. */
+void
+savefile_set_lcd_variant(int variant) {
+    lcd_variant = variant;
+#if defined(_arch_dreamcast) && OPENMENU_ICONS
+    if (!lcd_owned && !lcd_busy) {
+        vmu_screens_bitmap = crayon_peripheral_dreamcast_get_screens();
+        crayon_peripheral_vmu_display_icon(vmu_screens_bitmap, lcd_logo());
+    }
+#endif
+}
+
+const void*
+savefile_lcd_logo(void) {
+#if defined(_arch_dreamcast) && OPENMENU_ICONS
+    return lcd_logo();
+#else
+    return NULL;
+#endif
+}
+
+const void*
+savefile_lcd_access(void) {
+#if defined(_arch_dreamcast) && OPENMENU_ICONS
+    return lcd_access();
+#else
+    return NULL;
+#endif
+}
+
+bool
+savefile_lcd_busy(void) {
+    return lcd_busy;
+}
+
+void
+savefile_set_lcd_busy(bool busy) {
+    lcd_busy = busy;
+}
+
+void
+savefile_set_lcd_owner(bool owned) {
+    lcd_owned = owned;
+}
+
+bool
+savefile_lcd_owned(void) {
+    return lcd_owned;
+}

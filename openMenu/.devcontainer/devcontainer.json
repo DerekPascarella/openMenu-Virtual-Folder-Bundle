@@ -1,6 +1,9 @@
 {
   "name": "Dreamcast Dev",
-  "image": "sbstnc/openmenu-dev:0.2.2",
+  "build": {
+    "dockerfile": "../docker/Dockerfile",
+    "context": "../docker"
+  },
 
   "runArgs": [ "--userns=host" ],
 

@@ -120,7 +120,7 @@ namespace GDMENUCardManager.Core
                             throw new FormatException($"Bad FILE line: {line}");
                         string name = line[(q1 + 1)..q2];
                         string type = line[(q2 + 1)..].Trim().ToUpperInvariant();
-                        curFile = new CueFile(name, Path.Combine(dir, name), type);
+                        curFile = new CueFile(name, Helper.ResolveActualPath(Path.Combine(dir, name)), type);
                         sheet.Files.Add(curFile);
                     }
                     else if (upper.StartsWith("TRACK "))

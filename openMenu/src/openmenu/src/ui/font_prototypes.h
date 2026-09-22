@@ -25,6 +25,8 @@ void font_bmf_draw(int x, int y, uint32_t color, const char* str);
 void font_bmf_draw_main(int x, int y, uint32_t color, const char* str);
 void font_bmf_draw_sub(int x, int y, uint32_t color, const char* str);
 void font_bmf_draw_sub_wrap(int x, int y, uint32_t color, const char* str, int width);
+/* Width in pixels of str at the current height, for callers that fit text themselves. */
+float font_bmf_text_width(const char* str);
 void font_bmf_draw_auto_size(int x, int y, uint32_t color, const char* str, int width);
 void font_bmf_draw_centered(int x, int y, uint32_t color, const char* str);
 void font_bmf_draw_centered_auto_size(int x, int y, uint32_t color, const char* str, int width);

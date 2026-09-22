@@ -38,8 +38,10 @@ USER ${USER_NAME}:${USER_GROUP}
 
 RUN git clone https://github.com/KallistiOS/KallistiOS.git \
   --depth 1 \
-  -b v2.1.x \
-  /opt/toolchains/dc/kos
+  -b v2.1.1 \
+  /opt/toolchains/dc/kos && \
+  test "$(git -C /opt/toolchains/dc/kos rev-parse HEAD)" = \
+    "d6f42aecdfef897de019f8a82345194bec17d1c6"
 
 RUN cd /opt/toolchains/dc/kos/utils/dc-chain && \
   make && \
@@ -47,14 +49,20 @@ RUN cd /opt/toolchains/dc/kos/utils/dc-chain && \
 
 COPY kos_patch/fs_iso9660.patch /opt/toolchains/dc/kos/
 COPY kos_patch/libkosfat_directory.patch /opt/toolchains/dc/kos/
+COPY kos_patch/mouse_middle_button.patch /opt/toolchains/dc/kos/
 
+# A plain "make clean" at the KOS root also deletes the addon archives that
+# openMenu links (libkosfat.a, libppp.a), so only the objects are removed.
 RUN cd /opt/toolchains/dc/kos && \
   git apply fs_iso9660.patch && \
   git apply libkosfat_directory.patch && \
+  git apply mouse_middle_button.patch && \
   cp doc/environ.sh.sample environ.sh && \
   source /opt/toolchains/dc/kos/environ.sh && \
   make && \
-  make clean
+  make -C kernel clean && \
+  make -C utils clean && \
+  find addons -name '*.o' -delete
 
 WORKDIR /home/${USER_NAME}
 RUN touch .bashrc && echo "source /opt/toolchains/dc/kos/environ.sh" >> .bashrc

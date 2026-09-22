@@ -125,6 +125,12 @@ namespace GDMENUCardManager.Core
         /// </summary>
         public bool EnableLockCheck = true;
 
+        /// <summary>
+        /// Set true to lay the card root out in numeric order after each save.
+        /// Recovery of an interrupted sort always runs regardless.
+        /// </summary>
+        public bool EnableFatSort = false;
+
         // set during save when patching changes a flag after the list text was built
         private bool savePatchChangedFlags;
         private readonly List<string> savePatchFailures = new List<string>();
@@ -1097,6 +1103,11 @@ namespace GDMENUCardManager.Core
             UndoManager.Clear();  // Clear undo history when loading new SD card
             MenuKindSelected = MenuKind.None;
 
+            // Folders left in staging by an interrupted reorder go back before the
+            // scan, or the card would look half empty. Anything that cannot go back
+            // is reported with the other unreadable folders.
+            var invalid = await Task.Run(() => CardOrder.RecoverStaged(sdPath));
+
             discDb = await DiscDatabase.LoadAsync(sdPath);
 
             var toAdd = new List<Tuple<int, string>>();
@@ -1152,7 +1163,6 @@ namespace GDMENUCardManager.Core
             // card's database. Mirrors the toAdd capture above, for the same reason.
             var db = discDb;
 
-            var invalid = new List<string>();
             bool isFirstItem = true;
 
             foreach (var item in toAdd.OrderBy(x => x.Item1))
@@ -1868,49 +1878,7 @@ namespace GDMENUCardManager.Core
             // Get available space on SD card
             try
             {
-                // On Windows, Path.GetPathRoot works correctly (returns "D:\" etc.)
-                // On Linux/macOS, we need to find the drive that contains the path
-                DriveInfo driveInfo = null;
-                var pathRoot = Path.GetPathRoot(sdPath);
-
-                if (!string.IsNullOrEmpty(pathRoot) && pathRoot != "/" && pathRoot != "\\")
-                {
-                    // Windows-style path (or UNC path which may fail but is caught)
-                    driveInfo = new DriveInfo(pathRoot);
-                }
-                else
-                {
-                    // Linux/macOS: find the mount that contains this path
-                    var fullPath = Path.GetFullPath(sdPath);
-                    // Normalize path with trailing separator to prevent /mnt/sd matching /mnt/sdcard
-                    if (!fullPath.EndsWith(Path.DirectorySeparatorChar))
-                        fullPath += Path.DirectorySeparatorChar;
-
-                    // Use case-sensitive comparison on Linux/macOS, case-insensitive on Windows
-                    var comparison = Environment.OSVersion.Platform == PlatformID.Win32NT
-                        ? StringComparison.OrdinalIgnoreCase
-                        : StringComparison.Ordinal;
-
-                    foreach (var drive in DriveInfo.GetDrives())
-                    {
-                        if (drive.IsReady)
-                        {
-                            var mountPath = drive.RootDirectory.FullName;
-                            if (!mountPath.EndsWith(Path.DirectorySeparatorChar))
-                                mountPath += Path.DirectorySeparatorChar;
-
-                            if (fullPath.StartsWith(mountPath, comparison))
-                            {
-                                // Find the longest matching mount point (most specific)
-                                if (driveInfo == null || mountPath.Length > driveInfo.RootDirectory.FullName.Length)
-                                {
-                                    driveInfo = drive;
-                                }
-                            }
-                        }
-                    }
-                }
-
+                var driveInfo = Helper.GetDriveInfoForPath(sdPath);
                 result.AvailableSpace = driveInfo?.AvailableFreeSpace ?? 0;
             }
             catch
@@ -2107,6 +2075,13 @@ namespace GDMENUCardManager.Core
                 {
                     throw new Exception($"The SD card is no longer accessible at \"{sdPath}\".\n\nPlease reconnect the SD card and try again.");
                 }
+
+                // An interrupted reorder leaves folders in staging. They go back before
+                // anything below reads the card, and a folder that cannot go back stops
+                // the save, or the menu would be rebuilt around a missing folder.
+                var stranded = await Task.Run(() => CardOrder.RecoverStaged(sdPath));
+                if (stranded.Count > 0)
+                    throw new Exception(CardOrder.StrandedMessage(sdPath, stranded));
 
                 if (ItemList.Count == 0 || await Helper.DependencyManager.ShowYesNoDialog("Confirmation", $"Save changes to \"{sdPath}\" drive?") == false)
                 {
@@ -2597,6 +2572,11 @@ namespace GDMENUCardManager.Core
                     sb_open.Clear();
                 }
 
+                // Nothing below adds or removes a root folder, so the root can be laid
+                // out in numeric order now. Only the stored order changes, never a name.
+                if (EnableFatSort)
+                    await CardOrder.ReorderAsync(sdPath);
+
                 // Update menu item length.
                 UpdateItemLength(ItemList.OrderBy(x => x.SdNumber).First());
 
@@ -3069,7 +3049,7 @@ namespace GDMENUCardManager.Core
             sb.AppendLine();
         }
 
-        private string FormatFolderNumber(int number)
+        internal static string FormatFolderNumber(int number)
         {
             string strnumber;
             if (number < 100)

@@ -1,0 +1,21 @@
+--- a/kernel/arch/dreamcast/include/dc/maple/mouse.h
++++ b/kernel/arch/dreamcast/include/dc/maple/mouse.h
+@@ -37,6 +37,7 @@
+ 
+     @{
+ */
++#define MOUSE_MIDDLEBUTTON  (1<<0)  /**< \brief Middle mouse button */
+ #define MOUSE_RIGHTBUTTON   (1<<1)  /**< \brief Right mouse button */
+ #define MOUSE_LEFTBUTTON    (1<<2)  /**< \brief Left mouse button */
+ #define MOUSE_SIDEBUTTON    (1<<3)  /**< \brief Side mouse button */
+--- a/kernel/arch/dreamcast/hardware/maple/mouse.c
++++ b/kernel/arch/dreamcast/hardware/maple/mouse.c
+@@ -40,7 +40,7 @@
+ 
+     /* Fill the "nice" struct from the raw data */
+     cooked = (mouse_state_t *)(frm->dev->status);
+-    cooked->buttons = (~raw->buttons) & 14;
++    cooked->buttons = (~raw->buttons) & 15;
+     cooked->dx = raw->dx - MOUSE_DELTA_CENTER;
+     cooked->dy = raw->dy - MOUSE_DELTA_CENTER;
+     cooked->dz = raw->dz - MOUSE_DELTA_CENTER;

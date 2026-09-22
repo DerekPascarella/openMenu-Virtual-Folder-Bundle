@@ -13,6 +13,7 @@
 
 #include <arch/arch.h>
 #include <arch/exec.h>
+#include <arch/irq.h>
 #include <dc/cdrom.h>
 #include <dc/flashrom.h>
 #include <dc/maple.h>
@@ -26,17 +27,21 @@
 #include <backend/bgm.h>
 #include <backend/boot_defaults.h>
 #include <backend/db_list.h>
+#include <backend/dcnow_net.h>
+#include <backend/dcnow_vmu.h>
 #include <backend/gd_list.h>
+#include <backend/online_time_sync.h>
 #include <openmenu_debug.h>
-#include <openmenu_lcd.h>
 #include <openmenu_savefile.h>
 #include <openmenu_settings.h>
 #include "backend/gdemu_sdk.h"
 #include "backend/last_game.h"
 #include "ui/common.h"
 #include "ui/dc/input.h"
+#include "ui/dc/mouse.h"
 #include "ui/dc/pvr_texture.h"
 #include "ui/draw_prototypes.h"
+#include "ui/menu_mouse.h"
 #include "ui/ui_common.h"
 #include "ui/ui_menu_credits.h"
 #include "vm2/vm2_api.h"
@@ -177,6 +182,7 @@ static int need_reload_ui = 0;
 
 static void
 ui_set_choice(int choice) {
+    menu_mouse_invalidate();
     need_reload_ui = 0;
     if (choice < UI_START || choice >= num_ui_choices) {
         choice = UI_START;
@@ -266,7 +272,11 @@ vmu_lcd_check_insertions(void) {
 
             if (now_valid && !vmu_lcd_prev_valid[idx]) {
                 if (dev->info.functions & MAPLE_FUNC_LCD) {
-                    vmu_draw_lcd_auto(dev, openmenu_lcd);
+                    if (savefile_lcd_owned()) {
+                        dcnow_vmu_redraw();
+                    } else {
+                        vmu_draw_lcd_auto(dev, (void*)savefile_lcd_logo());
+                    }
                 }
             }
 
@@ -293,6 +303,7 @@ init() {
     /* Force the disc's default style/theme if configured and honored.
      * Needs the theme scan above so names resolve to indices. */
     boot_defaults_apply();
+    device_warnings_init(boot_defaults_serial_sd_warning_enabled() && !savefile_sd_available());
 
     /* Initialize folder tree after loading game list */
     list_folder_init();
@@ -326,8 +337,11 @@ init() {
     return ret;
 }
 
+static int drawing = 0;
+
 static void
 draw(void) {
+    drawing = 1;
     pvr_wait_ready();
     pvr_scene_begin();
 
@@ -346,62 +360,208 @@ draw(void) {
     pvr_list_finish();
 
     pvr_scene_finish();
+    drawing = 0;
 }
 
+/* Two frames with the hang-up box on top of the current screen, for the
+ * teardown that blocks before a launch. Nothing can be drawn from inside a
+ * draw pass, which is where a launch after a Serial VMU restore starts. */
 static void
-processInput(void) {
-    inputs _input;
-    unsigned int buttons;
-
-    maple_device_t* cont;
-    maple_device_t* kbd;
-    cont_state_t* state;
-    kbd_state_t* kbd_state;
-
-    /*  Reset Everything */
-    memset(&_input, 0, sizeof(inputs));
-
-    /* Set neutral analog values */
-    _input.axes_1 = 128; /* Neutral analog X */
-    _input.axes_2 = 128; /* Neutral analog Y */
-
-    cont = maple_enum_type(0, MAPLE_FUNC_CONTROLLER);
-    kbd = maple_enum_type(0, MAPLE_FUNC_KEYBOARD);
-
-    if (!cont && !kbd) {
-        /* No controller or keyboard - send neutral input */
-        INPT_ReceiveFromHost(_input);
+show_hangup(void) {
+    if (drawing) {
         return;
     }
+    hangup_overlay_set(1);
+    for (int i = 0; i < 2; i++) {
+        z_reset();
+        vid_waitvbl();
+        draw();
+    }
+    z_reset();
+}
 
-    if (cont && cont->valid) {
-        /* Controller found - also works with the controller portion of a light gun */
-        state = (cont_state_t*)maple_dev_status(cont);
-        buttons = state->buttons;
+typedef struct {
+    cont_state_t state;
+    bool ready;
+    bool reset;
+    bool fishing;
+} controller_sample_t;
 
-        /* DPAD */
-        _input.dpad = (state->buttons >> 4) & ~240; // mrneo240 ;)
+typedef struct {
+    inputs last;
+    bool armed;
+} controller_history_t;
 
-        /* BUTTONS */
-        _input.btn_a = (uint8_t)!!(buttons & CONT_A);
-        _input.btn_b = (uint8_t)!!(buttons & CONT_B);
-        _input.btn_x = (uint8_t)!!(buttons & CONT_X);
-        _input.btn_y = (uint8_t)!!(buttons & CONT_Y);
-        _input.btn_start = (uint8_t)!!(buttons & CONT_START);
+static controller_history_t controller_history[MAPLE_PORT_COUNT][MAPLE_UNIT_COUNT];
+static volatile bool controller_reset_pending[MAPLE_PORT_COUNT][MAPLE_UNIT_COUNT];
+static int controller_owner = -1;
+static bool controller_callback_registered;
 
-        /* ANALOG */
-        _input.axes_1 = ((uint8_t)(state->joyx) + 128);
-        _input.axes_2 = ((uint8_t)(state->joyy) + 128);
+static void
+controller_attached(maple_device_t* dev) {
+    if (dev->port >= 0 && dev->port < MAPLE_PORT_COUNT && dev->unit >= 0 && dev->unit < MAPLE_UNIT_COUNT) {
+        controller_reset_pending[dev->port][dev->unit] = true;
+    }
+}
 
-        /* TRIGGERS */
-        if (!strncmp("Dreamcast Fishing Controller", cont->info.product_name, 28)) {
-            _input.trg_left = 0;
-            _input.trg_right = 0;
-        } else {
-            _input.trg_left = (uint8_t)state->ltrig & 255;
-            _input.trg_right = (uint8_t)state->rtrig & 255;
+static bool
+controller_neutral(const inputs* current) {
+    return !current->dpad && !current->btn_a && !current->btn_b && !current->btn_x && !current->btn_y
+           && !current->btn_start && current->axes_1 >= 128 - 24 && current->axes_1 <= 128 + 24
+           && current->axes_2 >= 128 - 24 && current->axes_2 <= 128 + 24 && !current->trg_left && !current->trg_right;
+}
+
+static enum control
+controller_command(const inputs* current, const inputs* last, bool* fresh) {
+    if (current->dpad & DPAD_LEFT) {
+        *fresh = !(last->dpad & DPAD_LEFT);
+        return LEFT;
+    }
+    if (current->dpad & DPAD_RIGHT) {
+        *fresh = !(last->dpad & DPAD_RIGHT);
+        return RIGHT;
+    }
+    if (current->dpad & DPAD_UP) {
+        *fresh = !(last->dpad & DPAD_UP);
+        return UP;
+    }
+    if (current->dpad & DPAD_DOWN) {
+        *fresh = !(last->dpad & DPAD_DOWN);
+        return DOWN;
+    }
+    if (current->axes_1 < 128 - 24) {
+        *fresh = last->axes_1 >= 128 - 24;
+        return LEFT;
+    }
+    if (current->axes_1 > 128 + 24) {
+        *fresh = last->axes_1 <= 128 + 24;
+        return RIGHT;
+    }
+    if (current->axes_2 < 128 - 24) {
+        *fresh = last->axes_2 >= 128 - 24;
+        return UP;
+    }
+    if (current->axes_2 > 128 + 24) {
+        *fresh = last->axes_2 <= 128 + 24;
+        return DOWN;
+    }
+    if (current->btn_a && !last->btn_a) {
+        *fresh = true;
+        return A;
+    }
+    if (current->btn_b && !last->btn_b) {
+        *fresh = true;
+        return B;
+    }
+    if (current->btn_x || last->btn_x) {
+        *fresh = current->btn_x && !last->btn_x;
+        return X;
+    }
+    if (current->btn_y && !last->btn_y) {
+        *fresh = true;
+        return Y;
+    }
+    if (current->btn_start && !last->btn_start) {
+        *fresh = true;
+        return START;
+    }
+    if (current->trg_left) {
+        *fresh = !last->trg_left;
+        return TRIG_L;
+    }
+    if (current->trg_right) {
+        *fresh = !last->trg_right;
+        return TRIG_R;
+    }
+    return NONE;
+}
+
+static enum control
+processInput(void) {
+    inputs _input;
+    controller_sample_t samples[MAPLE_PORT_COUNT][MAPLE_UNIT_COUNT] = {0};
+    enum control owner_command = NONE;
+    enum control fresh_command = NONE;
+    int fresh_owner = -1;
+    maple_device_t* kbd;
+    kbd_state_t* kbd_state;
+
+    memset(&_input, 0, sizeof(inputs));
+    int irq = irq_disable();
+    if (!controller_callback_registered) {
+        maple_attach_callback(MAPLE_FUNC_CONTROLLER, controller_attached);
+        controller_callback_registered = true;
+    }
+    for (int port = 0; port < MAPLE_PORT_COUNT; port++) {
+        for (int unit = 0; unit < MAPLE_UNIT_COUNT; unit++) {
+            controller_sample_t* sample = &samples[port][unit];
+            maple_device_t* dev = maple_enum_dev(port, unit);
+            sample->reset = controller_reset_pending[port][unit];
+            controller_reset_pending[port][unit] = false;
+            if (dev && dev->valid && (dev->info.functions & MAPLE_FUNC_CONTROLLER) && dev->drv && dev->drv->periodic
+                && dev->status_valid) {
+                sample->state = *(cont_state_t*)dev->status;
+                sample->fishing = !strncmp("Dreamcast Fishing Controller", dev->info.product_name, 28);
+                sample->ready = true;
+            }
         }
     }
+    irq_restore(irq);
+
+    for (int port = 0; port < MAPLE_PORT_COUNT; port++) {
+        for (int unit = 0; unit < MAPLE_UNIT_COUNT; unit++) {
+            int index = port * MAPLE_UNIT_COUNT + unit;
+            controller_sample_t* sample = &samples[port][unit];
+            controller_history_t* history = &controller_history[port][unit];
+            if (sample->reset || !sample->ready) {
+                memset(history, 0, sizeof(*history));
+                if (controller_owner == index) {
+                    controller_owner = -1;
+                }
+            }
+            if (!sample->ready) {
+                continue;
+            }
+
+            inputs current = {0};
+            unsigned int buttons = sample->state.buttons;
+            current.dpad = (buttons >> 4) & ~240;
+            current.btn_a = (uint8_t)!!(buttons & CONT_A);
+            current.btn_b = (uint8_t)!!(buttons & CONT_B);
+            current.btn_x = (uint8_t)!!(buttons & CONT_X);
+            current.btn_y = (uint8_t)!!(buttons & CONT_Y);
+            current.btn_start = (uint8_t)!!(buttons & CONT_START);
+            current.axes_1 = ((uint8_t)(sample->state.joyx) + 128);
+            current.axes_2 = ((uint8_t)(sample->state.joyy) + 128);
+            if (!sample->fishing) {
+                current.trg_left = (uint8_t)sample->state.ltrig & 255;
+                current.trg_right = (uint8_t)sample->state.rtrig & 255;
+            }
+
+            if (!history->armed) {
+                history->armed = controller_neutral(&current);
+            } else {
+                bool fresh = false;
+                enum control command = controller_command(&current, &history->last, &fresh);
+                if (controller_owner == index) {
+                    owner_command = command;
+                }
+                if (fresh && fresh_owner < 0) {
+                    fresh_owner = index;
+                    fresh_command = command;
+                }
+            }
+            history->last = current;
+        }
+    }
+    if (fresh_owner >= 0) {
+        controller_owner = fresh_owner;
+        owner_command = fresh_command;
+    }
+
+    kbd = maple_enum_type(0, MAPLE_FUNC_KEYBOARD);
+
+    mouse_poll(current_ui_handle_input == FUNC_NAME(FOLDERS, handle_input));
 
     if (kbd && kbd->valid) {
         /* Keyboard found - copy list of pressed key scancodes from cond.keys */
@@ -413,66 +573,14 @@ processInput(void) {
     }
 
     INPT_ReceiveFromHost(_input);
+    return owner_command;
 }
 
 static int
 translate_input(void) {
-    processInput();
-
-    /* D-Pad directions */
-    if (INPT_DPADDirection(DPAD_LEFT)) {
-        return LEFT;
-    }
-    if (INPT_DPADDirection(DPAD_RIGHT)) {
-        return RIGHT;
-    }
-    if (INPT_DPADDirection(DPAD_UP)) {
-        return UP;
-    }
-    if (INPT_DPADDirection(DPAD_DOWN)) {
-        return DOWN;
-    }
-
-    /* Analog stick */
-    if (INPT_AnalogI(AXES_X) < 128 - 24) {
-        return LEFT;
-    }
-    if (INPT_AnalogI(AXES_X) > 128 + 24) {
-        return RIGHT;
-    }
-
-    if (INPT_AnalogI(AXES_Y) < 128 - 24) {
-        return UP;
-    }
-    if (INPT_AnalogI(AXES_Y) > 128 + 24) {
-        return DOWN;
-    }
-
-    /* Buttons - use edge detection (BTN_PRESS) for A, B, Y, START to prevent
-     * double-press bugs when transitioning between UI states. X keeps hold
-     * detection for the artwork zoom feature. */
-    if (INPT_ButtonEx(BTN_A, BTN_PRESS)) {
-        return A;
-    }
-    if (INPT_ButtonEx(BTN_B, BTN_PRESS)) {
-        return B;
-    }
-    if (INPT_Button(BTN_X)) {
-        return X;
-    }
-    if (INPT_ButtonEx(BTN_Y, BTN_PRESS)) {
-        return Y;
-    }
-    if (INPT_ButtonEx(BTN_START, BTN_PRESS)) {
-        return START;
-    }
-
-    /* Triggers */
-    if (INPT_TriggerPressed(TRIGGER_L)) {
-        return TRIG_L;
-    }
-    if (INPT_TriggerPressed(TRIGGER_R)) {
-        return TRIG_R;
+    enum control controller = processInput();
+    if (controller != NONE) {
+        return controller;
     }
 
     /* Keyboard support - skip if no keys pressed */
@@ -591,6 +699,15 @@ main(int argc, char* argv[]) {
     /* DEBUG: GREEN = after maple_wait_scan */
     DFLASH(0, 255, 0);
 
+    /* DEBUG: CYAN = before init_gfx_pvr */
+    DFLASH(0, 255, 255);
+
+    init_gfx_pvr();
+    show_loading_screen();
+
+    /* Maple detection continues while the loading screen is displayed. */
+    thd_sleep(1000);
+
     /* DEBUG: BLUE = before vm2_rescan */
     DFLASH(0, 0, 255);
 
@@ -613,16 +730,13 @@ main(int argc, char* argv[]) {
         }
     }
 
+    /* Profile changes can briefly disconnect a VMU. */
+    if (vm2_device_count > 0) {
+        thd_sleep(1000);
+    }
+
     /* fflush(stdout); */
     /* setbuf(stdout, NULL); */
-
-    /* DEBUG: CYAN = before init_gfx_pvr */
-    DFLASH(0, 255, 255);
-
-    init_gfx_pvr();
-
-    /* Show loading screen while init() runs (which includes a 1s delay) */
-    show_loading_screen();
 
     /* DEBUG: MAGENTA = before init/savefile_init */
     DFLASH(255, 0, 255);
@@ -636,10 +750,22 @@ main(int argc, char* argv[]) {
     /* DEBUG: WHITE = init complete, entering main loop */
     DFLASH(255, 255, 255);
 
+    dcnow_net_set_hangup_hook(show_hangup);
     for (;;) {
         z_reset();
-        (*current_ui_handle_input)(translate_input());
+        enum control input = translate_input();
+#if DEBUG_VMU_SYNC
+        if (!handle_input_vmu_sync_debug(input))
+#endif
+            if (!handle_input_device_warnings(input)) {
+                (*current_ui_handle_input)(input);
+            }
+        /* A launch that came back (e.g., a missing loader file) leaves the box behind. */
+        hangup_overlay_set(0);
         vmu_lcd_check_insertions();
+        dcnow_conn_tick();
+        dcnow_vmu_tick();
+        online_time_sync_tick();
         bgm_poll();
         vid_waitvbl();
         if (need_reload_ui) {
@@ -655,7 +781,8 @@ main(int argc, char* argv[]) {
 
 void
 exit_to_bios_ex(int do_mount, int do_send_id) {
-    bgm_shutdown(); /* BIOS expects a quiet AICA */
+    bgm_shutdown();       /* BIOS expects a quiet AICA */
+    dcnow_net_shutdown(); /* The next program must not inherit a live modem or adapter */
     const gd_item* item = get_cur_game_item();
     /* Only mount/set ID if we have a valid item and it's not a folder */
     /* Folders have disc="DIR" and product[0]='F' */

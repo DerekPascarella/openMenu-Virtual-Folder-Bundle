@@ -607,6 +607,11 @@ _font_bmf_calculate_length(const char* str) {
     return _font_bmf_calculate_length_full(str, strlen(str));
 }
 
+float
+font_bmf_text_width(const char* str) {
+    return _font_bmf_calculate_length(str);
+}
+
 void
 font_bmf_draw_auto_size(int x1, int y1, uint32_t color, const char* str, int width) {
     float save_scale = current_scale;

@@ -91,6 +91,24 @@
                     </StackPanel>
                 </StackPanel>
             </TabItem>
+
+            <TabItem Header="Miscellaneous">
+                <StackPanel Margin="10">
+                    <CheckBox IsChecked="{Binding SerialSdWarning}"
+                              ToolTip="Warn at boot when no serial SD card adapter is found">
+                        <TextBlock Text="Show warning if serial SD card adapter is not detected" FontWeight="Bold" TextWrapping="Wrap"/>
+                    </CheckBox>
+                    <!-- Left margin lines the text up under the checkbox label -->
+                    <TextBlock TextWrapping="Wrap" Margin="20,2,0,0"
+                               Text="If a serial SD card adapter isn't detected when openMenu launches, show a warning message so that Serial VMU users know they must restart the console or openMenu before their SD reader is properly detected."/>
+
+                    <!-- Apply Button -->
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+                        <Button Content="Apply" Width="80" Padding="15,8" Click="ApplyMiscButton_Click"
+                                ToolTip="Save the miscellaneous settings"/>
+                    </StackPanel>
+                </StackPanel>
+            </TabItem>
         </TabControl>
     </Grid>
 </Window>

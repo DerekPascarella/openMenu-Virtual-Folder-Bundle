@@ -1,10 +1,12 @@
 using Avalonia;
 using Avalonia.Platform.Storage;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.VisualTree;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 using MsBox.Avalonia;
 using MsBox.Avalonia.Models;
 using System;
@@ -224,6 +226,12 @@ namespace GDMENUCardManager
             set { Manager.EnableLockCheck = value; RaisePropertyChanged(); SaveLockCheckConfig(); }
         }
 
+        public bool EnableFatSort
+        {
+            get { return Manager.EnableFatSort; }
+            set { Manager.EnableFatSort = value; RaisePropertyChanged(); SaveFatSortConfig(); }
+        }
+
         private readonly List<FilePickerFileType> fileFilterList;
 
 
@@ -235,6 +243,11 @@ namespace GDMENUCardManager
         // Where a drop will land, worked out while the drag hovers and used when it lands.
         // -1 means we have not settled on a spot yet.
         private int _pendingDropIndex = -1;
+        private readonly DispatcherTimer _dragScrollTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(75)
+        };
+        private Point _dragScrollPosition;
 
         // Row reorder drag state. The dragged items ride in _rowDragItems since source
         // and target are the same window, the marker format is there because macOS
@@ -346,6 +359,8 @@ namespace GDMENUCardManager
                 Manager.TruncateMenuGDI = truncateMenuGDI;
             if (bool.TryParse(ConfigurationManager.AppSettings["LockCheck"], out bool lockCheck))
                 Manager.EnableLockCheck = lockCheck;
+            if (bool.TryParse(ConfigurationManager.AppSettings["FatSort"], out bool fatSort))
+                Manager.EnableFatSort = fatSort;
 
             // Disc Image Options
             HaveGDIShrinkBlacklist = File.Exists(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, Constants.GdiShrinkBlacklistFile));
@@ -389,8 +404,11 @@ namespace GDMENUCardManager
         {
             AvaloniaXamlLoader.Load(this);
             this.AddHandler(DragDrop.DropEvent, WindowDrop);
+            this.AddHandler(DragDrop.DragEnterEvent, WindowDragOver);
             this.AddHandler(DragDrop.DragOverEvent, WindowDragOver);
             this.AddHandler(DragDrop.DragLeaveEvent, WindowDragLeave);
+            _dragScrollTimer.Tick += DragScrollTimer_Tick;
+            this.Closed += (_, _) => _dragScrollTimer.Stop();
             dg1 = this.FindControl<DataGrid>("dg1");
             DropLine = this.FindControl<Border>("DropLine");
             ButtonSort = this.FindControl<Button>("ButtonSort");
@@ -597,10 +615,13 @@ namespace GDMENUCardManager
             {
                 // A failed platform drag just cancels the move.
             }
-
-            _rowDragItems = null;
-            _pendingDropIndex = -1;
-            HideDropLine();
+            finally
+            {
+                _dragScrollTimer.Stop();
+                _rowDragItems = null;
+                _pendingDropIndex = -1;
+                HideDropLine();
+            }
         }
 
         private void UpdateFolderColumnVisibility()
@@ -1740,6 +1761,22 @@ namespace GDMENUCardManager
             }
         }
 
+        private void SaveFatSortConfig()
+        {
+            if (Core.Manager.ConfigReadOnly) return;
+            try
+            {
+                var config = ConfigurationManager.OpenExeConfiguration(System.Configuration.ConfigurationUserLevel.None);
+                SetOrAddSetting(config, "FatSort", Manager.EnableFatSort.ToString());
+                config.Save(System.Configuration.ConfigurationSaveMode.Modified);
+                ConfigurationManager.RefreshSection("appSettings");
+            }
+            catch
+            {
+                // Ignore errors saving config
+            }
+        }
+
         private void RestoreWindowBounds()
         {
             try
@@ -1806,6 +1843,7 @@ namespace GDMENUCardManager
 
         private async void WindowDrop(object sender, DragEventArgs e)
         {
+            _dragScrollTimer.Stop();
             HideDropLine();
 
             int pending = _pendingDropIndex;
@@ -1987,8 +2025,9 @@ namespace GDMENUCardManager
             bool isFileDrag = e.DataTransfer.Contains(DataFormat.File);
             bool isRowDrag = _rowDragItems != null && e.DataTransfer.Contains(RowDragFormat);
 
-            if (IsFilterActive || Manager.sdPath == null || (!isFileDrag && !isRowDrag))
+            if (IsBusy || IsFilterActive || Manager.sdPath == null || (!isFileDrag && !isRowDrag))
             {
+                _dragScrollTimer.Stop();
                 _pendingDropIndex = -1;
                 HideDropLine();
                 return;
@@ -1997,7 +2036,18 @@ namespace GDMENUCardManager
             if (isRowDrag)
                 e.DragEffects = DragDropEffects.Move;
 
-            var target = HitTestDropRow(e);
+            _dragScrollPosition = e.GetPosition(this);
+            UpdateDropTarget(e.GetPosition(dg1));
+
+            if (GetDragScrollDirection() != 0)
+                _dragScrollTimer.Start();
+            else
+                _dragScrollTimer.Stop();
+        }
+
+        private void UpdateDropTarget(Point point)
+        {
+            var target = HitTestDropRow(point);
             if (target == null)
             {
                 _pendingDropIndex = DefaultDropIndex();
@@ -2012,16 +2062,62 @@ namespace GDMENUCardManager
 
         private void WindowDragLeave(object sender, RoutedEventArgs e)
         {
-            // DragLeave can fire right before Drop, so don't wipe _pendingDropIndex here
-            // or the drop snaps to slot 1. just hide the line.
+            _dragScrollTimer.Stop();
+            // DragLeave can precede Drop, so keep the last insertion index.
             HideDropLine();
+        }
+
+        private int GetDragScrollDirection()
+        {
+            if (IsBusy || IsFilterActive || Manager.sdPath == null || !IsVisible ||
+                dg1 == null || !dg1.IsVisible)
+                return 0;
+
+            var presenter = dg1.GetVisualDescendants().OfType<DataGridRowsPresenter>().FirstOrDefault();
+            if (presenter == null)
+                return 0;
+
+            var point = this.TranslatePoint(_dragScrollPosition, presenter);
+            if (point == null || !new Rect(presenter.Bounds.Size).Contains(point.Value))
+                return 0;
+
+            double edgeHeight = Math.Min(32, presenter.Bounds.Height / 2);
+            if (point.Value.Y < edgeHeight)
+                return -1;
+            if (point.Value.Y >= presenter.Bounds.Height - edgeHeight)
+                return 1;
+            return 0;
+        }
+
+        private void DragScrollTimer_Tick(object sender, EventArgs e)
+        {
+            int direction = GetDragScrollDirection();
+            var scrollBar = dg1?.GetVisualDescendants().OfType<ScrollBar>()
+                .FirstOrDefault(x => x.Name == "PART_VerticalScrollbar");
+            if (direction == 0 || scrollBar == null || !scrollBar.IsVisible ||
+                (direction < 0 && scrollBar.Value <= scrollBar.Minimum) ||
+                (direction > 0 && scrollBar.Value >= scrollBar.Maximum))
+            {
+                _dragScrollTimer.Stop();
+                return;
+            }
+
+            if (direction < 0)
+                scrollBar.LineUp();
+            else
+                scrollBar.LineDown();
+
+            dg1.UpdateLayout();
+            var point = this.TranslatePoint(_dragScrollPosition, dg1);
+            if (point != null)
+                UpdateDropTarget(point.Value);
         }
 
         // Finds the row under the pointer and where an item would go. Upper half of a row
         // means above it, lower half below. The menu entry keeps slot 0, so a drop meant.
         // for the very top lands just under it instead. pointing at the open space under
         // The last row means after that row. Returns null when off the rows.
-        private (DataGridRow Row, bool Below, int InsertIndex)? HitTestDropRow(DragEventArgs e)
+        private (DataGridRow Row, bool Below, int InsertIndex)? HitTestDropRow(Point pos)
         {
             try
             {
@@ -2030,7 +2126,6 @@ namespace GDMENUCardManager
                 if (dg1 == null || !dg1.IsVisible)
                     return null;
 
-                var pos = e.GetPosition(dg1);
                 double y = pos.Y;
 
                 DataGridRow bottomRow = null;

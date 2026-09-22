@@ -11,8 +11,10 @@
 #pragma once
 
 #include <backend/gd_item.h>
+#include <openmenu_debug.h>
 #include <openmenu_settings.h>
 #include "ui/common.h"
+#include "ui/menu_mouse.h"
 
 struct theme_color;
 
@@ -43,6 +45,23 @@ void handle_input_compaction_test(enum control input);
 
 void draw_menu_op(void);
 void draw_menu_tr(void);
+
+/* Standard popup frame, shared with the other window modules */
+void draw_popup_menu_ex(int x, int y, int width, int height, int ui_mode);
+
+/* The "Hanging up..." box drawn over everything while the modem hangs up
+ * before a launch. Each style calls the drawer at the end of its transparent
+ * pass, and it draws nothing until the main loop turns it on. */
+void hangup_overlay_set(int on);
+void draw_hangup_overlay(struct theme_color* colors, uint32_t title_color);
+void device_warnings_init(bool serial_sd_missing);
+bool handle_input_device_warnings(enum control input);
+void draw_device_warnings(struct theme_color* colors, uint32_t title_color, int ui_mode);
+
+#if DEBUG_VMU_SYNC
+bool handle_input_vmu_sync_debug(enum control input);
+void draw_vmu_sync_debug(struct theme_color* colors);
+#endif
 
 void draw_credits_op(void);
 void draw_credits_tr(void);

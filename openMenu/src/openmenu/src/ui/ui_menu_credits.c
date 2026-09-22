@@ -27,12 +27,16 @@
 #include <openmenu_debug.h>
 #include <openmenu_savefile.h>
 #include <openmenu_settings.h>
+#include <vmu_sync_debug.h>
 
 #include "ui/draw_kos.h"
 #include "ui/draw_prototypes.h"
 #include "ui/font_prototypes.h"
 #include "ui/ui_common.h"
 
+#include "ui/dc/mouse.h"
+#include "ui/menu_mouse.h"
+#include "ui/ui_dcnow.h"
 #include "ui/ui_menu_credits.h"
 
 /* External declaration for VM2/VMUPro/USB4Maple/Pico2Maple detection */
@@ -40,8 +44,6 @@
 #include <dc/maple.h>
 #include <dc/maple/vmu.h>
 #include <kos/fs.h>
-#include <openmenu_lcd.h>
-#include <openmenu_lcd_access.h>
 #include "vm2/vm2_api.h"
 #include "vmu_lcd_utils.h"
 extern maple_device_t* vm2_devices[];
@@ -245,7 +247,13 @@ static const char* menu_choice_text[] = {"Style",
                                          "Recently Played",
                                          "Clock",
                                          "Marquee Speed",
+                                         "Mouse Cursor Speed",
+                                         "Mouse Scroll Speed",
                                          "Boot Mode",
+                                         "DC Now!",
+                                         "DC Now! Auto-Refresh",
+                                         "DC Now! VMU Updates",
+                                         "Online Time Sync",
                                          "Serial VMU",
                                          "Serial VMU Multi-Slot",
                                          "VMU Game ID",
@@ -277,6 +285,7 @@ static const char* folders_item_details_choice_text[] = {"Off", "On"};
 static const char* remember_last_game_choice_text[] = {"Off", "On"};
 static const char* recently_played_choice_text[] = {"Off", "Last 10", "Last 20", "Last 30", "Last 40", "Last 50"};
 static const char* marquee_speed_choice_text[] = {"Slow", "Medium", "Fast"};
+static const char* mouse_speed_choice_text[] = {"Slow", "Medium", "Fast"};
 static const char* clock_choice_text[] = {"On (12-Hour)", "On (24-Hour)", "Off"};
 static const char* vmu_time_sync_choice_text[] = {"Off", "On"};
 static const char* serial_vmu_choice_text[] = {"Off",     "On (A1)", "On (A2)", "On (B1)", "On (B2)",
@@ -284,8 +293,22 @@ static const char* serial_vmu_choice_text[] = {"Off",     "On (A1)", "On (A2)", 
 static const char* serial_vmu_multislot_choice_text[] = {"Off", "On"};
 static const char* vm2_send_all_choice_text[] = {"Send to All", "Send to First", "Off"};
 static const char* boot_mode_choice_text[] = {"Full Boot", "License Only", "Animation Only", "Fast Boot"};
+static const char* dcnow_choice_text[] = {"Off", "On (Manual Connect)", "On (Auto-Connect)"};
+static const char* dcnow_refresh_choice_text[] = {"Off",        "10 seconds", "20 seconds",
+                                                  "30 seconds", "45 seconds", "60 seconds"};
+static const char* dcnow_vmu_choice_text[] = {"Off", "On"};
+static const char* online_time_sync_choice_text[] = {
+    "Off",         "On (UTC-12)",    "On (UTC-11)", "On (UTC-10)",    "On (UTC-9:30)",
+    "On (UTC-9)",  "On (UTC-8)",     "On (UTC-7)",  "On (UTC-6)",     "On (UTC-5)",
+    "On (UTC-4)",  "On (UTC-3:30)",  "On (UTC-3)",  "On (UTC-2)",     "On (UTC-1)",
+    "On (UTC+0)",  "On (UTC+1)",     "On (UTC+2)",  "On (UTC+3)",     "On (UTC+3:30)",
+    "On (UTC+4)",  "On (UTC+4:30)",  "On (UTC+5)",  "On (UTC+5:30)",  "On (UTC+5:45)",
+    "On (UTC+6)",  "On (UTC+6:30)",  "On (UTC+7)",  "On (UTC+8)",     "On (UTC+8:45)",
+    "On (UTC+9)",  "On (UTC+9:30)",  "On (UTC+10)", "On (UTC+10:30)", "On (UTC+11)",
+    "On (UTC+12)", "On (UTC+12:45)", "On (UTC+13)", "On (UTC+14)"};
 static const char* save_choice_text[] = {"Save/Load", "Apply"};
 static const char* credits_text[] = {"Credits"};
+static const char* dcnow_button_text = "DC Now!";
 
 const char* custom_theme_text[10] = {0};
 static theme_custom* custom_themes;
@@ -319,13 +342,18 @@ static int REGION_CHOICES = (sizeof(region_choice_text) / sizeof(region_choice_t
 #define REMEMBER_LAST_GAME_CHOICES (sizeof(remember_last_game_choice_text) / sizeof(remember_last_game_choice_text)[0])
 #define RECENTLY_PLAYED_CHOICES    (sizeof(recently_played_choice_text) / sizeof(recently_played_choice_text)[0])
 #define MARQUEE_SPEED_CHOICES      (sizeof(marquee_speed_choice_text) / sizeof(marquee_speed_choice_text)[0])
+#define MOUSE_SPEED_CHOICES        (sizeof(mouse_speed_choice_text) / sizeof(mouse_speed_choice_text)[0])
 #define CLOCK_CHOICES              (sizeof(clock_choice_text) / sizeof(clock_choice_text)[0])
 #define VMU_TIME_SYNC_CHOICES      (sizeof(vmu_time_sync_choice_text) / sizeof(vmu_time_sync_choice_text)[0])
 #define SERIAL_VMU_CHOICES         (sizeof(serial_vmu_choice_text) / sizeof(serial_vmu_choice_text)[0])
 #define SERIAL_VMU_MULTISLOT_CHOICES                                                                                   \
     (sizeof(serial_vmu_multislot_choice_text) / sizeof(serial_vmu_multislot_choice_text)[0])
-#define VM2_SEND_ALL_CHOICES (sizeof(vm2_send_all_choice_text) / sizeof(vm2_send_all_choice_text)[0])
-#define BOOT_MODE_CHOICES    (sizeof(boot_mode_choice_text) / sizeof(boot_mode_choice_text)[0])
+#define VM2_SEND_ALL_CHOICES     (sizeof(vm2_send_all_choice_text) / sizeof(vm2_send_all_choice_text)[0])
+#define BOOT_MODE_CHOICES        (sizeof(boot_mode_choice_text) / sizeof(boot_mode_choice_text)[0])
+#define DCNOW_CHOICES            (sizeof(dcnow_choice_text) / sizeof(dcnow_choice_text)[0])
+#define DCNOW_REFRESH_CHOICES    (sizeof(dcnow_refresh_choice_text) / sizeof(dcnow_refresh_choice_text)[0])
+#define DCNOW_VMU_CHOICES        (sizeof(dcnow_vmu_choice_text) / sizeof(dcnow_vmu_choice_text)[0])
+#define ONLINE_TIME_SYNC_CHOICES (sizeof(online_time_sync_choice_text) / sizeof(online_time_sync_choice_text)[0])
 
 typedef enum MENU_CHOICE {
     CHOICE_START,
@@ -349,7 +377,13 @@ typedef enum MENU_CHOICE {
     CHOICE_RECENTLY_PLAYED,
     CHOICE_CLOCK,
     CHOICE_MARQUEE_SPEED,
+    CHOICE_MOUSE_CURSOR_SPEED,
+    CHOICE_MOUSE_SCROLL_SPEED,
     CHOICE_BOOT_MODE,
+    CHOICE_DCNOW,
+    CHOICE_DCNOW_REFRESH,
+    CHOICE_DCNOW_VMU,
+    CHOICE_ONLINE_TIME_SYNC,
     CHOICE_SERIAL_VMU,
     CHOICE_SERIAL_VMU_MULTISLOT,
     CHOICE_VM2_SEND_ALL,
@@ -383,7 +417,13 @@ static int choices_max[MENU_CHOICES + 1] = {THEME_CHOICES,
                                             RECENTLY_PLAYED_CHOICES,
                                             CLOCK_CHOICES,
                                             MARQUEE_SPEED_CHOICES,
+                                            MOUSE_SPEED_CHOICES,
+                                            MOUSE_SPEED_CHOICES,
                                             BOOT_MODE_CHOICES,
+                                            DCNOW_CHOICES,
+                                            DCNOW_REFRESH_CHOICES,
+                                            DCNOW_VMU_CHOICES,
+                                            ONLINE_TIME_SYNC_CHOICES,
                                             SERIAL_VMU_CHOICES,
                                             SERIAL_VMU_MULTISLOT_CHOICES,
                                             VM2_SEND_ALL_CHOICES,
@@ -410,12 +450,29 @@ static const char** menu_choice_array[MENU_CHOICES] = {theme_choice_text,
                                                        recently_played_choice_text,
                                                        clock_choice_text,
                                                        marquee_speed_choice_text,
+                                                       mouse_speed_choice_text,
+                                                       mouse_speed_choice_text,
                                                        boot_mode_choice_text,
+                                                       dcnow_choice_text,
+                                                       dcnow_refresh_choice_text,
+                                                       dcnow_vmu_choice_text,
+                                                       online_time_sync_choice_text,
                                                        serial_vmu_choice_text,
                                                        serial_vmu_multislot_choice_text,
                                                        vm2_send_all_choice_text,
                                                        vmu_time_sync_choice_text,
                                                        beep_choice_text};
+
+/* Positions on the footer row. DC Now! is there only while the setting is on. */
+#define FOOTER_SAVE  0
+#define FOOTER_APPLY 1
+#define FOOTER_DCNOW 2
+
+static int
+footer_button_count(void) {
+    return choices[CHOICE_DCNOW] != DCNOW_OFF ? 3 : 2;
+}
+
 static int current_choice = CHOICE_START;
 static int* input_timeout_ptr = NULL;
 
@@ -458,6 +515,8 @@ static uint32_t menu_bkg_color;
 static uint32_t menu_bkg_border_color;
 static uint32_t menu_title_color;
 
+static theme_color* cur_colors = NULL;
+
 /* Forward declaration for Save/Load window initialization */
 static void saveload_init_state(void);
 
@@ -491,6 +550,7 @@ common_setup(enum draw_state* state, theme_color* _colors, int* timeout_ptr) {
     highlight_color = _colors->menu_highlight_color;
     menu_bkg_color = _colors->menu_bkg_color;
     menu_bkg_border_color = _colors->menu_bkg_border_color;
+    cur_colors = _colors;
 
     /* So we can modify the shared state and input timeout */
     state_ptr = state;
@@ -578,6 +638,8 @@ menu_setup(enum draw_state* state, theme_color* _colors, int* timeout_ptr, uint3
     choices[CHOICE_REMEMBER_LAST_GAME] = sf_remember_last_game[0];
     choices[CHOICE_RECENTLY_PLAYED] = sf_recently_played[0];
     choices[CHOICE_MARQUEE_SPEED] = sf_marquee_speed[0];
+    choices[CHOICE_MOUSE_CURSOR_SPEED] = sf_mouse_cursor_speed[0];
+    choices[CHOICE_MOUSE_SCROLL_SPEED] = sf_mouse_scroll_speed[0];
     choices[CHOICE_CLOCK] = sf_clock[0];
     choices[CHOICE_VMU_TIME_SYNC] = sf_vmu_time_sync[0];
     choices[CHOICE_SERIAL_VMU] = sf_serial_vmu[0];
@@ -591,6 +653,13 @@ menu_setup(enum draw_state* state, theme_color* _colors, int* timeout_ptr, uint3
         choices[CHOICE_SERIAL_VMU_MULTISLOT] = SERIAL_VMU_MULTISLOT_OFF;
     }
     choices[CHOICE_BOOT_MODE] = sf_boot_mode[0];
+    choices[CHOICE_DCNOW] = sf_dcnow[0];
+    choices[CHOICE_DCNOW_REFRESH] = sf_dcnow_refresh[0];
+    choices[CHOICE_DCNOW_VMU] = sf_dcnow_vmu[0];
+    choices[CHOICE_ONLINE_TIME_SYNC] = sf_online_time_sync[0];
+    if (choices[CHOICE_SAVE] >= footer_button_count()) {
+        choices[CHOICE_SAVE] = FOOTER_APPLY;
+    }
 
     settings_sync_theme_row_from_settings();
 
@@ -646,10 +715,23 @@ credits_leave(void) {
 static void
 menu_accept(void) {
     if (current_choice == CHOICE_SAVE) {
-        if (choices[CHOICE_SAVE] == 0 /* Save/Load */) {
+        if (choices[CHOICE_SAVE] == FOOTER_SAVE) {
             /* Open Save/Load window instead of saving directly */
             saveload_init_state();
             *state_ptr = DRAW_SAVELOAD;
+            *input_timeout_ptr = 3;
+            return;
+        }
+
+        if (choices[CHOICE_SAVE] == FOOTER_DCNOW) {
+            /* The window, the VMU screen and the time sync read the applied
+             * settings, so these four rows take effect the moment the window opens. */
+            sf_dcnow[0] = choices[CHOICE_DCNOW];
+            sf_dcnow_refresh[0] = choices[CHOICE_DCNOW_REFRESH];
+            sf_dcnow_vmu[0] = choices[CHOICE_DCNOW_VMU];
+            sf_online_time_sync[0] = choices[CHOICE_ONLINE_TIME_SYNC];
+            dcnow_setup(state_ptr, cur_colors, input_timeout_ptr, menu_title_color);
+            *state_ptr = DRAW_DCNOW;
             *input_timeout_ptr = 3;
             return;
         }
@@ -677,6 +759,8 @@ menu_accept(void) {
         sf_remember_last_game[0] = choices[CHOICE_REMEMBER_LAST_GAME];
         sf_recently_played[0] = choices[CHOICE_RECENTLY_PLAYED];
         sf_marquee_speed[0] = choices[CHOICE_MARQUEE_SPEED];
+        sf_mouse_cursor_speed[0] = choices[CHOICE_MOUSE_CURSOR_SPEED];
+        sf_mouse_scroll_speed[0] = choices[CHOICE_MOUSE_SCROLL_SPEED];
         sf_clock[0] = choices[CHOICE_CLOCK];
         /* If VMU Time Sync was just enabled, sync the RTC now */
         if (choices[CHOICE_VMU_TIME_SYNC] == VMU_TIME_SYNC_ON && sf_vmu_time_sync[0] == VMU_TIME_SYNC_OFF) {
@@ -699,6 +783,10 @@ menu_accept(void) {
         sf_serial_vmu_multislot[0] = choices[CHOICE_SERIAL_VMU_MULTISLOT];
         sf_vm2_send_all[0] = choices[CHOICE_VM2_SEND_ALL];
         sf_boot_mode[0] = choices[CHOICE_BOOT_MODE];
+        sf_dcnow[0] = choices[CHOICE_DCNOW];
+        sf_dcnow_refresh[0] = choices[CHOICE_DCNOW_REFRESH];
+        sf_dcnow_vmu[0] = choices[CHOICE_DCNOW_VMU];
+        sf_online_time_sync[0] = choices[CHOICE_ONLINE_TIME_SYNC];
         if (choices[CHOICE_THEME] != UI_SCROLL && choices[CHOICE_THEME] != UI_FOLDERS && sf_region[0] > REGION_END) {
             sf_custom_theme[0] = THEME_ON;
             int num_default_themes = 0;
@@ -777,6 +865,8 @@ settings_option_visible(int option) {
         case CHOICE_RECENTLY_PLAYED:
         case CHOICE_CLOCK: return sf_ui[0] == UI_FOLDERS;
         case CHOICE_MARQUEE_SPEED: return sf_ui[0] == UI_SCROLL || sf_ui[0] == UI_FOLDERS;
+        case CHOICE_MOUSE_CURSOR_SPEED:
+        case CHOICE_MOUSE_SCROLL_SPEED: return sf_ui[0] == UI_FOLDERS && mouse_get_state()->present;
         case CHOICE_SERIAL_VMU:
             /* Needs an SD card and no active VMU Game ID with a VM2 present */
             return savefile_sd_available() && !(choices[CHOICE_VM2_SEND_ALL] != VM2_SEND_OFF && vm2_device_count > 0);
@@ -787,6 +877,10 @@ settings_option_visible(int option) {
         case CHOICE_VM2_SEND_ALL:
             /* Needs a VM2 family device present and Serial VMU turned off */
             return vm2_device_count > 0 && choices[CHOICE_SERIAL_VMU] == SERIAL_VMU_OFF;
+        case CHOICE_DCNOW_REFRESH:
+        case CHOICE_ONLINE_TIME_SYNC: return choices[CHOICE_DCNOW] != DCNOW_OFF;
+        case CHOICE_DCNOW_VMU:
+            return choices[CHOICE_DCNOW] != DCNOW_OFF && choices[CHOICE_DCNOW_REFRESH] != DCNOW_REFRESH_OFF;
         default: return 1;
     }
 }
@@ -802,6 +896,17 @@ settings_visible_list(int* list) {
         }
     }
     return count;
+}
+
+static bool
+settings_repair_selection(void) {
+    if (current_choice == CHOICE_SAVE || current_choice == CHOICE_CREDITS || settings_option_visible(current_choice)) {
+        return false;
+    }
+    do {
+        current_choice++;
+    } while (current_choice < CHOICE_SAVE && !settings_option_visible(current_choice));
+    return true;
 }
 
 /* Clamps the scroll window against the current row set and keeps the cursor
@@ -938,7 +1043,7 @@ menu_choice_left(void) {
     /* Handle Save/Apply/Credits row navigation */
     if (current_choice == CHOICE_CREDITS) {
         current_choice = CHOICE_SAVE;
-        choices[CHOICE_SAVE] = 1; /* Select Apply */
+        choices[CHOICE_SAVE] = footer_button_count() - 1;
         *input_timeout_ptr = INPUT_TIMEOUT;
         return;
     }
@@ -962,6 +1067,10 @@ menu_choice_left(void) {
     if (current_choice == CHOICE_SERIAL_VMU && choices[CHOICE_SERIAL_VMU] == SERIAL_VMU_OFF) {
         choices[CHOICE_SERIAL_VMU_MULTISLOT] = SERIAL_VMU_MULTISLOT_OFF;
     }
+    /* Turning DC Now! off takes the DC Now! button with it */
+    if (current_choice == CHOICE_DCNOW && choices[CHOICE_DCNOW] == DCNOW_OFF && choices[CHOICE_SAVE] == FOOTER_DCNOW) {
+        choices[CHOICE_SAVE] = FOOTER_APPLY;
+    }
     if (current_choice == CHOICE_THEME) {
         menu_region_adj();
     }
@@ -978,8 +1087,8 @@ menu_choice_right(void) {
         /* Already on Credits (rightmost), do nothing */
         return;
     }
-    if (current_choice == CHOICE_SAVE && choices[CHOICE_SAVE] == 1) {
-        /* On Apply, move right to Credits */
+    if (current_choice == CHOICE_SAVE && choices[CHOICE_SAVE] >= footer_button_count() - 1) {
+        /* On the last footer button, move right to Credits */
         current_choice = CHOICE_CREDITS;
         *input_timeout_ptr = INPUT_TIMEOUT;
         return;
@@ -989,6 +1098,9 @@ menu_choice_right(void) {
     int max_choice = choices_max[current_choice];
     if (current_choice == CHOICE_SORT && sf_ui[0] == UI_FOLDERS) {
         max_choice = SORT_CHOICES_FOLDERS;
+    }
+    if (current_choice == CHOICE_SAVE) {
+        max_choice = footer_button_count();
     }
     if (choices[current_choice] >= max_choice) {
         choices[current_choice]--;
@@ -1004,6 +1116,10 @@ menu_choice_right(void) {
     /* Reset multi-slot when Serial VMU is turned off */
     if (current_choice == CHOICE_SERIAL_VMU && choices[CHOICE_SERIAL_VMU] == SERIAL_VMU_OFF) {
         choices[CHOICE_SERIAL_VMU_MULTISLOT] = SERIAL_VMU_MULTISLOT_OFF;
+    }
+    /* Turning DC Now! off takes the DC Now! button with it */
+    if (current_choice == CHOICE_DCNOW && choices[CHOICE_DCNOW] == DCNOW_OFF && choices[CHOICE_SAVE] == FOOTER_DCNOW) {
+        choices[CHOICE_SAVE] = FOOTER_APPLY;
     }
     if (current_choice == CHOICE_THEME) {
         menu_region_adj();
@@ -1219,6 +1335,9 @@ menu_cb_accept(void) {
 
 void
 handle_input_menu(enum control input) {
+    if (settings_repair_selection() && (input == LEFT || input == RIGHT || input == A)) {
+        return;
+    }
     switch (input) {
         case LEFT: menu_choice_left(); break;
         case RIGHT: menu_choice_right(); break;
@@ -1294,8 +1413,9 @@ string_outer_concat(char* out, const char* left, const char* right, int len) {
     strcat(out, right);
 }
 
-static void
+void
 draw_popup_menu_ex(int x, int y, int width, int height, int ui_mode) {
+    menu_mouse_surface(x, y, width, height);
     const int border_width = 2;
     draw_draw_quad(x - border_width, y - border_width, width + (2 * border_width), height + (2 * border_width),
                    menu_bkg_border_color);
@@ -1310,6 +1430,393 @@ draw_popup_menu_ex(int x, int y, int width, int height, int ui_mode) {
 static void
 draw_popup_menu(int x, int y, int width, int height) {
     draw_popup_menu_ex(x, y, width, height, sf_ui[0]);
+}
+
+static int hangup_overlay = 0;
+
+typedef enum {
+    DEVICE_WARNING_NONE,
+    DEVICE_WARNING_VMU_TIME_SYNC,
+    DEVICE_WARNING_SERIAL_SD,
+} device_warning_t;
+
+static const char* const vmu_time_sync_warning_lines[] = {
+    "No attached VMU could provide a valid",
+    "date and time.",
+    "",
+    "Use a compatible device, or turn off",
+    "VMU Time Sync to prevent this",
+    "message from appearing again.",
+    "",
+    "Close",
+};
+
+static const char* const serial_sd_warning_lines[] = {
+    "No serial SD card reader was detected.",
+    "",
+    "To enable Serial VMU functionality,",
+    "either power cycle the console, or",
+    "restart openMenu by exiting to BIOS",
+    "and selecting \"Play\".",
+    "",
+    "Exit to BIOS",
+    "Close",
+};
+
+static bool serial_sd_warning_pending;
+static bool device_warning_drawn;
+static device_warning_t drawn_device_warning;
+static int device_warning_selection;
+static enum control device_warning_last_direction;
+static int device_warning_action_x, device_warning_action_width, device_warning_action_height;
+static int device_warning_action_y[2];
+static int device_warning_action_count;
+
+static device_warning_t
+active_device_warning(void) {
+    if (vmu_time_sync_warning_pending()) {
+        return DEVICE_WARNING_VMU_TIME_SYNC;
+    }
+    if (serial_sd_warning_pending) {
+        return DEVICE_WARNING_SERIAL_SD;
+    }
+    return DEVICE_WARNING_NONE;
+}
+
+static void
+reset_device_warning_input(void) {
+    device_warning_drawn = false;
+    drawn_device_warning = DEVICE_WARNING_NONE;
+    device_warning_selection = 0;
+    device_warning_last_direction = NONE;
+    device_warning_action_x = 0;
+    device_warning_action_width = 0;
+    device_warning_action_height = 0;
+    device_warning_action_y[0] = 0;
+    device_warning_action_y[1] = 0;
+    device_warning_action_count = 0;
+    menu_mouse_invalidate();
+    mouse_reset();
+}
+
+void
+device_warnings_init(bool serial_sd_missing) {
+    serial_sd_warning_pending = serial_sd_missing;
+    reset_device_warning_input();
+}
+
+static int
+device_warning_mouse_row(const mouse_frame_t* mouse) {
+    if (!mouse->present || mouse->x < device_warning_action_x
+        || mouse->x >= device_warning_action_x + device_warning_action_width) {
+        return -1;
+    }
+    for (int i = 0; i < device_warning_action_count; i++) {
+        if (mouse->y >= device_warning_action_y[i]
+            && mouse->y < device_warning_action_y[i] + device_warning_action_height) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+bool
+handle_input_device_warnings(enum control input) {
+    device_warning_t warning = active_device_warning();
+    if (warning == DEVICE_WARNING_NONE) {
+        if (device_warning_drawn) {
+            reset_device_warning_input();
+        }
+        return false;
+    }
+    if (!device_warning_drawn || drawn_device_warning != warning) {
+        return true;
+    }
+
+    const mouse_frame_t* mouse = mouse_get_state();
+    int mouse_row = device_warning_mouse_row(mouse);
+    bool left_clicked = mouse->present && (mouse->pressed & MOUSE_LEFT) && mouse_row >= 0;
+    bool close_requested = input == B || input == START || (mouse->present && (mouse->pressed & MOUSE_RIGHT));
+
+    if (warning == DEVICE_WARNING_VMU_TIME_SYNC) {
+        if (input == A || close_requested || left_clicked) {
+            vmu_time_sync_warning_dismiss();
+            reset_device_warning_input();
+        }
+        return true;
+    }
+
+    if (mouse->present && mouse->moved && mouse_row >= 0) {
+        device_warning_selection = mouse_row;
+    }
+    if (left_clicked) {
+        device_warning_selection = mouse_row;
+    }
+
+    if (input == A || left_clicked) {
+        bool exit_to_bios = device_warning_selection == 0;
+        serial_sd_warning_pending = false;
+        reset_device_warning_input();
+        if (exit_to_bios) {
+            exit_to_bios_ex(0, 0);
+        }
+    } else if (close_requested) {
+        serial_sd_warning_pending = false;
+        reset_device_warning_input();
+    } else if (input == UP || input == DOWN) {
+        if (input != device_warning_last_direction) {
+            device_warning_selection = (device_warning_selection + 1) % 2;
+            device_warning_last_direction = input;
+        }
+    } else {
+        device_warning_last_direction = NONE;
+    }
+    return true;
+}
+
+void
+draw_device_warnings(theme_color* colors, uint32_t title_color, int ui_mode) {
+    device_warning_t warning = active_device_warning();
+    if (warning == DEVICE_WARNING_NONE) {
+        return;
+    }
+    if (drawn_device_warning != warning) {
+        reset_device_warning_input();
+    }
+    const char* title = warning == DEVICE_WARNING_VMU_TIME_SYNC ? "VMU Time Sync" : "Serial VMU";
+    const char* const* lines =
+        warning == DEVICE_WARNING_VMU_TIME_SYNC ? vmu_time_sync_warning_lines : serial_sd_warning_lines;
+    const int count = warning == DEVICE_WARNING_VMU_TIME_SYNC
+                          ? (int)(sizeof(vmu_time_sync_warning_lines) / sizeof(vmu_time_sync_warning_lines[0]))
+                          : (int)(sizeof(serial_sd_warning_lines) / sizeof(serial_sd_warning_lines[0]));
+    const int action_start = warning == DEVICE_WARNING_VMU_TIME_SYNC ? count - 1 : count - 2;
+    bool bitmap = ui_mode == UI_SCROLL || ui_mode == UI_FOLDERS;
+    const int line_height = bitmap ? 24 : 26;
+    const int width = 38 * (bitmap ? 8 : 10) + 16;
+    const int height = bitmap ? (count + 1) * line_height + 4 : (count + 2) * line_height;
+    const int x = (640 - width) / 2;
+    const int y = (480 - height) / 2;
+    text_color = colors->menu_text_color;
+    menu_bkg_color = colors->menu_bkg_color;
+    menu_bkg_border_color = colors->menu_bkg_border_color;
+    z_set_cond(220.0f);
+    draw_popup_menu_ex(x, y, width, height, ui_mode);
+
+    if (bitmap) {
+        font_bmp_begin_draw();
+        font_bmp_set_color(title_color);
+        font_bmp_draw_main(x + width / 2 - ((int)strlen(title) * 8 / 2), y + 2, title);
+    } else {
+        font_bmf_begin_draw();
+        font_bmf_set_height(24.0f);
+        font_bmf_draw(x + 8, y + 2, title_color, title);
+    }
+    int cur_y = y + 2 + (bitmap ? 2 : line_height / 4);
+    device_warning_action_count = count - action_start;
+    device_warning_action_x = x + 8;
+    device_warning_action_width = width - 16;
+    device_warning_action_height = bitmap ? 20 : 24;
+    for (int i = 0; i < count; i++) {
+        cur_y += line_height;
+        if (lines[i][0] == '\0') {
+            continue;
+        }
+        int action = i - action_start;
+        uint32_t color = action >= 0 && action == device_warning_selection ? colors->menu_highlight_color : text_color;
+        if (bitmap) {
+            font_bmp_set_color(color);
+            font_bmp_draw_main(x + 8, cur_y, lines[i]);
+        } else {
+            font_bmf_draw(x + 8, cur_y, color, lines[i]);
+        }
+        if (action >= 0) {
+            device_warning_action_y[action] = cur_y;
+        }
+    }
+    if (!bitmap) {
+        font_bmf_set_height_default();
+    }
+    drawn_device_warning = warning;
+    device_warning_drawn = true;
+}
+
+#if DEBUG_VMU_SYNC
+static unsigned vmu_debug_device;
+static unsigned vmu_debug_page;
+static enum control vmu_debug_last_input;
+static bool vmu_debug_wait_release;
+
+bool
+handle_input_vmu_sync_debug(enum control input) {
+    if (!vmu_sync_debug_active) {
+        if (vmu_debug_wait_release && input == NONE) {
+            vmu_debug_wait_release = false;
+        }
+        return vmu_debug_wait_release;
+    }
+    if (input == vmu_debug_last_input) {
+        return true;
+    }
+    vmu_debug_last_input = input;
+    if (input == B) {
+        vmu_sync_debug_active = false;
+        vmu_debug_wait_release = true;
+        vmu_debug_device = vmu_debug_page = 0;
+        menu_mouse_invalidate();
+        mouse_reset();
+    } else if (input == X) {
+        vmu_debug_device = vmu_debug_page = 0;
+        vmu_sync_debug_query();
+    } else if (vmu_sync_sample_count != 0) {
+        if (input == LEFT || input == RIGHT) {
+            vmu_debug_device =
+                (vmu_debug_device + vmu_sync_sample_count + (input == LEFT ? -1 : 1)) % vmu_sync_sample_count;
+            vmu_debug_page = 0;
+        } else if (input == UP && vmu_debug_page > 0) {
+            vmu_debug_page--;
+        } else if (input == DOWN && (vmu_debug_page + 1) * 128 < vmu_sync_samples[vmu_debug_device].raw_size) {
+            vmu_debug_page++;
+        }
+    }
+    return true;
+}
+
+static void
+vmu_debug_line(int y, uint32_t color, const char* line) {
+    if (sf_ui[0] == UI_SCROLL || sf_ui[0] == UI_FOLDERS) {
+        font_bmp_set_color(color);
+        font_bmp_draw_main(44, y, line);
+    } else {
+        font_bmf_draw(44, y, color, line);
+    }
+}
+
+void
+draw_vmu_sync_debug(theme_color* colors) {
+    if (!vmu_sync_debug_active) {
+        return;
+    }
+    z_set_cond(220.0f);
+    draw_draw_quad(30, 26, 580, 428, colors->menu_bkg_border_color);
+    draw_draw_quad(32, 28, 576, 424, colors->menu_bkg_color);
+    if (sf_ui[0] == UI_SCROLL || sf_ui[0] == UI_FOLDERS) {
+        font_bmp_begin_draw();
+    } else {
+        font_bmf_begin_draw();
+        font_bmf_set_height(16.0f);
+    }
+    uint32_t color = colors->menu_text_color;
+    char line[80];
+    vmu_debug_line(36, color, "VMU Clock Probe (read-only)");
+    vmu_debug_line(76, color, "TX cmd=0B words=2: 00 00 00 08 00 00 00 00");
+    vmu_debug_line(416, color, "L/R: device  U/D: hex page  X: query  B: close");
+    if (vmu_sync_sample_count == 0) {
+        vmu_debug_line(116, color, "No memory cards detected. Insert one, then press X.");
+    } else {
+        const vmu_sync_sample_t* sample = &vmu_sync_samples[vmu_debug_device];
+        snprintf(line, sizeof(line), "%u/%u Port %c%d: %.30s", vmu_debug_device + 1, vmu_sync_sample_count,
+                 'A' + sample->port, sample->unit, sample->product);
+        vmu_debug_line(56, color, line);
+        snprintf(line, sizeof(line), "Functions=%08lx Clock flag=%s", (unsigned long)sample->functions,
+                 sample->functions & MAPLE_FUNC_CLOCK ? "yes" : "NO (normal sync skips)");
+        vmu_debug_line(96, color, line);
+        snprintf(line, sizeof(line), "Transport=%d Frame=%d Elapsed=%lums", sample->result, sample->frame_state,
+                 (unsigned long)sample->elapsed_ms);
+        vmu_debug_line(116, color, line);
+        if (sample->raw_size == 0) {
+            vmu_debug_line(156, color,
+                           sample->result == MAPLE_EAGAIN ? "Frame busy. No request sent."
+                                                          : "No completed reply captured.");
+        } else {
+            if (sample->raw[0] == 0xff) {
+                vmu_debug_line(136, color, "RX: hardware no-response marker (0xFF)");
+            } else {
+                snprintf(line, sizeof(line), "RX code=%d (0x%02X) dst=%02X src=%02X words=%u", (int8_t)sample->raw[0],
+                         sample->raw[0], sample->raw[1], sample->raw[2], sample->raw[3]);
+                vmu_debug_line(136, color, line);
+            }
+            if (sample->raw_size >= 8) {
+                uint32_t function;
+                memcpy(&function, sample->raw + 4, sizeof(function));
+                snprintf(line, sizeof(line), "RX function=%08lx (expected 08000000)", (unsigned long)function);
+                vmu_debug_line(156, color, line);
+            }
+            if (sample->raw_size >= 16) {
+                const uint8_t* dt = sample->raw + 8;
+                snprintf(line, sizeof(line), "Fields: %04u-%02u-%02u %02u:%02u:%02u weekday=%u", dt[0] | (dt[1] << 8),
+                         dt[2], dt[3], dt[4], dt[5], dt[6], dt[7]);
+                vmu_debug_line(176, color, line);
+            }
+            snprintf(line, sizeof(line), "Raw CPU bytes: %u total, page %u/%u", sample->raw_size, vmu_debug_page + 1,
+                     (sample->raw_size + 127) / 128);
+            vmu_debug_line(196, color, line);
+            for (unsigned row = 0; row < 8; row++) {
+                unsigned offset = vmu_debug_page * 128 + row * 16;
+                if (offset >= sample->raw_size) {
+                    break;
+                }
+                int pos = snprintf(line, sizeof(line), "%03X:", offset);
+                for (unsigned j = offset; j < offset + 16 && j < sample->raw_size; j++) {
+                    pos += snprintf(line + pos, sizeof(line) - pos, " %02X", sample->raw[j]);
+                }
+                vmu_debug_line(220 + row * 22, color, line);
+            }
+            vmu_debug_line(396, color, "Expected RX: code=08 words=3 function=08000000");
+        }
+    }
+    if (sf_ui[0] != UI_SCROLL && sf_ui[0] != UI_FOLDERS) {
+        font_bmf_set_height_default();
+    }
+}
+#endif
+
+void
+hangup_overlay_set(int on) {
+    hangup_overlay = on;
+}
+
+/* The colors come from the caller, since no popup may have set them yet. */
+void
+draw_hangup_overlay(theme_color* colors, uint32_t title_color) {
+    if (!hangup_overlay) {
+        return;
+    }
+    text_color = colors->menu_text_color;
+    menu_bkg_color = colors->menu_bkg_color;
+    menu_bkg_border_color = colors->menu_bkg_border_color;
+    menu_title_color = title_color;
+    z_set_cond(215.0f);
+
+    if (sf_ui[0] == UI_SCROLL || sf_ui[0] == UI_FOLDERS) {
+        const int line_height = 24;
+        const int title_gap = 2;
+        const int padding = 16;
+        const int width = 14 * 8 + padding; /* "Dreamcast Now!" */
+        const int height = (1 + 1) * line_height + 4;
+        const int x = (640 / 2) - (width / 2);
+        const int y = (480 / 2) - (height / 2);
+
+        draw_popup_menu(x, y, width, height);
+        font_bmp_begin_draw();
+        font_bmp_set_color(menu_title_color);
+        font_bmp_draw_main(x + width / 2 - (14 * 8 / 2), y + 2, "Dreamcast Now!");
+        font_bmp_set_color(text_color);
+        font_bmp_draw_main(x + padding / 2, y + 2 + title_gap + line_height, "Hanging up...");
+    } else {
+        const int line_height = 32;
+        const int title_gap = line_height / 4;
+        const int padding = 20;
+        const int width = 14 * 10 + padding; /* "Dreamcast Now!" */
+        const int height = (1 + 1) * line_height + (line_height / 2);
+        const int x = (640 / 2) - (width / 2);
+        const int y = (480 / 2) - (height / 2);
+
+        draw_popup_menu(x, y, width, height);
+        font_bmf_begin_draw();
+        font_bmf_set_height_default();
+        font_bmf_draw_centered(x + width / 2, y + 2, text_color, "Dreamcast Now!");
+        font_bmf_draw_auto_size(x + 10, y + 2 + title_gap + line_height, text_color, "Hanging up...", width - 20);
+    }
 }
 
 /* Poll for VM2 device changes each frame.
@@ -1337,6 +1844,7 @@ draw_menu_tr(void) {
     z_set_cond(205.0f);
     /* Poll for VM2 device changes */
     settings_live_update_vm2();
+    settings_repair_selection();
     if (sf_ui[0] == UI_SCROLL || sf_ui[0] == UI_FOLDERS) {
         /* Menu size and placement */
         const int line_height = 24;
@@ -1363,6 +1871,7 @@ draw_menu_tr(void) {
 
         /* Draw a popup in the middle of the screen */
         draw_popup_menu(x, y, width, height);
+        menu_mouse_scroll(&current_choice, &settings_scroll_offset, visible_count, window_rows, visible_list);
 
         /* Scrollbar along the right edge, only when the list does not fit */
         if (visible_count > window_rows) {
@@ -1375,6 +1884,8 @@ draw_menu_tr(void) {
             }
             /* Keep 1px of track visible on all sides of the thumb */
             const int thumb_y = list_top + 1 + ((track_h - 2 - thumb_h) * settings_scroll_offset) / max_scroll;
+            mouse_scrollbar_t bar = {track_x, list_top, track_w, track_h, thumb_y, thumb_h, 1, max_scroll, window_rows};
+            menu_mouse_scrollbar(&bar);
             draw_draw_quad(track_x, list_top, track_w, track_h, menu_bkg_border_color);
             draw_draw_quad(track_x + 1, thumb_y, track_w - 2, thumb_h, highlight_color);
         }
@@ -1407,24 +1918,47 @@ draw_menu_tr(void) {
             } else {
                 string_outer_concat(line_buf, menu_choice_text[i], menu_choice_array[i][(int)choices[i]], 38);
             }
+            menu_mouse_row(x_item, list_top + row * line_height, width - 24, line_height, &current_choice, i, RIGHT);
             font_bmp_draw_main(x_item, row_y, line_buf);
         }
 
-        /* Draw Save/Apply/Credits on one line, anchored under the list */
+        /* Footer buttons on one line, anchored under the list */
+        const int buttons = footer_button_count();
         uint32_t save_color =
-            ((current_choice == CHOICE_SAVE) && (choices[CHOICE_SAVE] == 0) ? highlight_color : text_color);
+            ((current_choice == CHOICE_SAVE) && (choices[CHOICE_SAVE] == FOOTER_SAVE) ? highlight_color : text_color);
         uint32_t apply_color =
-            ((current_choice == CHOICE_SAVE) && (choices[CHOICE_SAVE] == 1) ? highlight_color : text_color);
+            ((current_choice == CHOICE_SAVE) && (choices[CHOICE_SAVE] == FOOTER_APPLY) ? highlight_color : text_color);
+        uint32_t dcnow_color =
+            ((current_choice == CHOICE_SAVE) && (choices[CHOICE_SAVE] == FOOTER_DCNOW) ? highlight_color : text_color);
         uint32_t credits_color = (current_choice == CHOICE_CREDITS ? highlight_color : text_color);
         int cur_y = list_bottom + list_pad + 4;
-        /* Save at left, Apply in middle, Credits at right. Equal 24px spacing */
-        /* Save/Load(72px) + gap(24px) + Apply(40px) + gap(24px) + Credits(56px) = 216px total */
-        font_bmp_set_color(save_color);
-        font_bmp_draw_main(640 / 2 - 108, cur_y, save_choice_text[0]);
-        font_bmp_set_color(apply_color);
-        font_bmp_draw_main(640 / 2 - 12, cur_y, save_choice_text[1]);
-        font_bmp_set_color(credits_color);
-        font_bmp_draw_main(640 / 2 + 52, cur_y, credits_text[0]);
+        if (buttons == 3) {
+            /* Save/Load(72px) + Apply(40px) + DC Now!(56px) + Credits(56px) with 24px gaps = 296px */
+            const int left = 640 / 2 - 148;
+            font_bmp_set_color(save_color);
+            menu_mouse_row(left, cur_y, 72, 20, &choices[CHOICE_SAVE], FOOTER_SAVE, A);
+            font_bmp_draw_main(left, cur_y, save_choice_text[0]);
+            font_bmp_set_color(apply_color);
+            menu_mouse_row(left + 96, cur_y, 40, 20, &choices[CHOICE_SAVE], FOOTER_APPLY, A);
+            font_bmp_draw_main(left + 96, cur_y, save_choice_text[1]);
+            font_bmp_set_color(dcnow_color);
+            menu_mouse_row(left + 160, cur_y, 56, 20, &choices[CHOICE_SAVE], FOOTER_DCNOW, A);
+            font_bmp_draw_main(left + 160, cur_y, dcnow_button_text);
+            font_bmp_set_color(credits_color);
+            menu_mouse_row(left + 240, cur_y, 56, 20, &current_choice, CHOICE_CREDITS, A);
+            font_bmp_draw_main(left + 240, cur_y, credits_text[0]);
+        } else {
+            /* Save/Load(72px) + gap(24px) + Apply(40px) + gap(24px) + Credits(56px) = 216px total */
+            font_bmp_set_color(save_color);
+            menu_mouse_row(640 / 2 - 108, cur_y, 72, 20, &choices[CHOICE_SAVE], FOOTER_SAVE, A);
+            font_bmp_draw_main(640 / 2 - 108, cur_y, save_choice_text[0]);
+            font_bmp_set_color(apply_color);
+            menu_mouse_row(640 / 2 - 12, cur_y, 40, 20, &choices[CHOICE_SAVE], FOOTER_APPLY, A);
+            font_bmp_draw_main(640 / 2 - 12, cur_y, save_choice_text[1]);
+            font_bmp_set_color(credits_color);
+            menu_mouse_row(640 / 2 + 52, cur_y, 56, 20, &current_choice, CHOICE_CREDITS, A);
+            font_bmp_draw_main(640 / 2 + 52, cur_y, credits_text[0]);
+        }
 
         /* Draw GDEMU + openMenu version on one line (non-selectable) */
         uint8_t version_buffer[8] = {0};
@@ -1511,18 +2045,27 @@ draw_menu_tr(void) {
             }
         }
 
-        /* Draw Save/Apply/Credits on one line using smaller font, anchored
-         * under the list. Each button centered in its own 1/3 column */
+        /* Footer buttons, each centered in its own column */
+        const int buttons = footer_button_count();
         uint32_t save_color =
-            ((current_choice == CHOICE_SAVE) && (choices[CHOICE_SAVE] == 0) ? highlight_color : text_color);
+            ((current_choice == CHOICE_SAVE) && (choices[CHOICE_SAVE] == FOOTER_SAVE) ? highlight_color : text_color);
         uint32_t apply_color =
-            ((current_choice == CHOICE_SAVE) && (choices[CHOICE_SAVE] == 1) ? highlight_color : text_color);
+            ((current_choice == CHOICE_SAVE) && (choices[CHOICE_SAVE] == FOOTER_APPLY) ? highlight_color : text_color);
+        uint32_t dcnow_color =
+            ((current_choice == CHOICE_SAVE) && (choices[CHOICE_SAVE] == FOOTER_DCNOW) ? highlight_color : text_color);
         uint32_t credits_color = ((current_choice == CHOICE_CREDITS) ? highlight_color : text_color);
         int cur_y = list_bottom + list_pad + 4;
         font_bmf_set_height(20.0f);
-        font_bmf_draw_centered(x + width / 6, cur_y, save_color, save_choice_text[0]);
-        font_bmf_draw_centered(x + width / 2, cur_y, apply_color, save_choice_text[1]);
-        font_bmf_draw_centered(x + width * 5 / 6, cur_y, credits_color, credits_text[0]);
+        if (buttons == 3) {
+            font_bmf_draw_centered(x + width / 8, cur_y, save_color, save_choice_text[0]);
+            font_bmf_draw_centered(x + width * 3 / 8, cur_y, apply_color, save_choice_text[1]);
+            font_bmf_draw_centered(x + width * 5 / 8, cur_y, dcnow_color, dcnow_button_text);
+            font_bmf_draw_centered(x + width * 7 / 8, cur_y, credits_color, credits_text[0]);
+        } else {
+            font_bmf_draw_centered(x + width / 6, cur_y, save_color, save_choice_text[0]);
+            font_bmf_draw_centered(x + width / 2, cur_y, apply_color, save_choice_text[1]);
+            font_bmf_draw_centered(x + width * 5 / 6, cur_y, credits_color, credits_text[0]);
+        }
 
         /* Draw GDEMU + openMenu version on one line (non-selectable, smaller font) */
         uint8_t version_buffer[8] = {0};
@@ -1552,7 +2095,8 @@ draw_credits_tr(void) {
         /* Menu size and placement */
         const int line_height = 24;
         const int width = 320;
-        const int height = (num_credits + 1) * line_height + 4;
+        const bool mouse_close = menu_mouse_collecting() && mouse_get_state()->present;
+        const int height = (num_credits + 1 + mouse_close) * line_height + 4;
         const int x = (640 / 2) - (width / 2);
         const int y = (480 / 2) - (height / 2);
         const int x_item = x + 8; /* 8px left margin */
@@ -1575,6 +2119,12 @@ draw_credits_tr(void) {
             cur_y += line_height;
             string_outer_concat(line_buf, credits[i].contributor, credits[i].role, 38);
             font_bmp_draw_main(x_item, cur_y, line_buf);
+        }
+        if (mouse_close) {
+            cur_y += line_height;
+            font_bmp_set_color(highlight_color);
+            menu_mouse_row(x_item, cur_y, width - 16, 20, NULL, 0, B);
+            font_bmp_draw_main(x_item, cur_y, "Close");
         }
 
     } else {
@@ -1637,7 +2187,7 @@ draw_multidisc_tr(void) {
         const int width = (content_width > title_width ? content_width : title_width) + padding;
         const int height = (multidisc_len + 2) * line_height + (line_height / 2) + title_gap + line_height;
         const int x = (640 / 2) - (width / 2);
-        const int y = (480 / 2) - (height / 2);
+        const int y = menu_mouse_window_y((480 / 2) - (height / 2), height);
         const int x_item = x + (padding / 2);
 
         /* Draw a popup in the middle of the screen */
@@ -1659,12 +2209,14 @@ draw_multidisc_tr(void) {
                 font_bmp_set_color(text_color);
             }
             format_game_row(line_buf, sizeof(line_buf), list_multidisc[i]);
+            menu_mouse_row(x_item, cur_y, width - 16, 20, &current_choice, i, A);
             font_bmp_draw_main(x_item, cur_y, line_buf);
         }
 
         /* Close option, one empty row below the discs */
         cur_y += 2 * line_height;
         font_bmp_set_color(current_choice == multidisc_len ? highlight_color : text_color);
+        menu_mouse_row(x_item, cur_y, width - 16, 20, &current_choice, multidisc_len, A);
         font_bmp_draw_main(x_item, cur_y, "Close");
     } else {
         /* Menu size and placement */
@@ -1766,6 +2318,7 @@ draw_exit_tr(void) {
             } else {
                 font_bmp_set_color(text_color);
             }
+            menu_mouse_row(x_item, cur_y, width - 16, 20, &exit_menu_choice, i, A);
             font_bmp_draw_main(x_item, cur_y, exit_option_text[exit_options[i]]);
         }
         if (is_game_type) {
@@ -1866,6 +2419,7 @@ draw_codebreaker_tr(void) {
             cur_y += line_height; /* blank */
             cur_y += line_height;
             font_bmp_set_color(highlight_color);
+            menu_mouse_row(x_item, cur_y, width - 16, 20, NULL, 0, B);
             font_bmp_draw_main(x_item, cur_y, "Close");
             return;
         }
@@ -1903,6 +2457,7 @@ draw_codebreaker_tr(void) {
             } else {
                 font_bmp_set_color(text_color);
             }
+            menu_mouse_row(x_item, cur_y, width - 16, 20, &cb_menu_choice, i, A);
             font_bmp_draw_main(x_item, cur_y, cb_option_text[i]);
         }
     } else {
@@ -2252,6 +2807,7 @@ rm_draw_menu(void) {
     for (int i = 0; i < RM_MENU_NUM_OPTIONS; i++) {
         cur_y += line_height;
         font_bmp_set_color(i == rm_menu_choice ? highlight_color : text_color);
+        menu_mouse_row(x_item, cur_y, width - 16, 20, &rm_menu_choice, i, A);
         font_bmp_draw_main(x_item, cur_y, rm_menu_text[i]);
     }
 }
@@ -2275,6 +2831,7 @@ rm_draw_list(void) {
     const int list_top = y + 20 + list_pad;
 
     draw_popup_menu(x, y, width, height);
+    menu_mouse_scroll(&rm_list_choice, &rm_scroll_offset, count, window, NULL);
 
     /* Scrollbar along the right edge, only when the list does not fit */
     if (count > window) {
@@ -2298,10 +2855,12 @@ rm_draw_list(void) {
         const int i = rm_scroll_offset + row;
         font_bmp_set_color(i == rm_list_choice ? highlight_color : text_color);
         format_game_row(row_buf, sizeof(row_buf), entries[i]);
+        menu_mouse_row(x_item, list_top + row * line_height, width - 24, line_height, &rm_list_choice, i, A);
         font_bmp_draw_main(x_item, list_top + row * line_height + 4, row_buf);
     }
 
     font_bmp_set_color(rm_list_choice == count ? highlight_color : text_color);
+    menu_mouse_row(x_item, list_top + (window + 1) * line_height + 4, width - 16, 20, &rm_list_choice, count, A);
     font_bmp_draw_main(x_item, list_top + (window + 1) * line_height + 4, "Close");
 }
 
@@ -2327,9 +2886,11 @@ rm_draw_confirm(const char* title, const char* body, int wrap_chars) {
 
     cur_y += (body_lines + 1) * line_height;
     font_bmp_set_color(rm_confirm_choice == 0 ? highlight_color : text_color);
+    menu_mouse_row(x_item, cur_y, width - 16, 20, &rm_confirm_choice, 0, A);
     font_bmp_draw_main(x_item, cur_y, "Yes");
     cur_y += line_height;
     font_bmp_set_color(rm_confirm_choice == 1 ? highlight_color : text_color);
+    menu_mouse_row(x_item, cur_y, width - 16, 20, &rm_confirm_choice, 1, A);
     font_bmp_draw_main(x_item, cur_y, "No");
 }
 
@@ -2445,14 +3006,17 @@ draw_psx_launcher_tr(void) {
         cur_y += title_gap;
         cur_y += line_height;
         font_bmp_set_color(psx_launcher_choice == 0 ? highlight_color : text_color);
+        menu_mouse_row(x_item, cur_y, width - 16, 20, &psx_launcher_choice, 0, A);
         font_bmp_draw_main(x_item, cur_y, "Bleemcast!");
 
         cur_y += line_height;
         font_bmp_set_color(psx_launcher_choice == 1 ? highlight_color : text_color);
+        menu_mouse_row(x_item, cur_y, width - 16, 20, &psx_launcher_choice, 1, A);
         font_bmp_draw_main(x_item, cur_y, "Bloom");
 
         cur_y += line_height;
         font_bmp_set_color(psx_launcher_choice == 2 ? highlight_color : text_color);
+        menu_mouse_row(x_item, cur_y, width - 16, 20, &psx_launcher_choice, 2, A);
         font_bmp_draw_main(x_item, cur_y, "Close");
     } else {
         /* LineDesc/Grid modes, keep original sizing */
@@ -2921,6 +3485,7 @@ saveload_init_state(void) {
 static void
 saveload_apply_choices_to_settings(void) {
     int honor_was = sf_honor_defaults[0];
+    int vmu_sync_was = sf_vmu_time_sync[0];
     sf_ui[0] = choices[CHOICE_THEME];
     sf_region[0] = choices[CHOICE_REGION];
     sf_music[0] = choices[CHOICE_MUSIC];
@@ -2941,12 +3506,18 @@ saveload_apply_choices_to_settings(void) {
     sf_remember_last_game[0] = choices[CHOICE_REMEMBER_LAST_GAME];
     sf_recently_played[0] = choices[CHOICE_RECENTLY_PLAYED];
     sf_marquee_speed[0] = choices[CHOICE_MARQUEE_SPEED];
+    sf_mouse_cursor_speed[0] = choices[CHOICE_MOUSE_CURSOR_SPEED];
+    sf_mouse_scroll_speed[0] = choices[CHOICE_MOUSE_SCROLL_SPEED];
     sf_clock[0] = choices[CHOICE_CLOCK];
     sf_vmu_time_sync[0] = choices[CHOICE_VMU_TIME_SYNC];
     sf_serial_vmu[0] = choices[CHOICE_SERIAL_VMU];
     sf_serial_vmu_multislot[0] = choices[CHOICE_SERIAL_VMU_MULTISLOT];
     sf_vm2_send_all[0] = choices[CHOICE_VM2_SEND_ALL];
     sf_boot_mode[0] = choices[CHOICE_BOOT_MODE];
+    sf_dcnow[0] = choices[CHOICE_DCNOW];
+    sf_dcnow_refresh[0] = choices[CHOICE_DCNOW_REFRESH];
+    sf_dcnow_vmu[0] = choices[CHOICE_DCNOW_VMU];
+    sf_online_time_sync[0] = choices[CHOICE_ONLINE_TIME_SYNC];
 
     /* Handle custom theme encoding */
     if (choices[CHOICE_THEME] != UI_SCROLL && choices[CHOICE_THEME] != UI_FOLDERS && sf_region[0] > REGION_END) {
@@ -2972,6 +3543,9 @@ saveload_apply_choices_to_settings(void) {
             boot_defaults_apply();
         }
         settings_sync_theme_row_from_settings();
+    }
+    if (vmu_sync_was == VMU_TIME_SYNC_OFF && sf_vmu_time_sync[0] == VMU_TIME_SYNC_ON) {
+        sync_rtc_from_vmu();
     }
 }
 
@@ -3036,6 +3610,9 @@ saveload_do_save(void) {
             }
         }
         saveload_scan_devices();
+    }
+    if (menu_mouse_active()) {
+        mouse_reset();
     }
 }
 
@@ -3139,6 +3716,9 @@ saveload_do_load(void) {
         settings_sync_theme_row_from_settings();
         choices[CHOICE_MUSIC] = sf_music[0];
         choices[CHOICE_HONOR_DEFAULTS] = sf_honor_defaults[0];
+    }
+    if (menu_mouse_active()) {
+        mouse_reset();
     }
 }
 
@@ -3670,6 +4250,9 @@ draw_saveload_tr(void) {
                 snprintf(line, sizeof(line), "Port %c - Socket 1: %s %s%s", 'A' + p, slot->type_name, status_str,
                          is_selected ? " <" : "");
                 font_bmp_draw_main(x_item, cur_y, line);
+                if (saveload_substate == SAVELOAD_BROWSE) {
+                    menu_mouse_row(x_item, cur_y, width - 16, 20, &saveload_cursor, cursor_idx, A);
+                }
                 cursor_idx++;
             } else {
                 font_bmp_set_color(text_color);
@@ -3701,6 +4284,9 @@ draw_saveload_tr(void) {
                 snprintf(line, sizeof(line), "         Socket 2: %s %s%s", slot->type_name, status_str,
                          is_selected ? " <" : "");
                 font_bmp_draw_main(x_item, cur_y, line);
+                if (saveload_substate == SAVELOAD_BROWSE) {
+                    menu_mouse_row(x_item, cur_y, width - 16, 20, &saveload_cursor, cursor_idx, A);
+                }
                 cursor_idx++;
             } else {
                 font_bmp_set_color(text_color);
@@ -3726,6 +4312,9 @@ draw_saveload_tr(void) {
             char line[48];
             snprintf(line, sizeof(line), "Serial - SD card %s%s", status_str, is_selected ? " <" : "");
             font_bmp_draw_main(x_item, cur_y, line);
+            if (saveload_substate == SAVELOAD_BROWSE) {
+                menu_mouse_row(x_item, cur_y, width - 16, 20, &saveload_cursor, cursor_idx, A);
+            }
             cursor_idx++;
             device_count++;
         } else {
@@ -3755,6 +4344,7 @@ draw_saveload_tr(void) {
                                       ? "Close"
                                       : "Go back";
                 font_bmp_set_color(highlight_color);
+                menu_mouse_row(x_item, cur_y, width - 16, 20, NULL, 0, A);
                 font_bmp_draw_main(x_item, cur_y, btn);
             }
             cur_y += line_height; /* Empty for consistent height */
@@ -3781,11 +4371,13 @@ draw_saveload_tr(void) {
             /* Line 2: Yes */
             cur_y += line_height;
             font_bmp_set_color(saveload_confirm_choice == 0 ? highlight_color : text_color);
+            menu_mouse_row(x_item, cur_y, width - 16, 20, &saveload_confirm_choice, 0, A);
             font_bmp_draw_main(x_item, cur_y, "Yes");
 
             /* Line 3: No */
             cur_y += line_height;
             font_bmp_set_color(saveload_confirm_choice == 1 ? highlight_color : text_color);
+            menu_mouse_row(x_item, cur_y, width - 16, 20, &saveload_confirm_choice, 1, A);
             font_bmp_draw_main(x_item, cur_y, "No");
 
             /* Line 4: Empty for consistent height */
@@ -3803,6 +4395,9 @@ draw_saveload_tr(void) {
             } else {
                 font_bmp_set_color(text_color);
             }
+            if (saveload_selected_device >= 0) {
+                menu_mouse_row(x_item, cur_y, width - 16, 20, &saveload_cursor, action_start_idx + 0, A);
+            }
             font_bmp_draw_main(x_item, cur_y, "Save to selected");
 
             /* Line 2: Load from selected */
@@ -3814,6 +4409,9 @@ draw_saveload_tr(void) {
             } else {
                 font_bmp_set_color(text_color);
             }
+            if (saveload_selected_device >= 0) {
+                menu_mouse_row(x_item, cur_y, width - 16, 20, &saveload_cursor, action_start_idx + 1, A);
+            }
             font_bmp_draw_main(x_item, cur_y, "Load from selected");
 
             /* Line 3: Close */
@@ -3824,6 +4422,7 @@ draw_saveload_tr(void) {
             } else {
                 font_bmp_set_color(text_color);
             }
+            menu_mouse_row(x_item, cur_y, width - 16, 20, &saveload_cursor, action_start_idx + 2, A);
             font_bmp_draw_main(x_item, cur_y, "Close");
 
             /* Line 4: Empty for consistent height */
@@ -3863,6 +4462,7 @@ draw_saveload_tr(void) {
 
             ey += err_line_height;
             font_bmp_set_color(highlight_color);
+            menu_mouse_row(err_x_item, ey, err_width - 16, 20, NULL, 0, A);
             font_bmp_draw_main(err_x_item, ey, "Close");
         }
     } else {
@@ -4283,6 +4883,8 @@ draw_compaction_test_tr(void) {
                 font_bmp_draw_main(x_text, y_text, "test BIOS auto-compaction.");
                 y_text += line_height + 4;
                 font_bmp_set_color(highlight_color);
+                menu_mouse_row(x_text + 88, y_text, 72, 20, NULL, 0, B);
+                menu_mouse_row(x_text, y_text, 64, 20, NULL, 0, A);
                 font_bmp_draw_main(x_text, y_text, "A: Start   B: Cancel");
                 break;
 
@@ -4297,6 +4899,7 @@ draw_compaction_test_tr(void) {
                 font_bmp_set_color(text_color);
                 font_bmp_draw_main(x_text, y_text, line);
                 y_text += line_height;
+                menu_mouse_row(x_text, y_text, width - 24, 20, NULL, 0, B);
                 font_bmp_draw_main(x_text, y_text, "B: Cancel and restore");
                 break;
 
@@ -4307,6 +4910,7 @@ draw_compaction_test_tr(void) {
                 }
                 y_text += line_height + 4;
                 font_bmp_set_color(highlight_color);
+                menu_mouse_row(x_text, y_text, width - 24, 20, NULL, 0, A);
                 font_bmp_draw_main(x_text, y_text, "Press A/B to restore");
                 break;
 
@@ -4317,6 +4921,7 @@ draw_compaction_test_tr(void) {
                 }
                 y_text += line_height + 4;
                 font_bmp_set_color(highlight_color);
+                menu_mouse_row(x_text, y_text, width - 24, 20, NULL, 0, B);
                 font_bmp_draw_main(x_text, y_text, "Press A/B to close");
                 break;
 
@@ -4332,6 +4937,7 @@ draw_compaction_test_tr(void) {
                 }
                 y_text += line_height + 4;
                 font_bmp_set_color(highlight_color);
+                menu_mouse_row(x_text, y_text, width - 24, 20, NULL, 0, B);
                 font_bmp_draw_main(x_text, y_text, "Press A/B to close");
                 break;
 
@@ -4908,7 +5514,8 @@ serial_vmu_begin_restore_flow(void) {
             }
             svmu_ctx.state = SERIAL_VMU_RESTORE_BUSY;
             svmu_ctx.current_block = 0;
-            vmu_draw_lcd_auto(svmu_ctx.vmu_dev, openmenu_lcd_access);
+            savefile_set_lcd_busy(true);
+            vmu_draw_lcd_auto(svmu_ctx.vmu_dev, savefile_lcd_access());
             break;
         case SAVE_FILE_NOT_FOUND:
             svmu_ctx.state = SERIAL_VMU_FIRST_TIME;
@@ -4968,7 +5575,8 @@ serial_vmu_begin_backup_flow(void) {
     }
     svmu_ctx.state = SERIAL_VMU_BACKUP_BUSY;
     svmu_ctx.current_block = 0;
-    vmu_draw_lcd_auto(svmu_ctx.vmu_dev, openmenu_lcd_access);
+    savefile_set_lcd_busy(true);
+    vmu_draw_lcd_auto(svmu_ctx.vmu_dev, savefile_lcd_access());
 }
 
 void
@@ -5110,7 +5718,8 @@ draw_serial_vmu_op(void) {
                     free(svmu_ctx.buffer);
                     svmu_ctx.buffer = NULL;
                 }
-                vmu_draw_lcd_auto(svmu_ctx.vmu_dev, openmenu_lcd);
+                vmu_draw_lcd_auto(svmu_ctx.vmu_dev, savefile_lcd_logo());
+                savefile_set_lcd_busy(false);
                 serial_vmu_do_launch();
                 return;
             }
@@ -5126,7 +5735,8 @@ draw_serial_vmu_op(void) {
                     free(svmu_ctx.buffer);
                     svmu_ctx.buffer = NULL;
                 }
-                vmu_draw_lcd_auto(svmu_ctx.vmu_dev, openmenu_lcd);
+                vmu_draw_lcd_auto(svmu_ctx.vmu_dev, savefile_lcd_logo());
+                savefile_set_lcd_busy(false);
                 return;
             }
             svmu_ctx.current_block++;
@@ -5145,14 +5755,16 @@ draw_serial_vmu_op(void) {
                         free(svmu_ctx.buffer);
                         svmu_ctx.buffer = NULL;
                     }
-                    vmu_draw_lcd_auto(svmu_ctx.vmu_dev, openmenu_lcd);
+                    vmu_draw_lcd_auto(svmu_ctx.vmu_dev, savefile_lcd_logo());
+                    savefile_set_lcd_busy(false);
                     return;
                 }
                 /* Write companion title file */
                 if (svmu_ctx.game_name[0]) {
                     serial_vmu_write_title_file(svmu_ctx.serial_id, svmu_ctx.game_name);
                 }
-                vmu_draw_lcd_auto(svmu_ctx.vmu_dev, openmenu_lcd);
+                vmu_draw_lcd_auto(svmu_ctx.vmu_dev, savefile_lcd_logo());
+                savefile_set_lcd_busy(false);
                 serial_vmu_finish_backup();
                 return;
             }
@@ -5168,7 +5780,8 @@ draw_serial_vmu_op(void) {
                     free(svmu_ctx.buffer);
                     svmu_ctx.buffer = NULL;
                 }
-                vmu_draw_lcd_auto(svmu_ctx.vmu_dev, openmenu_lcd);
+                vmu_draw_lcd_auto(svmu_ctx.vmu_dev, savefile_lcd_logo());
+                savefile_set_lcd_busy(false);
                 return;
             }
             svmu_ctx.current_block++;
@@ -5182,7 +5795,8 @@ draw_serial_vmu_op(void) {
                     free(svmu_ctx.buffer);
                     svmu_ctx.buffer = NULL;
                 }
-                vmu_draw_lcd_auto(svmu_ctx.vmu_dev, openmenu_lcd);
+                vmu_draw_lcd_auto(svmu_ctx.vmu_dev, savefile_lcd_logo());
+                savefile_set_lcd_busy(false);
                 serial_vmu_do_launch();
                 return;
             }
@@ -5195,7 +5809,8 @@ draw_serial_vmu_op(void) {
                     free(svmu_ctx.buffer);
                     svmu_ctx.buffer = NULL;
                 }
-                vmu_draw_lcd_auto(svmu_ctx.vmu_dev, openmenu_lcd);
+                vmu_draw_lcd_auto(svmu_ctx.vmu_dev, savefile_lcd_logo());
+                savefile_set_lcd_busy(false);
                 serial_vmu_do_launch();
                 return;
             }
@@ -5387,7 +6002,7 @@ draw_serial_vmu_tr(void) {
         int width = svmu_cached_bmp_width;
         int height = (svmu_cached_content_lines + 1) * line_height + 4;
         int x = (640 / 2) - (width / 2);
-        int y = (480 / 2) - (height / 2);
+        int y = menu_mouse_window_y((480 / 2) - (height / 2), height);
         int x_item = x + margin;
 
         draw_popup_menu_ex(x, y, width, height, sf_ui[0]);
@@ -5410,14 +6025,17 @@ draw_serial_vmu_tr(void) {
                 /* Options */
                 cur_y += line_height;
                 font_bmp_set_color(svmu_ctx.menu_cursor == 0 ? highlight_color : text_color);
+                menu_mouse_row(x_item, cur_y, width - 16, 20, &svmu_ctx.menu_cursor, 0, A);
                 font_bmp_draw_main(x_item, cur_y, "Retry detection");
                 cur_y += line_height;
                 font_bmp_set_color(svmu_ctx.menu_cursor == 1 ? highlight_color : text_color);
+                menu_mouse_row(x_item, cur_y, width - 16, 20, &svmu_ctx.menu_cursor, 1, A);
                 font_bmp_draw_main(x_item, cur_y,
                                    svmu_ctx.launch_action == SERIAL_VMU_LAUNCH_EXIT_BIOS ? "Exit without Serial VMU"
                                                                                          : "Launch without Serial VMU");
                 cur_y += line_height;
                 font_bmp_set_color(svmu_ctx.menu_cursor == 2 ? highlight_color : text_color);
+                menu_mouse_row(x_item, cur_y, width - 16, 20, &svmu_ctx.menu_cursor, 2, A);
                 font_bmp_draw_main(x_item, cur_y, "Cancel");
                 break;
 
@@ -5431,12 +6049,15 @@ draw_serial_vmu_tr(void) {
                 cur_y += line_height; /* blank */
                 cur_y += line_height;
                 font_bmp_set_color(svmu_ctx.menu_cursor == 0 ? highlight_color : text_color);
+                menu_mouse_row(x_item, cur_y, width - 16, 20, &svmu_ctx.menu_cursor, 0, A);
                 font_bmp_draw_main(x_item, cur_y, "Retry detection");
                 cur_y += line_height;
                 font_bmp_set_color(svmu_ctx.menu_cursor == 1 ? highlight_color : text_color);
+                menu_mouse_row(x_item, cur_y, width - 16, 20, &svmu_ctx.menu_cursor, 1, A);
                 font_bmp_draw_main(x_item, cur_y, "Skip for now (ask again on next boot)");
                 cur_y += line_height;
                 font_bmp_set_color(svmu_ctx.menu_cursor == 2 ? highlight_color : text_color);
+                menu_mouse_row(x_item, cur_y, width - 16, 20, &svmu_ctx.menu_cursor, 2, A);
                 font_bmp_draw_main(x_item, cur_y, "Skip entirely");
                 break;
 
@@ -5474,6 +6095,7 @@ draw_serial_vmu_tr(void) {
                         snprintf(line_buf, sizeof(line_buf), "Port %c - Socket 1: %s%s", 'A' + p, type,
                                  is_selected ? " <" : "");
                         font_bmp_draw_main(x_item, cur_y, line_buf);
+                        menu_mouse_row(x_item, cur_y, width - 16, 20, &svmu_ctx.selector_cursor, dev_cursor, A);
                         dev_cursor++;
                     } else {
                         font_bmp_set_color(text_color);
@@ -5491,6 +6113,7 @@ draw_serial_vmu_tr(void) {
                         font_bmp_set_color(is_cursor ? highlight_color : text_color);
                         snprintf(line_buf, sizeof(line_buf), "         Socket 2: %s%s", type, is_selected ? " <" : "");
                         font_bmp_draw_main(x_item, cur_y, line_buf);
+                        menu_mouse_row(x_item, cur_y, width - 16, 20, &svmu_ctx.selector_cursor, dev_cursor, A);
                         dev_cursor++;
                     } else {
                         font_bmp_set_color(text_color);
@@ -5502,11 +6125,15 @@ draw_serial_vmu_tr(void) {
                 /* "Use selected", only highlighted when cursor is here AND a device is selected */
                 bool use_sel_active = (svmu_ctx.selector_cursor == use_sel_idx && svmu_ctx.selected_device >= 0);
                 font_bmp_set_color(use_sel_active ? highlight_color : text_color);
+                if (svmu_ctx.selected_device >= 0) {
+                    menu_mouse_row(x_item, cur_y, width - 16, 20, &svmu_ctx.selector_cursor, use_sel_idx, A);
+                }
                 font_bmp_draw_main(x_item, cur_y, "Use selected");
                 cur_y += line_height;
                 int skip1_idx = cancel_idx;
                 int skip2_idx = cancel_idx + 1;
                 font_bmp_set_color(svmu_ctx.selector_cursor == skip1_idx ? highlight_color : text_color);
+                menu_mouse_row(x_item, cur_y, width - 16, 20, &svmu_ctx.selector_cursor, skip1_idx, A);
                 font_bmp_draw_main(
                     x_item, cur_y,
                     svmu_ctx.is_backup
@@ -5514,6 +6141,7 @@ draw_serial_vmu_tr(void) {
                         : (svmu_ctx.launch_action == SERIAL_VMU_LAUNCH_EXIT_BIOS ? "Cancel exit" : "Cancel launch"));
                 cur_y += line_height;
                 font_bmp_set_color(svmu_ctx.selector_cursor == skip2_idx ? highlight_color : text_color);
+                menu_mouse_row(x_item, cur_y, width - 16, 20, &svmu_ctx.selector_cursor, skip2_idx, A);
                 font_bmp_draw_main(x_item, cur_y,
                                    svmu_ctx.is_backup ? "Skip entirely"
                                                       : (svmu_ctx.launch_action == SERIAL_VMU_LAUNCH_EXIT_BIOS
@@ -5535,20 +6163,24 @@ draw_serial_vmu_tr(void) {
                 cur_y += line_height; /* blank */
                 cur_y += line_height;
                 font_bmp_set_color(svmu_ctx.menu_cursor == 0 ? highlight_color : text_color);
+                menu_mouse_row(x_item, cur_y, width - 16, 20, &svmu_ctx.menu_cursor, 0, A);
                 font_bmp_draw_main(x_item, cur_y, "Start fresh and format VMU");
                 cur_y += line_height;
                 font_bmp_set_color(svmu_ctx.menu_cursor == 1 ? highlight_color : text_color);
+                menu_mouse_row(x_item, cur_y, width - 16, 20, &svmu_ctx.menu_cursor, 1, A);
                 font_bmp_draw_main(x_item, cur_y,
                                    svmu_ctx.launch_action == SERIAL_VMU_LAUNCH_EXIT_BIOS ? "Exit to BIOS with VMU as is"
                                                                                          : "Launch with VMU as is");
                 cur_y += line_height;
                 font_bmp_set_color(svmu_ctx.menu_cursor == 2 ? highlight_color : text_color);
+                menu_mouse_row(x_item, cur_y, width - 16, 20, &svmu_ctx.menu_cursor, 2, A);
                 font_bmp_draw_main(x_item, cur_y,
                                    svmu_ctx.launch_action == SERIAL_VMU_LAUNCH_EXIT_BIOS
                                        ? "Exit without Serial VMU restore/backup"
                                        : "Launch without Serial VMU restore/backup");
                 cur_y += line_height;
                 font_bmp_set_color(svmu_ctx.menu_cursor == 3 ? highlight_color : text_color);
+                menu_mouse_row(x_item, cur_y, width - 16, 20, &svmu_ctx.menu_cursor, 3, A);
                 font_bmp_draw_main(x_item, cur_y, "Cancel");
                 break;
 
@@ -5608,21 +6240,25 @@ draw_serial_vmu_tr(void) {
                 cur_y += line_height; /* blank */
                 cur_y += line_height;
                 font_bmp_set_color(svmu_ctx.menu_cursor == 0 ? highlight_color : text_color);
+                menu_mouse_row(x_item, cur_y, width - 16, 20, &svmu_ctx.menu_cursor, 0, A);
                 font_bmp_draw_main(x_item, cur_y, "Retry");
                 cur_y += line_height;
                 font_bmp_set_color(svmu_ctx.menu_cursor == 1 ? highlight_color : text_color);
+                menu_mouse_row(x_item, cur_y, width - 16, 20, &svmu_ctx.menu_cursor, 1, A);
                 font_bmp_draw_main(x_item, cur_y,
                                    svmu_ctx.launch_action == SERIAL_VMU_LAUNCH_EXIT_BIOS
                                        ? "Exit with VMU as is (back up on return)"
                                        : "Launch with VMU as is (back up on return)");
                 cur_y += line_height;
                 font_bmp_set_color(svmu_ctx.menu_cursor == 2 ? highlight_color : text_color);
+                menu_mouse_row(x_item, cur_y, width - 16, 20, &svmu_ctx.menu_cursor, 2, A);
                 font_bmp_draw_main(x_item, cur_y,
                                    svmu_ctx.launch_action == SERIAL_VMU_LAUNCH_EXIT_BIOS
                                        ? "Exit without Serial VMU restore/backup"
                                        : "Launch without Serial VMU restore/backup");
                 cur_y += line_height;
                 font_bmp_set_color(svmu_ctx.menu_cursor == 3 ? highlight_color : text_color);
+                menu_mouse_row(x_item, cur_y, width - 16, 20, &svmu_ctx.menu_cursor, 3, A);
                 font_bmp_draw_main(x_item, cur_y, "Cancel");
                 break;
 
@@ -5641,12 +6277,15 @@ draw_serial_vmu_tr(void) {
                 cur_y += line_height; /* blank */
                 cur_y += line_height;
                 font_bmp_set_color(svmu_ctx.menu_cursor == 0 ? highlight_color : text_color);
+                menu_mouse_row(x_item, cur_y, width - 16, 20, &svmu_ctx.menu_cursor, 0, A);
                 font_bmp_draw_main(x_item, cur_y, "Retry");
                 cur_y += line_height;
                 font_bmp_set_color(svmu_ctx.menu_cursor == 1 ? highlight_color : text_color);
+                menu_mouse_row(x_item, cur_y, width - 16, 20, &svmu_ctx.menu_cursor, 1, A);
                 font_bmp_draw_main(x_item, cur_y, "Skip for now (ask again on next boot)");
                 cur_y += line_height;
                 font_bmp_set_color(svmu_ctx.menu_cursor == 2 ? highlight_color : text_color);
+                menu_mouse_row(x_item, cur_y, width - 16, 20, &svmu_ctx.menu_cursor, 2, A);
                 font_bmp_draw_main(x_item, cur_y, "Skip entirely");
                 break;
 
@@ -5668,14 +6307,17 @@ draw_serial_vmu_tr(void) {
                 cur_y += line_height; /* blank */
                 cur_y += line_height;
                 font_bmp_set_color(svmu_ctx.menu_cursor == 0 ? highlight_color : text_color);
+                menu_mouse_row(x_item, cur_y, width - 16, 20, &svmu_ctx.menu_cursor, 0, A);
                 font_bmp_draw_main(x_item, cur_y, "Start fresh and format VMU");
                 cur_y += line_height;
                 font_bmp_set_color(svmu_ctx.menu_cursor == 1 ? highlight_color : text_color);
+                menu_mouse_row(x_item, cur_y, width - 16, 20, &svmu_ctx.menu_cursor, 1, A);
                 font_bmp_draw_main(x_item, cur_y,
                                    svmu_ctx.launch_action == SERIAL_VMU_LAUNCH_EXIT_BIOS ? "Exit to BIOS with VMU as is"
                                                                                          : "Launch with VMU as is");
                 cur_y += line_height;
                 font_bmp_set_color(svmu_ctx.menu_cursor == 2 ? highlight_color : text_color);
+                menu_mouse_row(x_item, cur_y, width - 16, 20, &svmu_ctx.menu_cursor, 2, A);
                 font_bmp_draw_main(x_item, cur_y, "Cancel");
                 break;
 
@@ -5694,9 +6336,11 @@ draw_serial_vmu_tr(void) {
                 cur_y += line_height; /* blank */
                 cur_y += line_height;
                 font_bmp_set_color(svmu_ctx.menu_cursor == 0 ? highlight_color : text_color);
+                menu_mouse_row(x_item, cur_y, width - 16, 20, &svmu_ctx.menu_cursor, 0, A);
                 font_bmp_draw_main(x_item, cur_y, "Yes");
                 cur_y += line_height;
                 font_bmp_set_color(svmu_ctx.menu_cursor == 1 ? highlight_color : text_color);
+                menu_mouse_row(x_item, cur_y, width - 16, 20, &svmu_ctx.menu_cursor, 1, A);
                 font_bmp_draw_main(x_item, cur_y, "No");
                 break;
 
@@ -5716,6 +6360,7 @@ draw_serial_vmu_tr(void) {
                     cur_y += line_height;
                     snprintf(line_buf, sizeof(line_buf), "Slot %d (%s)", i + 1, svmu_ctx.slot_timestamps[i]);
                     font_bmp_set_color(svmu_ctx.slot_cursor == i ? highlight_color : text_color);
+                    menu_mouse_row(x_item, cur_y, width - 16, 20, &svmu_ctx.slot_cursor, i, A);
                     font_bmp_draw_main(x_item, cur_y, line_buf);
                     if (svmu_ctx.slot_labels[i][0]) {
                         cur_y += line_height;
@@ -5725,6 +6370,7 @@ draw_serial_vmu_tr(void) {
                 cur_y += line_height; /* blank */
                 cur_y += line_height;
                 font_bmp_set_color(svmu_ctx.slot_cursor == SERIAL_VMU_NUM_SLOTS ? highlight_color : text_color);
+                menu_mouse_row(x_item, cur_y, width - 16, 20, &svmu_ctx.slot_cursor, SERIAL_VMU_NUM_SLOTS, A);
                 font_bmp_draw_main(x_item, cur_y,
                                    svmu_ctx.is_backup ? "Skip for now (ask again on next boot)"
                                                       : (svmu_ctx.launch_action == SERIAL_VMU_LAUNCH_EXIT_BIOS
@@ -5732,6 +6378,7 @@ draw_serial_vmu_tr(void) {
                                                              : "Launch without Serial VMU restore/backup"));
                 cur_y += line_height;
                 font_bmp_set_color(svmu_ctx.slot_cursor == SERIAL_VMU_NUM_SLOTS + 1 ? highlight_color : text_color);
+                menu_mouse_row(x_item, cur_y, width - 16, 20, &svmu_ctx.slot_cursor, SERIAL_VMU_NUM_SLOTS + 1, A);
                 font_bmp_draw_main(
                     x_item, cur_y,
                     svmu_ctx.is_backup
@@ -6592,7 +7239,8 @@ handle_input_serial_vmu(enum control input) {
                             }
                             svmu_ctx.state = SERIAL_VMU_WIPE_BUSY;
                             svmu_ctx.current_block = 0;
-                            vmu_draw_lcd_auto(svmu_ctx.vmu_dev, openmenu_lcd_access);
+                            savefile_set_lcd_busy(true);
+                            vmu_draw_lcd_auto(svmu_ctx.vmu_dev, savefile_lcd_access());
                         }
                     } else {
                         /* No, go back */
@@ -6754,3 +7402,118 @@ handle_input_serial_vmu(enum control input) {
 }
 
 #pragma endregion Serial_VMU
+
+uint32_t
+menu_mouse_signature(enum draw_state owner) {
+    if (owner == DRAW_DCNOW) {
+        return dcnow_mouse_signature();
+    }
+    uint32_t hash = 2166136261u;
+    int state[] = {owner, state_ptr ? *state_ptr : DRAW_UI, sf_ui[0], hangup_overlay};
+    hash = menu_mouse_hash(hash, state, sizeof(state));
+    hash = menu_mouse_hash(hash, &state_ptr, sizeof(state_ptr));
+    hash = menu_mouse_hash(hash, &cur_game_item, sizeof(cur_game_item));
+    switch (owner) {
+        case DRAW_MENU: {
+            int visible[MENU_OPTIONS];
+            int count = settings_visible_list(visible);
+            hash = menu_mouse_hash(hash, visible, count * sizeof(int));
+            hash = menu_mouse_hash(hash, choices, sizeof(choices));
+            hash = menu_mouse_hash(hash, &settings_scroll_offset, sizeof(settings_scroll_offset));
+            break;
+        }
+        case DRAW_MULTIDISC: {
+            int count = list_multidisc_length();
+            const gd_item** items = list_get_multidisc();
+            hash = menu_mouse_hash(hash, &count, sizeof(count));
+            for (int i = 0; i < count; i++) {
+                uint32_t identity = gd_item_recent_hash(items[i]);
+                hash = menu_mouse_hash(hash, &identity, sizeof(identity));
+            }
+            break;
+        }
+        case DRAW_EXIT:
+            hash = menu_mouse_hash(hash, exit_options, exit_menu_num_options * sizeof(exit_options[0]));
+            break;
+        case DRAW_CODEBREAKER: hash = menu_mouse_hash(hash, &cb_available, sizeof(cb_available)); break;
+        case DRAW_RECENT_MANAGE: {
+            int count = 0;
+            gd_item** entries = list_recent_entries(&count);
+            int state[] = {rm_layer, rm_result, rm_scroll_offset, count,
+                           rm_layer == RM_LAYER_CONFIRM_REMOVE ? rm_list_choice : -1};
+            hash = menu_mouse_hash(hash, state, sizeof(state));
+            for (int i = 0; i < count; i++) {
+                uint32_t identity = gd_item_recent_hash(entries[i]);
+                hash = menu_mouse_hash(hash, &identity, sizeof(identity));
+            }
+            break;
+        }
+        case DRAW_SAVELOAD: {
+            int state[] = {saveload_substate,       saveload_selected_device, saveload_show_serial_error,
+                           saveload_pending_action, saveload_pending_upgrade, saveload_original_ui_mode,
+                           saveload_sd_available,   saveload_sd_status,       savefile_sd_available()};
+            hash = menu_mouse_hash(hash, state, sizeof(state));
+            hash = menu_mouse_hash(hash, saveload_slots, sizeof(saveload_slots));
+            hash = menu_mouse_hash(hash, &saveload_msg_line1, sizeof(saveload_msg_line1));
+            break;
+        }
+        case DRAW_COMPACTION_TEST: hash = menu_mouse_hash(hash, &compaction_state, sizeof(compaction_state)); break;
+        case DRAW_SERIAL_VMU: {
+            int state[] = {svmu_ctx.state,           svmu_ctx.launch_action,    svmu_ctx.selected_device,
+                           svmu_ctx.vmu_device_id,   svmu_ctx.is_backup,        svmu_ctx.slot_number,
+                           svmu_ctx.all_slots_empty, svmu_ctx.menu_num_options, svmu_cached_content_lines};
+            hash = menu_mouse_hash(hash, state, sizeof(state));
+            hash = menu_mouse_hash(hash, svmu_ctx.serial_id, sizeof(svmu_ctx.serial_id));
+            hash = menu_mouse_hash(hash, svmu_ctx.slot_labels, sizeof(svmu_ctx.slot_labels));
+            hash = menu_mouse_hash(hash, svmu_ctx.slot_timestamps, sizeof(svmu_ctx.slot_timestamps));
+            hash = menu_mouse_hash(hash, &svmu_ctx.launch_item, sizeof(svmu_ctx.launch_item));
+            break;
+        }
+        default: break;
+    }
+    if (owner == DRAW_MENU || owner == DRAW_SAVELOAD || owner == DRAW_SERIAL_VMU) {
+        for (int i = 0; i < 8; i++) {
+            maple_device_t* dev = maple_enum_dev(i / 2, i % 2 + 1);
+            hash = menu_mouse_hash(hash, &dev, sizeof(dev));
+            if (dev) {
+                hash = menu_mouse_hash(hash, &dev->info.functions, sizeof(dev->info.functions));
+            }
+        }
+    }
+    return hash;
+}
+
+bool
+menu_mouse_busy(enum draw_state owner) {
+    bool busy = hangup_overlay;
+    if (owner == DRAW_SAVELOAD) {
+        busy = busy || saveload_substate == SAVELOAD_BUSY;
+    } else if (owner == DRAW_SERIAL_VMU) {
+        busy = busy || svmu_ctx.state == SERIAL_VMU_IDLE || svmu_ctx.state == SERIAL_VMU_RESTORE_BUSY
+               || svmu_ctx.state == SERIAL_VMU_BACKUP_BUSY || svmu_ctx.state == SERIAL_VMU_WIPE_BUSY;
+    } else if (owner == DRAW_COMPACTION_TEST) {
+        busy = busy || compaction_state == COMPACTION_INIT || compaction_state == COMPACTION_BACKUP
+               || compaction_state == COMPACTION_RESTORING;
+    }
+    return busy;
+}
+
+bool
+handle_mouse_menu(enum control* input) {
+    enum draw_state owner = menu_mouse_owner();
+    bool busy = menu_mouse_busy(owner);
+    if (owner == DRAW_DCNOW && !busy) {
+        return handle_mouse_dcnow(input);
+    }
+    int* selected = NULL;
+    bool consumed = menu_mouse_read(input, busy, true, &selected);
+    if (consumed) {
+        if (owner == DRAW_MENU && selected == &choices[CHOICE_SAVE]) {
+            current_choice = CHOICE_SAVE;
+        }
+        if (*input != NONE && input_timeout_ptr) {
+            *input_timeout_ptr = 0;
+        }
+    }
+    return consumed;
+}

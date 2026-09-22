@@ -288,7 +288,7 @@ namespace GDMENUCardManager.Core
 
                 tracks.Add(new GdiTrack
                 {
-                    FilePath = Path.Combine(folder, row[4]),
+                    FilePath = Helper.ResolveActualPath(Path.Combine(folder, row[4])),
                     Number = int.Parse(row[0], CultureInfo.InvariantCulture),
                     Lba = long.Parse(row[1], CultureInfo.InvariantCulture),
                     IsData = row[2] == "4",

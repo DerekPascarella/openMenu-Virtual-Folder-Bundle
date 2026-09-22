@@ -76,7 +76,7 @@ marquee_tick(int overflow_px) {
         marquee_period = period;
     }
 
-    int total = overflow_px * period / MARQUEE_CELL_PX;
+    int total = (overflow_px * period + MARQUEE_CELL_PX - 1) / MARQUEE_CELL_PX;
     if (marquee_frame > total) {
         marquee_frame = total;
     }

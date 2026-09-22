@@ -35,6 +35,8 @@ namespace GDMENUCardManager.Core.MenuOptions
         public string BgmSourceFile { get; set; }
         public string BgmConvertedDate { get; set; }
         public bool BgmFileExists { get; set; }
+
+        public bool SerialSdWarning { get; set; }
     }
 
     /// <summary>
@@ -202,6 +204,11 @@ namespace GDMENUCardManager.Core.MenuOptions
                 cfg.BgmConvertedDate = conv;
             }
 
+            if (sections.TryGetValue("MISC", out var misc))
+            {
+                cfg.SerialSdWarning = misc.TryGetValue("serial_sd_warning", out var warn) && warn == "1";
+            }
+
             cfg.BgmFileExists = File.Exists(BgmPath);
             cfg.BgmEnabled = cfg.BgmFileExists;
             return cfg;
@@ -221,6 +228,13 @@ namespace GDMENUCardManager.Core.MenuOptions
             var cfg = Load();
             cfg.BgmEnabled = enabled;
             return await SaveAsync(cfg, newBgmSourcePath);
+        }
+
+        public async Task ApplyMiscAsync(bool serialSdWarning)
+        {
+            var cfg = Load();
+            cfg.SerialSdWarning = serialSdWarning;
+            await SaveAsync(cfg, null);
         }
 
         /// <summary>
@@ -327,6 +341,15 @@ namespace GDMENUCardManager.Core.MenuOptions
                 hasContent = true;
             }
 
+            if (cfg.SerialSdWarning)
+            {
+                if (hasContent)
+                    sb.AppendLine();
+                sb.AppendLine("[MISC]");
+                sb.AppendLine("serial_sd_warning=1");
+                hasContent = true;
+            }
+
             if (foreign.Length > 0)
             {
                 if (hasContent)
@@ -355,7 +378,8 @@ namespace GDMENUCardManager.Core.MenuOptions
                 {
                     var name = line.Substring(1, line.Length - 2).Trim();
                     inForeign = !name.Equals("DEFAULTS", StringComparison.OrdinalIgnoreCase)
-                             && !name.Equals("BGM", StringComparison.OrdinalIgnoreCase);
+                             && !name.Equals("BGM", StringComparison.OrdinalIgnoreCase)
+                             && !name.Equals("MISC", StringComparison.OrdinalIgnoreCase);
                 }
                 if (inForeign)
                     sb.AppendLine(raw);

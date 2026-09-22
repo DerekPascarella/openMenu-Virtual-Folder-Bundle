@@ -29,9 +29,27 @@ if %ERRORLEVEL% neq 0 (
 )
 echo.
 
+echo Generating openMenu boot logo...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0build-assets\openmenu-logo\Update-OpenMenuLogo.ps1" -Version "%VERSION%"
+if %ERRORLEVEL% neq 0 (
+    echo ERROR: Boot logo generation failed
+    pause
+    exit /b 1
+)
+echo.
+
 REM Clean previous build
 if exist "%OUTPUT_DIR%" rd /s /q "%OUTPUT_DIR%"
 if not exist "_releases" mkdir "_releases"
+
+REM Purge intermediate build output before cross-platform builds to prevent
+REM stale Windows-only native libs from leaking into non-Windows packages.
+echo Cleaning intermediate output...
+if exist "src\GDMENUCardManager.Core\bin" rd /s /q "src\GDMENUCardManager.Core\bin"
+if exist "src\GDMENUCardManager.Core\obj" rd /s /q "src\GDMENUCardManager.Core\obj"
+if exist "src\GDMENUCardManager.AvaloniaUI\bin" rd /s /q "src\GDMENUCardManager.AvaloniaUI\bin"
+if exist "src\GDMENUCardManager.AvaloniaUI\obj" rd /s /q "src\GDMENUCardManager.AvaloniaUI\obj"
+echo.
 
 echo Building AvaloniaUI project for Linux (self-contained)...
 echo.
@@ -60,6 +78,15 @@ copy /Y redump2cdi\linux-x86_64\redump2cdi "%OUTPUT_DIR%\tools\"
 REM Copy LICENSE and README
 copy /Y LICENSE "%OUTPUT_DIR%\"
 copy /Y README.md "%OUTPUT_DIR%\"
+
+echo.
+echo Creating release archive...
+tar -czf "_releases\GDMENUCardManager.%VERSION%-linux-x64.tar.gz" -C "_releases" "GDMENUCardManager.%VERSION%-linux-x64"
+if %ERRORLEVEL% neq 0 (
+    echo ERROR: Archive creation failed
+    pause
+    exit /b 1
+)
 
 REM Remove intermediate build output after a successful package.
 call cleanup-build-output.bat

@@ -117,6 +117,8 @@ namespace Aaru.CommonTypes
 
 
 
+            path = GDMENUCardManager.Core.Helper.ResolveActualPath(path);
+
             if (!filter.Identify(path) == true)
                 return null;
 

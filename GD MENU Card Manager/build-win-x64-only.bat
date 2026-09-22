@@ -29,6 +29,15 @@ if %ERRORLEVEL% neq 0 (
 )
 echo.
 
+echo Generating openMenu boot logo...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0build-assets\openmenu-logo\Update-OpenMenuLogo.ps1" -Version "%VERSION%"
+if %ERRORLEVEL% neq 0 (
+    echo ERROR: Boot logo generation failed
+    pause
+    exit /b 1
+)
+echo.
+
 REM Clean previous build
 if exist "%OUTPUT_DIR%" rd /s /q "%OUTPUT_DIR%"
 if not exist "_releases" mkdir "_releases"
@@ -60,6 +69,15 @@ copy /Y redump2cdi\windows-x86_64-msvc\redump2cdi.exe "%OUTPUT_DIR%\tools\"
 REM Copy LICENSE and README
 copy /Y LICENSE "%OUTPUT_DIR%\"
 copy /Y README.md "%OUTPUT_DIR%\"
+
+echo.
+echo Creating release archive...
+tar -a -c -f "_releases\GDMENUCardManager.%VERSION%-win-x64.zip" -C "%OUTPUT_DIR%" .
+if %ERRORLEVEL% neq 0 (
+    echo ERROR: Archive creation failed
+    pause
+    exit /b 1
+)
 
 REM Remove intermediate build output after a successful package.
 call cleanup-build-output.bat

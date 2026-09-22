@@ -20,6 +20,11 @@ powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0normalize-xaml.ps1"
 if %ERRORLEVEL% neq 0 goto :error
 echo.
 
+echo Generating openMenu boot logo...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0build-assets\openmenu-logo\Update-OpenMenuLogo.ps1" -Version "%VERSION%"
+if %ERRORLEVEL% neq 0 goto :error
+echo.
+
 REM Clean previous builds
 echo Cleaning previous builds...
 if exist "_releases" rd /s /q "_releases"

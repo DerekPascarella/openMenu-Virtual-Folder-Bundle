@@ -47,6 +47,7 @@ To accommodate the new openMenu, a modified version of [GD MENU Card Manager](ht
     - [Disc Types (openMenu Only)](#disc-types-openmenu-only)
     - [Searching and Filtering](#searching-and-filtering)
     - [Sorting](#sorting)
+    - [FAT Sort](#fat-sort)
     - [Undo and Redo](#undo-and-redo)
     - [Saving Changes](#saving-changes)
     - [Keyboard Shortcuts](#keyboard-shortcuts)
@@ -54,6 +55,7 @@ To accommodate the new openMenu, a modified version of [GD MENU Card Manager](ht
   - [Menu Options](#menu-options)
     - [Default Style and Theme](#default-style-and-theme)
     - [Background Music](#background-music)
+    - [Miscellaneous](#miscellaneous)
   - [Application Settings](#application-settings)
     - [SD Drive](#sd-drive)
     - [Temporary Folder](#temporary-folder)
@@ -70,6 +72,8 @@ To accommodate the new openMenu, a modified version of [GD MENU Card Manager](ht
   - [Multi-Disc Launcher](#multi-disc-launcher)
   - [Recently Played](#recently-played)
   - [Remember Last Game](#remember-last-game)
+  - [Dreamcast Now!](#dreamcast-now)
+  - [Online Time Sync](#online-time-sync)
   - [Exiting to BIOS](#exiting-to-bios)
     - [Available Options by Context](#available-options-by-context)
     - [Options Explanation](#options-explanation)
@@ -83,6 +87,7 @@ To accommodate the new openMenu, a modified version of [GD MENU Card Manager](ht
     - [Folders Mode](#folders-mode)
     - [Popup Menus (All Modes)](#popup-menus-all-modes)
   - [Keyboard Support](#keyboard-support)
+  - [Mouse Support](#mouse-support)
 - [Theming](#theming)
   - [Theme Format](#theme-format)
     - [General](#general)
@@ -100,7 +105,7 @@ To accommodate the new openMenu, a modified version of [GD MENU Card Manager](ht
 
 ## Current Version
 
-The latest version of **openMenu Virtual Folder Bundle** is [1.6.4-ateam](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/releases/tag/1.6.4-ateam).
+The latest version of **openMenu Virtual Folder Bundle** is [1.7.0-ateam](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/releases/tag/1.7.0-ateam).
 
 ---
 
@@ -108,13 +113,28 @@ The latest version of **openMenu Virtual Folder Bundle** is [1.6.4-ateam](https:
 
 - Extend GD MENU Card Manager's **Menu Options** feature to set more default openMenu settings beyond view style and theme.
 - New metadata format with optional openMenu popup window when a disc image is selected, showing screenshots, description, and more.
-- See [Dreamcast Now](https://dreamcast.online/now/) information directly from openMenu (DreamPi or BBA required).
+- Add [Serial PPP](https://github.com/eaudunord/dreamcast_serial_ppp) support to openMenu's Dreamcast Now! feature, allowing connections through the Dreamcast's serial port using a compatible USB-to-serial adapter and DreamPi.
 - Implement a housekeeping function in GD MENU Card Manager to help users easily identify gaps or issues with their disc image collection (e.g., duplicate serials, missing artwork, missing discs in multi-disc sets).
 - Arbitrary disc queueing in openMenu (i.e., ability to define a playlist of disc images that can be cycled through using the in-game reset button combination).
 
 ---
 
 ## Changelog
+- **Version 1.7.0-ateam (2026-09-22)**
+  - **openMenu**
+    - Dreamcast Now! online functionality added (see [Issue 207](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/207)).
+    - Cursor highlight color changed from light gray to teal in CodeBreaker for better visibility (see [Issue 208](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/208)).
+    - Mouse supported added (see [Issue 209](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/209)).
+    - Scrollbar added to the main disc image list in Folders mode (see [Issue 210](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/210)).
+    - VMU Time Sync warning message now appears if attached VMU device doesn't report valid RTC data (see [Issue 211](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/211)).
+    - Boot sequence optimized (see [Issue 212](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/212)).
+    - Optional serial SD card reader detection warning added (see [Issue 213](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/213)).
+    - Multiple controllers can now all navigate the menu (see [Issue 215](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/215)).
+    - openMenu logo and version now displayed at license screen (see [Issue 216](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/216)).
+  - **GD MENU Card Manager**
+    - FAT sorting setting added (see [Issue 205](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/205)).
+	- Case-insensitive TOC parsing added for Linux and macOS (see [Issue 206](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/206)).
+    - Dragging entry up or down Games List now correctly automatically scrolls on Linux and macOS (see [Issue 214](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/214)).
 - **Version 1.6.4-ateam (2026-08-27)**
   - **GD MENU Card Manager**
     - Card Manager now stores SD card metadata in a single DISCDB.JSON database for drastically faster card loading (see [Issue 202](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/202)).
@@ -685,9 +705,9 @@ The **Type** column categorizes disc images:
 
 | Type | Description |
 |------|-------------|
-| **Game** | Standard Dreamcast game (default). |
-| **Other** | Non-game discs (audio CDs, utilities). These skip the full boot sequence and return directly to the BIOS. |
-| **PSX** | PlayStation disc images for use with either the Bleemcast! or Bloom emulators (see the [PlayStation Emulator Feature](#playstation-emulator-feature) section). |
+| **Game** | Standard Dreamcast software (default). |
+| **Other** | Non-game discs (audio CDs). These skip the full boot sequence and return directly to the BIOS. KatanaDrive has limited support for audio CDs, requiring user-converted CDI images rather than CCD/IMG/SUB, and audio playback contains a lot of static noise. |
+| **PSX** | PlayStation disc images for use with either the Bleemcast! or Bloom emulators (see the [PlayStation Emulator Feature](#playstation-emulator-feature) section). KatanaDrive users may have to manually convert PlayStation discs to CDI format, as CCD/IMG/SUB has limited support. |
 
 #### Searching and Filtering
 
@@ -701,6 +721,14 @@ The first matching game is highlighted and scrolled into view. Click **Search** 
 #### Sorting
 
 Click **Sort List** to alphabetically sort all disc images. When in openMenu mode, this is a combination of Folder path and Title. In gdMenu mode, sorting is done by Title alone. A confirmation dialog is shown before sorting is applied.
+
+#### FAT Sort
+
+The **FAT Sort** checkbox beside **File/Folder Lock Check** keeps the SD card's numbered folders stored in numeric order in the filesystem directory. It is off by default, and the setting is remembered between application sessions.
+
+When enabled, **Save Changes** checks the stored folder order after saving and reorders it only when necessary. This preserves folder names, folder numbers, disc contents, and the order of games in the menu. It is separate from **Sort List**, which changes the Games List order.
+
+FAT Sort is optional and is not required by GDEMU. It applies to local FAT-formatted cards and is skipped for other filesystems and network locations.
 
 #### Undo and Redo
 
@@ -789,7 +817,7 @@ Click **Save** to apply changes, or simply close the window to discard them.
 
 ### Menu Options
 
-The **Menu Options** button at the top right of the **Games List** table (available in openMenu mode) opens a window with two tabs, each with its own **Apply** button that saves only that tab's settings. Changes take effect the next time **Save Changes** is clicked in the main window.
+The **Menu Options** button at the top right of the **Games List** table (available in openMenu mode) opens a window with three tabs: **Default Style and Theme**, **Background Music**, and **Miscellaneous**. Each tab has its own **Apply** button that saves only that tab's settings. Changes take effect the next time **Save Changes** is clicked in the main window.
 
 #### Default Style and Theme
 
@@ -815,6 +843,18 @@ This tab adds looping background music to openMenu.
 To remove background music, uncheck **Enable background music** and click **Apply**.
 
 Once a music track is present, playback can be toggled on the console with the "Play BGM" setting in openMenu's Settings menu (see the [Settings Menu](#settings-menu) section).
+
+#### Miscellaneous
+
+The **Show warning if serial SD card adapter is not detected** option enables a startup warning for users of the [Serial VMU feature](#serial-vmu-feature).
+
+1. Check **Show warning if serial SD card adapter is not detected**.
+2. Click **Apply**.
+3. Click **Save Changes** in the main window to include the option in openMenu.
+
+If openMenu cannot detect the serial SD card at startup, the warning offers **Exit to BIOS** and **Close**. To retry detection, power-cycle the console or choose **Exit to BIOS**, then select **Play** to restart openMenu. **Close** dismisses the warning.
+
+This option is off by default and works independently of openMenu's "Honor Menu Defaults" setting. To disable it, uncheck the option, click **Apply**, and click **Save Changes** again.
 
 ### Application Settings
 
@@ -885,6 +925,8 @@ Note that the Serial VMU (see the [Serial VMU Feature](#serial-vmu-feature) sect
 
 **When the Serial VMU feature is enabled, users must save openMenu settings to serial SD card instead of VMU** (see the [Save/Load Manager](#saveload-manager) section).
 
+For an optional warning when the serial SD adapter is not detected at startup, enable **Show warning if serial SD card adapter is not detected** under Card Manager's **Menu Options**, in the **Miscellaneous** tab (see [Miscellaneous](#miscellaneous)).
+
 openMenu supports backing up and restoring VMU save data to and from a serial SD adapter (like the one [sold here](https://www.amazon.com/ALOEU-Adapter-Reader-Dreamcast-Dreamshell/dp/B0CSDNQ1HF)) on a per-game basis. When enabled, launching a game will automatically restore VMU data from the serial SD card before booting, and the next time openMenu starts it will back up any changes made during gameplay. This allows users to maintain persistent per-game VMUs without relying on excessive physical VMU storage.
 
 New users of this feature may find [this video overview](https://youtu.be/ycVAZJv6TYE) helpful in understanding how it works.
@@ -954,7 +996,7 @@ openMenu includes a Save/Load Manager for managing VMU configuration save files,
 
 Access it from the Settings menu by selecting "Save/Load".
 
-Note that when openMenu launches, it first scans for a serial SD card with valid openMenu settings saved to it (i.e., an `OPENMENU\OPENMENU.CFG` file). If found, those settings are automatically loaded and no VMU save file scan is performed. If a serial SD card with valid settings is not found, openMenu will automatically load saved settings from the first VMU that it finds (starting with Port A, Socket 1). If no valid settings are found, openMenu's default settings are used instead.
+At startup, usable settings on the serial SD card (`OPENMENU\OPENMENU.CFG`) take priority over VMU settings. If they cannot be loaded, openMenu falls back to its VMU settings search, starting at Port A, Socket 1. If neither source provides usable saved settings, openMenu uses its defaults.
 
 **Features:**
 
@@ -1022,9 +1064,45 @@ With the "Remember Last Game" setting turned on (see the [Settings Menu](#settin
 
 This setting is turned off by default and works in all four view modes.
 
+### Dreamcast Now!
+
+openMenu can display the players currently online on [Dreamcast Now!](https://dreamcast.online/now/), including their countries and the games they are playing.
+
+A network connection requires one of the following:
+
+- A Dreamcast modem connected through DreamPi. openMenu uses built-in DreamPi dialing details.
+- A Broadband Adapter (HIT-0400) or LAN Adapter (HIT-0300). openMenu uses the console's saved static network configuration or DHCP. PPPoE is not supported and falls back to DHCP.
+
+To use the feature:
+
+1. Open the Settings menu and set **DC Now!** to **On (Manual Connect)** or **On (Auto-Connect)**.
+2. Select the **DC Now!** button at the bottom of the Settings menu.
+3. With a modem in manual mode, select **Connect**. Ethernet adapters connect automatically when the window opens. **On (Auto-Connect)** starts the connection automatically when openMenu boots.
+4. Use D-Pad Up/Down to browse the player list and actions, and A to select an action. **Refresh** updates the list, and **Retry** retries a failed connection or list request.
+
+**Close** returns to Settings while keeping the connection open. Modem users can choose **Disconnect** to hang up. openMenu closes its network connection when launching a disc or exiting to BIOS.
+
+**DC Now! Auto-Refresh** updates the list every 10, 20, 30, 45, or 60 seconds while the window is open. Set it to **Off** to refresh manually. Enabling **DC Now! VMU Updates** displays a scrolling summary of games and player counts on attached VMU LCDs and keeps refreshing even after the window is closed. VMU updates require Auto-Refresh to be enabled.
+
+The online settings default to **Off**. Use [Save/Load](#saveload-manager) to retain them for future boots.
+
+### Online Time Sync
+
+openMenu can set the console's date and time from `pool.ntp.org` after establishing a [Dreamcast Now!](#dreamcast-now) connection.
+
+1. Enable **DC Now!** in the Settings menu.
+2. Set **Online Time Sync** to the UTC offset for the user's local time. Options range from **On (UTC-12)** to **On (UTC+14)**, including supported half-hour and quarter-hour offsets.
+3. Select **Apply** for the current session, or use **Save/Load** to retain the settings, then establish the connection.
+
+Synchronization runs in the background once a connection is available. The Dreamcast Now! window does not need to remain open, and Auto-Refresh and VMU Updates can remain off. For automatic synchronization on future boots, save **DC Now!** as **On (Auto-Connect)**.
+
+The selected UTC offset is fixed. Adjust it when daylight saving time starts or ends.
+
+Online Time Sync sets the console clock, not the clocks on attached VMUs. **VMU Time Sync** remains a separate option that reads a compatible VMU's clock at startup. If both are enabled, the online time can update the console clock once the network connection is established.
+
 ### Exiting to BIOS
 
-This build of openMenu has enhanced "Exit to BIOS" options which are dynamically displayed based on the disc image type and the presence of a virtual VMU device like VM2, VMUPro, USB4MAPLE, and Pico2Maple.
+This build of openMenu has enhanced "Exit to BIOS" options which are dynamically displayed based on the disc image type and the presence of a virtual VMU device like VM2, VMUPro, USB4MAPLE, and Pico2Maple, or the availability of a [Serial VMU](#serial-vmu-feature).
 
 Furthermore, there are additional "Exit to BIOS" settings users can explore (see more in the [Available Options by Context](#available-options-by-context) section).
 
@@ -1037,19 +1115,24 @@ Note that region and VGA patching is not automatically applied when launching ga
 | **Folder selected** | Exit to BIOS, Close |
 | **Dreamcast/PlayStation disc** *(no virtual VMU)* | Mount disc + Exit to BIOS, Exit to BIOS, Close |
 | **Dreamcast/PlayStation** *(with virtual VMU)* | Send Game ID + Mount disc + Exit to BIOS, Send Game ID + Exit to BIOS, Mount disc + Exit to BIOS, Exit to BIOS, Close |
+| **Dreamcast/PlayStation** *(with Serial VMU)* | Create/Restore Serial VMU + Mount disc + Exit to BIOS, Create/Restore Serial VMU + Exit to BIOS, Mount disc + Exit to BIOS, Exit to BIOS, Close |
 | **Other disc types** *(e.g., audio CDs)* | Mount disc + Exit to BIOS, Exit to BIOS, Close |
 
 #### Options Explanation
 
-| Option | Mounts Disc | Sends Game ID | Exits to BIOS |
-|--------|:-----------:|:-------------:|:-------------:|
-| Send Game ID + Mount disc + Exit to BIOS | ✓ | ✓ | ✓ |
-| Send Game ID + Exit to BIOS | | ✓ | ✓ |
-| Mount disc + Exit to BIOS | ✓ | | ✓ |
-| Exit to BIOS | | | ✓ |
-| Close | | | |
+| Option | Mounts Disc | Sends Game ID | Creates/Restores Serial VMU | Exits to BIOS |
+|---|:-:|:-:|:-:|:-:|
+| Create/Restore Serial VMU + Mount disc + Exit to BIOS | ✓ | | ✓ | ✓ |
+| Send Game ID + Mount disc + Exit to BIOS | ✓ | ✓ | | ✓ |
+| Send Game ID + Exit to BIOS | | ✓ | | ✓ |
+| Mount disc + Exit to BIOS | ✓ | | | ✓ |
+| Exit to BIOS | | | | ✓ |
+| Close | | | | |
 
-**Note:** "Send Game ID" options only appear when a virtual VMU device (VM2, VMUPro, USB4MAPLE, or Pico2Maple) is detected and the selected item is a Dreamcast or PlayStation disc.
+**Notes:**
+- The "Send Game ID" option only appear when a virtual VMU device (VM2, VMUPro, USB4MAPLE, or Pico2Maple) is detected and the selected item is a Dreamcast or PlayStation disc.
+- The "Create/Restore Serial VMU" option only appear when using the [Serial VMU](#serial-vmu-feature) feature.
+- The "Mount Disc" option has a limitation with any disc image that is not a GD-ROM rip (e.g., indie/homebrew CDIs). While the disc will technically mount and even the BIOS' music player will allow playback of its CDDA tracks (if any exist), launching the disc from the BIOS results in GDEMU resetting to the first slot on the SD card (i.e., openMenu). This is GDEMU quirk and not an openMenu bug.
 
 ### Settings Menu
 
@@ -1077,12 +1160,16 @@ Each view mode has its own set of available settings. Below is a breakdown of ea
 | **Multi-Disc** | Show All, Compact | "Show All" displays every disc individually. "Compact" groups multi-disc games into a single entry. |
 | **Remember Last Game** | Off, On | Places the cursor on the last disc image launched the next time openMenu boots (see the [Remember Last Game](#remember-last-game) section). |
 | **Boot Mode** | Full Boot, License Only, Animation Only, Fast Boot | Controls how the game is launched. "Full Boot" displays the complete boot sequence, "License Only" shows only the SEGA license screen, "Animation Only" plays only the Dreamcast boot animation, and "Fast Boot" skips all startup screens and launches the game immediately. Some titles may not function correctly in modes other than "Full Boot". DreamConn S users are generally advised to use "Full Boot" to ensure VMU synchronization completes before the game starts, which is required for certain games' automatic load features. |
+| **DC Now!** | Off, On (Manual Connect), On (Auto-Connect) | Enables Dreamcast Now! and its button at the bottom of Settings. "Auto-Connect" starts a connection when openMenu boots (see [Dreamcast Now!](#dreamcast-now)). |
+| **DC Now! Auto-Refresh** | Off, 10 seconds, 20 seconds, 30 seconds, 45 seconds, 60 seconds | Refreshes the online player list at the selected interval. Only shown when DC Now! is enabled. |
+| **DC Now! VMU Updates** | Off, On | Displays games and player counts on attached VMU LCDs, with updates continuing after the Dreamcast Now! window is closed. Only shown when DC Now! and Auto-Refresh are enabled. |
+| **Online Time Sync** | Off, On (UTC-12) through On (UTC+14), including supported fractional-hour offsets | Sets the console clock from an online time server using the selected UTC offset. Only shown when DC Now! is enabled (see [Online Time Sync](#online-time-sync)). |
 | **Serial VMU** | Off, On (A1), On (A2), On (B1), On (B2), On (C1), On (C2), On (D1), On (D2) | If serial SD card detected, use it to store per-game virtual VMUs in the specified Port and Socket. Only shown when a serial SD card is detected, and when either no virtual VMU device is connected or the VMU Game ID setting is turned off. |
 | **Serial VMU Multi-Slot** | Off, On | If Serial VMU is enabled, also enable up to five per-game slots, or leave off to default to one virtual VMU per game. Only shown when Serial VMU is turned on. |
 | **VMU Game ID** | Send to All, Send to First, Off | If virtual VMU device like VM2, VMUPro, USB4MAPLE, or Pico2Maple detected, send Game ID to the first one detected (starting at the first controller port and first VMU socket), all detected, or turn off ID transmission altogether (see the [Virtual VMU Device Support](#virtual-vmu-device-support) section). Only shown when such a device is connected and Serial VMU is turned off. |
-| **VMU Time Sync** | Off, On | Use VMU date and time to set console date and time when openMenu boots (VM2 and VMUPro must be using a supported firmware). |
+| **VMU Time Sync** | Off, On | Uses a compatible VMU's date and time to set the console clock when openMenu boots. Currently supported by OEM VMU and VM2. A warning appears if attached VMUs cannot provide a valid date and time. |
 | **VMU Beep on Save** | Off, On | Sounds the VMU's buzzer while openMenu writes its settings save file. |
-| **Save/Load**, **Apply**, **Credits** | N/A | The final row of the Settings menu holds these three buttons side by side, chosen with D-Pad Left and Right. "Save/Load" opens the [Save/Load Manager](#saveload-manager), "Apply" applies settings for the current session only, and "Credits" opens the credits window. |
+| **Save/Load**, **Apply**, **DC Now!**, **Credits** | N/A | Buttons at the bottom of Settings, chosen with D-Pad Left and Right. "Save/Load" opens the [Save/Load Manager](#saveload-manager), "Apply" applies settings for the current session, "DC Now!" opens the [Dreamcast Now! window](#dreamcast-now), and "Credits" opens the credits window. The "DC Now!" button appears only when DC Now! is enabled. |
 
 #### Scroll Mode Settings
 
@@ -1102,12 +1189,16 @@ Each view mode has its own set of available settings. Below is a breakdown of ea
 | **Remember Last Game** | Off, On | Places the cursor on the last disc image launched the next time openMenu boots (see the [Remember Last Game](#remember-last-game) section). |
 | **Marquee Speed** | Slow, Medium, Fast | Controls how quickly long game names scroll horizontally. |
 | **Boot Mode** | Full Boot, License Only, Animation Only, Fast Boot | Controls how the game is launched. "Full Boot" displays the complete boot sequence, "License Only" shows only the SEGA license screen, "Animation Only" plays only the Dreamcast boot animation, and "Fast Boot" skips all startup screens and launches the game immediately. Some titles may not function correctly in modes other than "Full Boot". DreamConn S users are generally advised to use "Full Boot" to ensure VMU synchronization completes before the game starts, which is required for certain games' automatic load features. |
+| **DC Now!** | Off, On (Manual Connect), On (Auto-Connect) | Enables Dreamcast Now! and its button at the bottom of Settings. "Auto-Connect" starts a connection when openMenu boots (see [Dreamcast Now!](#dreamcast-now)). |
+| **DC Now! Auto-Refresh** | Off, 10 seconds, 20 seconds, 30 seconds, 45 seconds, 60 seconds | Refreshes the online player list at the selected interval. Only shown when DC Now! is enabled. |
+| **DC Now! VMU Updates** | Off, On | Displays games and player counts on attached VMU LCDs, with updates continuing after the Dreamcast Now! window is closed. Only shown when DC Now! and Auto-Refresh are enabled. |
+| **Online Time Sync** | Off, On (UTC-12) through On (UTC+14), including supported fractional-hour offsets | Sets the console clock from an online time server using the selected UTC offset. Only shown when DC Now! is enabled (see [Online Time Sync](#online-time-sync)). |
 | **Serial VMU** | Off, On (A1), On (A2), On (B1), On (B2), On (C1), On (C2), On (D1), On (D2) | If serial SD card detected, use it to store per-game virtual VMUs in the specified Port and Socket. Only shown when a serial SD card is detected, and when either no virtual VMU device is connected or the VMU Game ID setting is turned off. |
 | **Serial VMU Multi-Slot** | Off, On | If Serial VMU is enabled, also enable up to five per-game slots, or leave off to default to one virtual VMU per game. Only shown when Serial VMU is turned on. |
 | **VMU Game ID** | Send to All, Send to First, Off | If virtual VMU device like VM2, VMUPro, USB4MAPLE, or Pico2Maple detected, send Game ID to the first one detected (starting at the first controller port and first VMU socket), all detected, or turn off ID transmission altogether (see the [Virtual VMU Device Support](#virtual-vmu-device-support) section). Only shown when such a device is connected and Serial VMU is turned off. |
-| **VMU Time Sync** | Off, On | Use VMU date and time to set console date and time when openMenu boots (VM2 and VMUPro must be using a supported firmware). |
+| **VMU Time Sync** | Off, On | Uses a compatible VMU's date and time to set the console clock when openMenu boots. Currently supported by OEM VMU and VM2. A warning appears if attached VMUs cannot provide a valid date and time. |
 | **VMU Beep on Save** | Off, On | Sounds the VMU's buzzer while openMenu writes its settings save file. |
-| **Save/Load**, **Apply**, **Credits** | N/A | The final row of the Settings menu holds these three buttons side by side, chosen with D-Pad Left and Right. "Save/Load" opens the [Save/Load Manager](#saveload-manager), "Apply" applies settings for the current session only, and "Credits" opens the credits window. |
+| **Save/Load**, **Apply**, **DC Now!**, **Credits** | N/A | Buttons at the bottom of Settings, chosen with D-Pad Left and Right. "Save/Load" opens the [Save/Load Manager](#saveload-manager), "Apply" applies settings for the current session, "DC Now!" opens the [Dreamcast Now! window](#dreamcast-now), and "Credits" opens the credits window. The "DC Now!" button appears only when DC Now! is enabled. |
 
 #### Folders Mode Settings
 
@@ -1128,15 +1219,23 @@ Each view mode has its own set of available settings. Below is a breakdown of ea
 | **Recently Played** | Off, Last 10, Last 20, Last 30, Last 40, Last 50 | Pins a `<Recently Played>` entry to the top of the root folder view holding the chosen number of most recently launched disc images (see the [Recently Played](#recently-played) section). |
 | **Clock** | On (12-Hour), On (24-Hour), Off | Toggles display of the BIOS clock. |
 | **Marquee Speed** | Slow, Medium, Fast | Controls how quickly long game names scroll horizontally. |
+| **Mouse Cursor Speed** | Slow, Medium, Fast | Controls how quickly the mouse pointer moves. Defaults to "Medium". Only shown when a mouse is connected. |
+| **Mouse Scroll Speed** | Slow, Medium, Fast | Controls scroll wheel speed in the game list and scrollable popup menus. Defaults to "Medium". Only shown when a mouse is connected. |
 | **Boot Mode** | Full Boot, License Only, Animation Only, Fast Boot | Controls how the game is launched. "Full Boot" displays the complete boot sequence, "License Only" shows only the SEGA license screen, "Animation Only" plays only the Dreamcast boot animation, and "Fast Boot" skips all startup screens and launches the game immediately. Some titles may not function correctly in modes other than "Full Boot". DreamConn S users are generally advised to use "Full Boot" to ensure VMU synchronization completes before the game starts, which is required for certain games' automatic load features. |
+| **DC Now!** | Off, On (Manual Connect), On (Auto-Connect) | Enables Dreamcast Now! and its button at the bottom of Settings. "Auto-Connect" starts a connection when openMenu boots (see [Dreamcast Now!](#dreamcast-now)). |
+| **DC Now! Auto-Refresh** | Off, 10 seconds, 20 seconds, 30 seconds, 45 seconds, 60 seconds | Refreshes the online player list at the selected interval. Only shown when DC Now! is enabled. |
+| **DC Now! VMU Updates** | Off, On | Displays games and player counts on attached VMU LCDs, with updates continuing after the Dreamcast Now! window is closed. Only shown when DC Now! and Auto-Refresh are enabled. |
+| **Online Time Sync** | Off, On (UTC-12) through On (UTC+14), including supported fractional-hour offsets | Sets the console clock from an online time server using the selected UTC offset. Only shown when DC Now! is enabled (see [Online Time Sync](#online-time-sync)). |
 | **Serial VMU** | Off, On (A1), On (A2), On (B1), On (B2), On (C1), On (C2), On (D1), On (D2) | If serial SD card detected, use it to store per-game virtual VMUs in the specified Port and Socket. Only shown when a serial SD card is detected, and when either no virtual VMU device is connected or the VMU Game ID setting is turned off. |
 | **Serial VMU Multi-Slot** | Off, On | If Serial VMU is enabled, also enable up to five per-game slots, or leave off to default to one virtual VMU per game. Only shown when Serial VMU is turned on. |
 | **VMU Game ID** | Send to All, Send to First, Off | If virtual VMU device like VM2, VMUPro, USB4MAPLE, or Pico2Maple detected, send Game ID to the first one detected (starting at the first controller port and first VMU socket), all detected, or turn off ID transmission altogether (see the [Virtual VMU Device Support](#virtual-vmu-device-support) section). Only shown when such a device is connected and Serial VMU is turned off. |
-| **VMU Time Sync** | Off, On | Use VMU date and time to set console date and time when openMenu boots (VM2 and VMUPro must be using a supported firmware). |
+| **VMU Time Sync** | Off, On | Uses a compatible VMU's date and time to set the console clock when openMenu boots. Currently supported by OEM VMU and VM2. A warning appears if attached VMUs cannot provide a valid date and time. |
 | **VMU Beep on Save** | Off, On | Sounds the VMU's buzzer while openMenu writes its settings save file. |
-| **Save/Load**, **Apply**, **Credits** | N/A | The final row of the Settings menu holds these three buttons side by side, chosen with D-Pad Left and Right. "Save/Load" opens the [Save/Load Manager](#saveload-manager), "Apply" applies settings for the current session only, and "Credits" opens the credits window. |
+| **Save/Load**, **Apply**, **DC Now!**, **Credits** | N/A | Buttons at the bottom of Settings, chosen with D-Pad Left and Right. "Save/Load" opens the [Save/Load Manager](#saveload-manager), "Apply" applies settings for the current session, "DC Now!" opens the [Dreamcast Now! window](#dreamcast-now), and "Credits" opens the credits window. The "DC Now!" button appears only when DC Now! is enabled. |
 
 ### Button Mapping
+
+Any connected controller can navigate openMenu. Fresh input from another controller takes control without being overridden by buttons held on the previous controller. After connecting a controller, release its buttons and return its controls to neutral before using it. Controllers can be used alongside a keyboard and, in Folders mode, a mouse.
 
 #### Grid/LineDesc Mode
 
@@ -1203,6 +1302,25 @@ Thanks to [Xerxes3rd](https://github.com/DerekPascarella/openMenu-Virtual-Folder
 | Q or Page Up     | Left Trigger |
 | W or Page Down   | Right Trigger |
 | Shift + A-Z/0-9  | Jump to next item starting with that character |
+
+### Mouse Support
+
+Mouse control is available in **Folders view mode only** and can be used alongside controllers and a keyboard.
+
+| Mouse Input | Action |
+|-------------|--------|
+| Move pointer | Highlight the entry or option under the pointer. |
+| Left-click a list entry | Enter a folder or select a disc for launch, opening the multi-disc launcher when applicable. |
+| Right-click a disc entry | Open its menu for CodeBreaker or Exit to BIOS. |
+| Right-click outside the game list | Return to the parent folder when inside a subfolder. |
+| Side button (North American/European mouse) or middle wheel click (Japanese mouse) | Open Settings from the game list. |
+| Left-click a setting | Select the next value, as with D-Pad Right. |
+| Right-click a setting | Select the previous value, as with D-Pad Left. |
+| Left-click a popup action | Select the action. |
+| Scroll wheel | Scroll the current list. |
+| Drag a scrollbar | Scroll through the list. |
+
+**Mouse Cursor Speed** and **Mouse Scroll Speed** can be adjusted independently in the [Folders Mode Settings](#folders-mode-settings). Both default to "Medium", which preserves the original mouse speeds. "Slow" uses half the normal speed, while "Fast" uses twice the normal speed.
 
 ---
 

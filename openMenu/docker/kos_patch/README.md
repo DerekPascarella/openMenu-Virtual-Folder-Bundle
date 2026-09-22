@@ -259,3 +259,116 @@ span more than one LFN directory entry. The off-by-one error corrupts reads of
 such filenames; the padding error corrupts writes, potentially causing host
 operating systems to ignore the LFN chain and display the 8.3 fallback name
 instead.
+
+# Addon Libraries openMenu Links
+
+## Overview
+
+openMenu links two KallistiOS addon libraries: `libkosfat.a` (the FAT driver
+behind the SD card savefile, patched as described above) and `libppp.a` (the
+PPP stack behind the Dreamcast Now! modem connection). Both are built by the
+normal KOS `make` and land in `addons/lib/dreamcast/`. The link step fails with
+`cannot find -lkosfat` or `cannot find -lppp` when they are missing.
+
+## Keeping the Archives
+
+`make clean` at the KOS root deletes the addon archives along with the objects,
+so a tree that was cleaned and not rebuilt cannot link openMenu. The Dockerfile
+in this folder therefore cleans only `kernel` and `utils` and deletes the addon
+objects by hand. To restore the archives in an existing tree:
+
+```bash
+cd /opt/toolchains/dc/kos/
+source environ.sh
+make -C addons
+```
+
+## libppp
+
+The stock `addons/libppp/Makefile` builds with `PPP_DEBUG` defined. Leave it
+that way. The debug output only goes to the serial console, and turning it off
+makes the stock sources fail under `-Werror` because of variables that are then
+unused.
+
+# KallistiOS Patch: Japanese Mouse Center Button
+
+`mouse_middle_button.patch` adds `MOUSE_MIDDLEBUTTON` for bit 0 in
+`kernel/arch/dreamcast/include/dc/maple/mouse.h` and changes the cooked button
+mask from 14 to 15 in `kernel/arch/dreamcast/hardware/maple/mouse.c`. The Japanese
+HKT-9900 center button uses bit 0. The western side button uses bit 3. OpenMenu
+accepts either as its third-button action. Polarity and axis conversion stay
+unchanged.
+
+OpenMenu requires the patched header at compile time. The KOS library must also
+be rebuilt, then OpenMenu must be rebuilt and relinked. A header change alone
+cannot restore a button bit discarded by the linked driver.
+
+## Existing Containers
+
+Run the patch and compilation manually in a root shell inside the container.
+KOS can retain its image-build owner's UID while the development user's UID
+is changed by the devcontainer. In the inspected container, `dev` is UID 1000,
+KOS is owned by UID 100, and `sudo` is absent.
+
+From the Docker host, use `docker exec -it --user root CONTAINER bash`, replacing
+`CONTAINER` with your container's name or ID. Then run this inside that shell,
+with OpenMenu mounted at `/workspaces/openmenu`:
+
+```bash
+cd /opt/toolchains/dc/kos
+source ./environ.sh
+
+patch --dry-run --batch --forward -p1 < /workspaces/openmenu/docker/kos_patch/mouse_middle_button.patch &&
+patch --batch --forward -p1 < /workspaces/openmenu/docker/kos_patch/mouse_middle_button.patch &&
+kos-cc $KOS_CSTD -Wextra -Wno-deprecated \
+    -c kernel/arch/dreamcast/hardware/maple/mouse.c \
+    -o kernel/build/mouse.o &&
+kos-ar rcs lib/dreamcast/libkallisti.a kernel/build/mouse.o
+```
+
+This procedure uses `patch` without a Git dependency. Only `mouse.c` needs
+recompiling. The header adds a constant without changing any structure or
+function ABI. `kos-cc` invokes the configured SH-4 compiler with KOS's flags;
+`$KOS_CSTD` and the warning flags match the kernel and root Makefiles.
+`kos-ar rcs` replaces the existing `mouse.o` member and updates the symbol
+index in `libkallisti.a`, preserving its other members. No addon rebuild or
+KOS-root clean is needed. `libkosfat.a` and `libppp.a` remain untouched.
+
+Afterward, leave the root shell and rebuild and relink OpenMenu using your
+normal container workflow. An existing OpenMenu executable still contains
+its previously linked KOS driver.
+
+If the forward check fails, inspect the error before applying anything. This
+read-only check identifies a fully applied source patch:
+
+```bash
+patch --dry-run --batch --reverse -p1 < /workspaces/openmenu/docker/kos_patch/mouse_middle_button.patch
+```
+
+A successful reverse dry run means the source already contains the changes.
+It does not prove the library was rebuilt. Do not actually reverse the patch.
+If it is already fully applied, run only the compilation and archive commands
+after sourcing the environment. If both checks fail, inspect for a partial
+patch or upstream changes before continuing.
+
+## Images and Input Sampling
+
+The Dockerfile copies and applies this patch before building KOS. Editing the
+Dockerfile does not update an existing image or running container. A prebuilt
+image such as `sbstnc/openmenu-dev:0.2.2` still needs the manual procedure unless
+it has already been patched and rebuilt. Building or publishing a replacement
+image and changing a devcontainer image reference are separate user actions.
+
+OpenMenu takes an interrupt-protected snapshot of the selected mouse's current
+cooked state and clears its relative deltas once per input pass. Status reads
+alone do not consume these deltas. The driver retains only its latest sample,
+so intermediate movement or wheel samples can be lost while the UI is stalled
+or blocked. This patch does not add a motion queue or change that driver
+behavior.
+
+OpenMenu uses KOS's single application detach callback slot, filtered to mouse
+devices, to detect same-port reconnects between input passes. No other
+OpenMenu code currently registers that callback. A future application detach
+handler must share that registration. Third-button mapping, wheel polarity,
+movement sensitivity, and cursor readability still require real mouse and
+display checks.

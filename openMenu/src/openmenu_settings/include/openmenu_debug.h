@@ -18,9 +18,9 @@
  * Color sequence in main.c:
  *   RED (255,0,0)     - Before maple_wait_scan()
  *   GREEN (0,255,0)   - After maple_wait_scan()
+ *   CYAN (0,255,255)  - Before init_gfx_pvr()
  *   BLUE (0,0,255)    - Before vm2_rescan()
  *   YELLOW (255,255,0) - After vm2_rescan()
- *   CYAN (0,255,255)  - Before init_gfx_pvr()
  *   MAGENTA (255,0,255) - Before savefile_init()
  *   WHITE (255,255,255) - Init complete
  *
@@ -53,17 +53,9 @@
  */
 #define DEBUG_COMPACTION_TEST 0
 
-/*
- * DEBUG_VMU_SYNC - Show VMU time sync debug overlay
- *
- * When enabled, displays detailed debug information about VMU clock
- * synchronization on screen. Shows:
- *   - Number of slots checked, memcards found, clocks found
- *   - Device index, port, and unit of found clock device
- *   - vmu_get_datetime result and time value
- *   - RTC set result and flashrom update result
- *   - Raw clock bytes from VMU response
- */
-#define DEBUG_VMU_SYNC        0
+/* Replaces VMU time sync with a read-only clock probe and packet popup. */
+#ifndef DEBUG_VMU_SYNC
+#define DEBUG_VMU_SYNC 0
+#endif
 
 #endif /* OPENMENU_DEBUG_H */
