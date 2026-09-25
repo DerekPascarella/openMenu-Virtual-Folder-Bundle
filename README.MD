@@ -657,6 +657,8 @@ Double-click the **Region** cell to change a game's region flag. Any combination
 
 Unlike other columns, the Region value lives inside the disc image itself. The edit is held in the application and applied when clicking **Save Changes**, at which point the `IP.BIN` region flag and region strings are rewritten so the change takes effect when launching from the BIOS, and the game's stored metadata (`DISCDB.JSON` and the `region.txt` file) is updated to match. Region is editable for uncompressed `Game` type disc images, whether already on the SD card or newly added (new games are patched after being copied to the SD card, so the original source file is never modified). A manually edited region takes priority over the global **Region-Free Patch** option during the save that applies it. Note that on subsequent saves, the **Apply to existing games** option will re-patch the game to region-free like any other (see [Disc Image Options](#disc-image-options)). If a region change cannot be applied during a save, the value is reverted and a warning lists the affected games.
 
+Note that those with European consoles who aren't using VGA may observe certain games (especially Japanese ones) running at 50hz if **Region** is set to `JUE`. In all observed cases, this can be remedied by setting the region to `J` and then clicking **Save Changes**.
+
 #### Virtual Folders (openMenu Only)
 
 When using openMenu mode, the **Folder** column allows organizing games into a hierarchical folder structure:
