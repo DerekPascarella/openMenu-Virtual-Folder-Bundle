@@ -60,6 +60,8 @@ namespace GDMENUCardManager
             get { return _DriveInfo; }
             set
             {
+                if (IsBusy)
+                    return;
                 _DriveInfo = value;
                 Manager.ItemList.Clear();
                 if (value != null)
@@ -153,6 +155,30 @@ namespace GDMENUCardManager
         {
             get { return Manager.EnableRegionPatch; }
             set { Manager.EnableRegionPatch = value; RaisePropertyChanged(); }
+        }
+
+        public DiscConversionFormat ConversionFormat
+        {
+            get { return Manager.ConversionFormat; }
+            set
+            {
+                Manager.ConversionFormat = value;
+                RaisePropertyChanged();
+                RaisePropertyChanged(nameof(UseCcdConversion));
+                RaisePropertyChanged(nameof(UseCdiConversion));
+            }
+        }
+
+        public bool UseCcdConversion
+        {
+            get { return ConversionFormat == DiscConversionFormat.Ccd; }
+            set { if (value) ConversionFormat = DiscConversionFormat.Ccd; }
+        }
+
+        public bool UseCdiConversion
+        {
+            get { return ConversionFormat == DiscConversionFormat.Cdi; }
+            set { if (value) ConversionFormat = DiscConversionFormat.Cdi; }
         }
 
         public bool EnableRegionPatchExisting
@@ -268,10 +294,6 @@ namespace GDMENUCardManager
             bool.TryParse(ConfigurationManager.AppSettings["Debug"], out Manager.debugEnabled);
             if (bool.TryParse(ConfigurationManager.AppSettings["UseBinaryString"], out bool useBinaryString))
                 Converter.ByteSizeToStringConverter.UseBinaryString = useBinaryString;
-            if (int.TryParse(ConfigurationManager.AppSettings["CharLimit"], out int charLimit))
-                GdItem.namemaxlen = Math.Min(256, Math.Max(charLimit, 1));
-            if (int.TryParse(ConfigurationManager.AppSettings["ProductIdMaxLength"], out int productIdMaxLength))
-                GdItem.serialmaxlen = Math.Min(32, Math.Max(productIdMaxLength, 1));
             if (bool.TryParse(ConfigurationManager.AppSettings["TruncateMenuGDI"], out bool truncateMenuGDI))
                 Manager.TruncateMenuGDI = truncateMenuGDI;
             if (bool.TryParse(ConfigurationManager.AppSettings["LockCheck"], out bool lockCheck))
@@ -290,6 +312,8 @@ namespace GDMENUCardManager
                 Manager.EnableGDIShrinkExisting = gdiShrinkExisting;
             if (bool.TryParse(ConfigurationManager.AppSettings["EnableRegionPatch"], out bool regionPatch))
                 Manager.EnableRegionPatch = regionPatch;
+            Manager.ConversionFormat = Enum.TryParse(ConfigurationManager.AppSettings["ConversionFormat"], true, out DiscConversionFormat conversionFormat)
+                && Enum.IsDefined(typeof(DiscConversionFormat), conversionFormat) ? conversionFormat : DiscConversionFormat.Ccd;
             if (bool.TryParse(ConfigurationManager.AppSettings["EnableRegionPatchExisting"], out bool regionPatchExisting))
                 Manager.EnableRegionPatchExisting = regionPatchExisting;
             if (bool.TryParse(ConfigurationManager.AppSettings["EnableVgaPatch"], out bool vgaPatch))
@@ -726,6 +750,10 @@ namespace GDMENUCardManager
 
         private async Task Save()
         {
+            if (IsBusy)
+                return;
+            dg1.CommitEdit(DataGridEditingUnit.Cell, true);
+            dg1.CommitEdit(DataGridEditingUnit.Row, true);
             IsBusy = true;
             try
             {
@@ -895,6 +923,7 @@ namespace GDMENUCardManager
                     SetOrAddSetting(config, "TempFolder", "");
                 else
                     SetOrAddSetting(config, "TempFolder", TempFolder);
+                RetiredSettings.Remove(config);
                 config.Save(System.Configuration.ConfigurationSaveMode.Modified);
                 ConfigurationManager.RefreshSection("appSettings");
             }
@@ -913,8 +942,10 @@ namespace GDMENUCardManager
                 SetOrAddSetting(config, "EnableGDIShrinkExisting", Manager.EnableGDIShrinkExisting.ToString());
                 SetOrAddSetting(config, "EnableRegionPatch", Manager.EnableRegionPatch.ToString());
                 SetOrAddSetting(config, "EnableRegionPatchExisting", Manager.EnableRegionPatchExisting.ToString());
+                SetOrAddSetting(config, "ConversionFormat", Manager.ConversionFormat.ToString());
                 SetOrAddSetting(config, "EnableVgaPatch", Manager.EnableVgaPatch.ToString());
                 SetOrAddSetting(config, "EnableVgaPatchExisting", Manager.EnableVgaPatchExisting.ToString());
+                RetiredSettings.Remove(config);
                 config.Save(System.Configuration.ConfigurationSaveMode.Modified);
                 ConfigurationManager.RefreshSection("appSettings");
             }
@@ -928,6 +959,7 @@ namespace GDMENUCardManager
             {
                 var config = ConfigurationManager.OpenExeConfiguration(System.Configuration.ConfigurationUserLevel.None);
                 SetOrAddSetting(config, "LockCheck", Manager.EnableLockCheck.ToString());
+                RetiredSettings.Remove(config);
                 config.Save(System.Configuration.ConfigurationSaveMode.Modified);
                 ConfigurationManager.RefreshSection("appSettings");
             }
@@ -944,6 +976,7 @@ namespace GDMENUCardManager
             {
                 var config = ConfigurationManager.OpenExeConfiguration(System.Configuration.ConfigurationUserLevel.None);
                 SetOrAddSetting(config, "FatSort", Manager.EnableFatSort.ToString());
+                RetiredSettings.Remove(config);
                 config.Save(System.Configuration.ConfigurationSaveMode.Modified);
                 ConfigurationManager.RefreshSection("appSettings");
             }
@@ -1016,6 +1049,7 @@ namespace GDMENUCardManager
                 SetOrAddSetting(config, "WindowTop", bounds.Top.ToString());
                 SetOrAddSetting(config, "WindowWidth", bounds.Width.ToString());
                 SetOrAddSetting(config, "WindowHeight", bounds.Height.ToString());
+                RetiredSettings.Remove(config);
                 config.Save(System.Configuration.ConfigurationSaveMode.Modified);
                 ConfigurationManager.RefreshSection("appSettings");
             }
@@ -1475,6 +1509,8 @@ namespace GDMENUCardManager
 
         private void ButtonRefreshDrive_Click(object sender, RoutedEventArgs e)
         {
+            if (IsBusy)
+                return;
             // Clear custom path if set
             if (IsUsingCustomPath)
             {
@@ -1507,6 +1543,8 @@ namespace GDMENUCardManager
 
         private async void ButtonBrowseSdPath_Click(object sender, RoutedEventArgs e)
         {
+            if (IsBusy)
+                return;
             using (var dialog = new System.Windows.Forms.FolderBrowserDialog())
             {
                 dialog.Description = "Select SD Card Folder";
@@ -1515,7 +1553,7 @@ namespace GDMENUCardManager
                     var selectedPath = dialog.SelectedPath;
 
                     // Check if it looks like a GDEMU SD card
-                    bool hasGdemuIni = File.Exists(Path.Combine(selectedPath, Constants.MenuConfigTextFile));
+                    bool hasGdemuIni = Helper.FileExistsIgnoreCase(Path.Combine(selectedPath, Constants.MenuConfigTextFile));
                     bool has01Folder = Directory.Exists(Path.Combine(selectedPath, "01"));
 
                     if (!hasGdemuIni && !has01Folder)
@@ -1529,6 +1567,8 @@ namespace GDMENUCardManager
                             MessageBoxImage.None);
                     }
 
+                    if (IsBusy)
+                        return;
                     // Set the custom path
                     CustomSdPath = selectedPath;
                     Manager.sdPath = selectedPath;
@@ -1542,7 +1582,7 @@ namespace GDMENUCardManager
 
         private void FillDriveList(bool isRefreshing = false)
         {
-            var list = DriveInfo.GetDrives().Where(x => x.IsReady && (showAllDrives || (x.DriveType == DriveType.Removable && x.DriveFormat.StartsWith("FAT")))).ToArray();
+            var list = DriveInfo.GetDrives().Where(x => (showAllDrives || x.DriveType == DriveType.Removable) && x.IsReady && (showAllDrives || x.DriveFormat.StartsWith("FAT"))).ToArray();
 
             if (isRefreshing)
             {
@@ -1556,7 +1596,7 @@ namespace GDMENUCardManager
             {
                 DriveList.Add(drive);
                 // Look for GDEMU.INI file.
-                if (SelectedDrive == null && File.Exists(Path.Combine(drive.RootDirectory.FullName, Constants.MenuConfigTextFile)))
+                if (SelectedDrive == null && Helper.FileExistsIgnoreCase(Path.Combine(drive.RootDirectory.FullName, Constants.MenuConfigTextFile)))
                     SelectedDrive = drive;
             }
 
@@ -1830,7 +1870,7 @@ namespace GDMENUCardManager
 
             if (dialog.ShowDialog() == true)
             {
-                var folderPath = dialog.FolderPath?.Trim() ?? string.Empty;
+                var folderPath = GdItem.CleanFolderPath(dialog.FolderPath) ?? string.Empty;
 
                 // Check if the new primary folder conflicts with any item's alt folders.
                 if (!string.IsNullOrEmpty(folderPath))
@@ -2220,6 +2260,11 @@ namespace GDMENUCardManager
             // Only record if we got a new value and it's different from old
             if (newValue != null && !Equals(oldValue, newValue))
             {
+                // LostFocus puts the old folder back when the new one is already an additional folder.
+                if (propertyName == nameof(GdItem.Folder) && newValue is string newFolder &&
+                    item.AlternativeFolders.Contains(GdItem.CleanFolderPath(newFolder)))
+                    return;
+
                 object committedValue = newValue;
                 if (propertyName == nameof(GdItem.ProductNumber))
                 {
@@ -2235,6 +2280,15 @@ namespace GDMENUCardManager
                 {
                     item.Disc = newValue as string;
                     committedValue = item.Disc;
+                }
+
+                // Cleanup can turn the typed text back into the old value (e.g., "t-8119n"), which
+                // needs no undo step. A serial can still have a translation to confirm.
+                if (Equals(oldValue, committedValue))
+                {
+                    if (propertyName == nameof(GdItem.ProductNumber))
+                        QueueSerialTranslationDialog(item);
+                    return;
                 }
 
                 Manager.UndoManager.RecordChange(new PropertyEditOperation
@@ -2382,7 +2436,7 @@ namespace GDMENUCardManager
                 dg1.CurrentCell = new DataGridCellInfo(dg1.SelectedItem, dg1.Columns[4]);
                 dg1.BeginEdit();
             }
-            else if (e.Key == Key.Delete && !(e.OriginalSource is TextBox))
+            else if (e.Key == Key.Delete && !(e.OriginalSource is TextBox or ComboBox or ComboBoxItem or DataGridCell { IsEditing: true }))
             {
                 var grid = (DataGrid)sender;
                 List<GdItem> toRemove = new List<GdItem>();
@@ -2611,6 +2665,15 @@ namespace GDMENUCardManager
                 dg1.SelectedItems.Add(item);
         }
 
+        private void FilterTextBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                e.Handled = true;
+                ButtonSearch_Click(sender, e);
+            }
+        }
+
         private async void ButtonSearch_Click(object sender, RoutedEventArgs e)
         {
             if (Manager.ItemList.Count == 0 || string.IsNullOrWhiteSpace(Filter))
@@ -2802,7 +2865,7 @@ namespace GDMENUCardManager
                 }
 
                 // Check if new folder value conflicts with an alt folder on this item
-                var newFolder = comboBox.Text?.Trim() ?? string.Empty;
+                var newFolder = GdItem.CleanFolderPath(comboBox.Text) ?? string.Empty;
                 if (!string.IsNullOrEmpty(newFolder) && item.AlternativeFolders.Contains(newFolder))
                 {
                     MessageBox.Show(this, "This folder path is already assigned to this disc image as an additional folder path.",

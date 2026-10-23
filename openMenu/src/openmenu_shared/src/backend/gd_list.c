@@ -167,7 +167,7 @@ list_view_get(list_view* out) {
 }
 
 /* Temporary list for holding all multidisc games in a set */
-#define MULTIDISC_MAX_GAMES_PER_SET (10)
+#define MULTIDISC_MAX_GAMES_PER_SET (99)
 static int num_items_multidisc = -1;
 static gd_item* list_multidisc[MULTIDISC_MAX_GAMES_PER_SET] = {NULL};
 
@@ -237,6 +237,16 @@ filelength(FILE* f) {
 }
 #endif
 
+/* vga is a single flag character with no terminator. */
+static void
+ini_copy_field(char* dst, size_t size, const char* value) {
+    if (size == 1) {
+        dst[0] = value[0];
+    } else {
+        snprintf(dst, size, "%s", value);
+    }
+}
+
 static int
 read_openmenu_ini(void* user, const char* section, const char* name, const char* value) {
     /* unused */
@@ -261,33 +271,31 @@ read_openmenu_ini(void* user, const char* section, const char* name, const char*
         memset(list_multidisc, '\0', MULTIDISC_MAX_GAMES_PER_SET * sizeof(struct gd_item*));
     } else {
         /* Parsing games */
-        char slot_string[4] = {0, 0, 0, 0};
-        uintptr_t seperator = (uintptr_t)strchr(name, '.');
-        if (seperator) {
-            size_t temp_len = (size_t)(seperator - (uintptr_t)name);
-            memcpy(slot_string, name, temp_len);
-            int slot = atoi(slot_string);
-            num_items_read = slot;
+        char* slot_end;
+        long slot = strtol(name, &slot_end, 10);
+        if (gd_slots_BASE && slot_end != name && *slot_end == '.' && slot >= 1 && slot <= num_items_BASE + 1) {
+            num_items_read = (int)slot;
 
             gd_item* item = &gd_slots_BASE[slot - 1];
             if (!item->slot_num) {
-                item->slot_num = slot;
+                item->slot_num = (unsigned int)slot;
             }
 
-            const char* plain_name = name + temp_len + 1;
+            const char* plain_name = slot_end + 1;
 
             // printf("[%s] %s: %s\n", section, plain_name, value);
 
             if (0)
                 ;
 #define CFG(s, n, default)                                                                                             \
-    else if (strcasecmp(section, #s) == 0 && strcasecmp(plain_name, #n) == 0) strcpy(item->n, value);
+    else if (strcasecmp(section, #s) == 0 && strcasecmp(plain_name, #n) == 0)                                          \
+        ini_copy_field(item->n, sizeof(item->n), value);
 #include "backend/gd_item.def"
             /* Alt folder paths for Folders mode (folder_alt1..folder_alt5) */
             else if (strcasecmp(section, "ITEMS") == 0 && strncasecmp(plain_name, "folder_alt", 10) == 0) {
                 int alt_num = atoi(plain_name + 10);
                 if (alt_num >= 1 && alt_num <= MAX_FOLDER_ALTS) {
-                    folder_alt_store(slot, alt_num - 1, value);
+                    folder_alt_store((int)slot, alt_num - 1, value);
                 }
             }
 
@@ -548,7 +556,9 @@ list_set_multidisc(const char* product_id) {
             continue;
         }
 
-        list_multidisc[temp_idx++] = &gd_slots_BASE[base_idx];
+        if (temp_idx < MULTIDISC_MAX_GAMES_PER_SET) {
+            list_multidisc[temp_idx++] = &gd_slots_BASE[base_idx];
+        }
     }
     num_items_multidisc = temp_idx;
 }
@@ -569,7 +579,9 @@ list_set_multidisc_filtered(const char* product_id, const char* folder_path) {
             continue;
         }
 
-        list_multidisc[temp_idx++] = &gd_slots_BASE[base_idx];
+        if (temp_idx < MULTIDISC_MAX_GAMES_PER_SET) {
+            list_multidisc[temp_idx++] = &gd_slots_BASE[base_idx];
+        }
     }
     num_items_multidisc = temp_idx;
 }
@@ -741,7 +753,8 @@ list_read(const char* filename) {
     ini_buffer[ini_size + 0] = '\n';
     ini_buffer[ini_size + 1] = '\0';
 
-    if (ini_parse_string(ini_buffer, read_openmenu_ini, NULL) < 0) {
+    int parse_result = ini_parse_string(ini_buffer, read_openmenu_ini, NULL);
+    if (parse_result < 0) {
         printf("INI:Error Parsing %s!\n", filename);
         fflush(stdout);
         /*exit or something */
@@ -758,7 +771,11 @@ list_read(const char* filename) {
 
     fix_sega_serials();
 
-    printf("INI:Parse success (%d items)!\n", num_items_BASE);
+    if (parse_result > 0) {
+        printf("INI:Parse stopped at line %d (%d items)!\n", parse_result, num_items_BASE);
+    } else {
+        printf("INI:Parse success (%d items)!\n", num_items_BASE);
+    }
     list_temp_reset();
     fflush(stdout);
 

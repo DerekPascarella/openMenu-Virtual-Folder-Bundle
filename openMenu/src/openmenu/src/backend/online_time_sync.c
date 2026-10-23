@@ -198,9 +198,14 @@ online_time_sync_tick(void) {
     if (state == SYNC_DONE || state == SYNC_FAILED) {
         join_thread();
         set_state(SYNC_IDLE, 0);
-        if (state == SYNC_DONE && setting != ONLINE_TIME_SYNC_OFF && sf_dcnow[0] != DCNOW_OFF) {
-            time_t local = utc + (time_t)online_time_sync_minutes(setting) * 60;
-            if (set_rtc_and_syscfg(local) == 0) {
+        if (state == SYNC_DONE && setting != ONLINE_TIME_SYNC_OFF && sf_dcnow[0] != DCNOW_OFF
+            && !clock_sync_storage_full()) {
+            int64_t local = (int64_t)utc + (int64_t)online_time_sync_minutes(setting) * 60;
+            int8_t result = CLOCK_SYNC_INVALID_TIME;
+            if (local >= 0 && (uint64_t)local <= 0xffd872ffULL - 631152000ULL && (int64_t)(time_t)local == local) {
+                result = set_rtc_and_syscfg((time_t)local);
+            }
+            if (result == CLOCK_SYNC_OK || result == CLOCK_SYNC_CHECKPOINT_FAILED) {
                 done = true;
                 return;
             }
@@ -208,7 +213,8 @@ online_time_sync_tick(void) {
         retry_at = timer_ms_gettime64() + SYNC_RETRY_MS;
         return;
     }
-    if (state == SYNC_RUNNING || done || attempts >= SYNC_ATTEMPTS || timer_ms_gettime64() < retry_at) {
+    if (clock_sync_storage_full() || state == SYNC_RUNNING || done || attempts >= SYNC_ATTEMPTS
+        || timer_ms_gettime64() < retry_at) {
         return;
     }
     if (sf_dcnow[0] == DCNOW_OFF || setting == ONLINE_TIME_SYNC_OFF || status.state != DCNOW_CONN_ONLINE) {

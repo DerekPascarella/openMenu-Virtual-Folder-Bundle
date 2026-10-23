@@ -73,7 +73,7 @@
               IsVisible="{Binding !IsReadOnly}"
               IsEnabled="{Binding HasUnsavedChanges}"
               ToolTip.Tip="Stage artwork changes for this folder (DAT files aren't written until you click Save Changes in the main window)"/>
-      <Button Content="Close" Click="Close_Click" Padding="15,8"
+      <Button x:Name="CloseButton" Content="Close" Click="Close_Click" Padding="15,8"
               IsVisible="{Binding IsReadOnly}"
               ToolTip.Tip="Close this artwork preview"/>
     </StackPanel>

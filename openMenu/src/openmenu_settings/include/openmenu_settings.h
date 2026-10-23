@@ -131,6 +131,10 @@ extern uint8_t* sf_online_time_sync;
 #define sf_online_time_sync_type   CRAYON_TYPE_UINT8
 #define sf_online_time_sync_length 1
 
+extern uint8_t* sf_clock_extender;
+#define sf_clock_extender_type   CRAYON_TYPE_UINT8
+#define sf_clock_extender_length 1
+
 extern uint8_t* sf_recently_played;
 #define sf_recently_played_type   CRAYON_TYPE_UINT8
 #define sf_recently_played_length 1
@@ -223,6 +227,7 @@ enum savefile_version {
     SFV_DCNOW_VMU,
     SFV_ONLINE_TIME_SYNC,
     SFV_MOUSE_SPEEDS,
+    SFV_CLOCK_EXTENDER,
     SFV_LATEST_PLUS_ONE // DON'T REMOVE
 };
 
@@ -321,7 +326,17 @@ typedef enum CFG_CUSTOM_THEME_NUM {
     THEME_7,
     THEME_8,
     THEME_9,
-    THEME_NUM_END = THEME_9
+    THEME_10,
+    THEME_11,
+    THEME_12,
+    THEME_13,
+    THEME_14,
+    THEME_15,
+    THEME_16,
+    THEME_17,
+    THEME_18,
+    THEME_19,
+    THEME_NUM_END = THEME_19
 } CFG_CUSTOM_THEME_NUM;
 
 typedef enum CFG_BIOS_3D {
@@ -418,6 +433,13 @@ typedef enum CFG_CLOCK {
     CLOCK_OFF,
     CLOCK_END = CLOCK_OFF
 } CFG_CLOCK;
+
+typedef enum CFG_CLOCK_EXTENDER {
+    CLOCK_EXTENDER_START = 0,
+    CLOCK_EXTENDER_OFF = CLOCK_EXTENDER_START,
+    CLOCK_EXTENDER_ON,
+    CLOCK_EXTENDER_END = CLOCK_EXTENDER_ON
+} CFG_CLOCK_EXTENDER;
 
 typedef enum CFG_VM2_SEND_ALL {
     VM2_SEND_START = 0,
@@ -531,7 +553,6 @@ online_time_sync_minutes(int setting) {
 
 typedef CFG_REGION region;
 
-/* COMPACTION_TEST_START */
 enum draw_state {
     DRAW_UI = 0,
     DRAW_MULTIDISC,
@@ -541,13 +562,10 @@ enum draw_state {
     DRAW_CODEBREAKER,
     DRAW_PSX_LAUNCHER,
     DRAW_SAVELOAD,
-    DRAW_COMPACTION_TEST,
     DRAW_SERIAL_VMU,
     DRAW_RECENT_MANAGE,
     DRAW_DCNOW
 };
-
-/* COMPACTION_TEST_END */
 
 void settings_sanitize();
 

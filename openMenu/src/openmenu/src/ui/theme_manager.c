@@ -53,13 +53,16 @@ static theme_region region_themes[] = {
                 .menu_bkg_border_color = COLOR_BLACK}},
 };
 
-static theme_custom custom_themes[10];
+static theme_custom custom_themes[THEME_SLOTS_MAX];
+static int custom_slots[THEME_SLOTS_MAX];
 static int num_custom_themes = 0;
 
-static theme_scroll scroll_themes[10];
+static theme_scroll scroll_themes[THEME_SLOTS_MAX];
+static int scroll_slots[THEME_SLOTS_MAX];
 static int num_scroll_themes = 0;
 
-static theme_scroll folder_themes[10];
+static theme_scroll folder_themes[THEME_SLOTS_MAX];
+static int folder_slots[THEME_SLOTS_MAX];
 static int num_folder_themes = 0;
 
 static void
@@ -303,6 +306,45 @@ theme_read(const char* filename, void* theme, int type) {
     return 0;
 }
 
+/* Slot number from a theme folder name like FOLDERS_12, or -1 when the
+ * text after the prefix is not a plain 0 to 19 */
+static int
+theme_slot_number(const char* name, size_t prefix_len) {
+    const char* digits = name + prefix_len;
+    if (digits[0] < '0' || digits[0] > '9') {
+        return -1;
+    }
+    if (digits[1] == '\0') {
+        return digits[0] - '0';
+    }
+    if (digits[0] == '0' || digits[1] < '0' || digits[1] > '9' || digits[2] != '\0') {
+        return -1;
+    }
+    int slot = (digits[0] - '0') * 10 + (digits[1] - '0');
+    return slot < THEME_SLOTS_MAX ? slot : -1;
+}
+
+/* The saved theme choice is an index into these arrays, and readdir puts
+ * FOLDERS_10 before FOLDERS_2. Keeping each family sorted by slot number
+ * means adding slots 10 and up never shifts the index of slots 0 to 9.
+ * Returns the index to fill in, or -1 when the family is full. */
+static int
+theme_insert_slot(void* themes, size_t stride, int* slots, int* count, int slot) {
+    if (*count >= THEME_SLOTS_MAX) {
+        return -1;
+    }
+    int pos = *count;
+    while (pos > 0 && slots[pos - 1] > slot) {
+        pos--;
+    }
+    char* base = (char*)themes;
+    memmove(base + (size_t)(pos + 1) * stride, base + (size_t)pos * stride, (size_t)(*count - pos) * stride);
+    memmove(&slots[pos + 1], &slots[pos], (size_t)(*count - pos) * sizeof(int));
+    slots[pos] = slot;
+    (*count)++;
+    return pos;
+}
+
 static void
 load_themes(char* basePath) {
     char path[128];
@@ -316,7 +358,15 @@ load_themes(char* basePath) {
     while ((dp = readdir(dir)) != NULL) {
         if (strcmp(dp->d_name, ".") != 0 && strcmp(dp->d_name, "..") != 0) {
             if (strncasecmp(dp->d_name, "CUST_", 5) == 0) {
-                int theme_num = dp->d_name[5] - '0';
+                int theme_num = theme_slot_number(dp->d_name, 5);
+                if (theme_num < 0) {
+                    continue;
+                }
+                int idx =
+                    theme_insert_slot(custom_themes, sizeof(theme_custom), custom_slots, &num_custom_themes, theme_num);
+                if (idx < 0) {
+                    continue;
+                }
 
                 strcpy(path, basePath);
                 strcat(path, "/");
@@ -326,29 +376,35 @@ load_themes(char* basePath) {
                 /* printf("theme #%d: %s @ %s\n", theme_num, dp->d_name, path); */
 
                 /* Add the theme */
-                strcpy(custom_themes[num_custom_themes].bg_left, path + 4);
-                strcat(custom_themes[num_custom_themes].bg_left, "BG_L.PVR");
-                strcpy(custom_themes[num_custom_themes].bg_right, path + 4);
-                strcat(custom_themes[num_custom_themes].bg_right, "BG_R.PVR");
+                strcpy(custom_themes[idx].bg_left, path + 4);
+                strcat(custom_themes[idx].bg_left, "BG_L.PVR");
+                strcpy(custom_themes[idx].bg_right, path + 4);
+                strcat(custom_themes[idx].bg_right, "BG_R.PVR");
 
                 /* dummy colors */
-                custom_themes[num_custom_themes].colors = (theme_color){.text_color = COLOR_WHITE,
-                                                                        .highlight_color = COLOR_ORANGE_U,
-                                                                        .menu_text_color = COLOR_WHITE,
-                                                                        .menu_bkg_color = COLOR_BLACK,
-                                                                        .menu_bkg_border_color = COLOR_WHITE};
+                custom_themes[idx].colors = (theme_color){.text_color = COLOR_WHITE,
+                                                          .highlight_color = COLOR_ORANGE_U,
+                                                          .menu_text_color = COLOR_WHITE,
+                                                          .menu_bkg_color = COLOR_BLACK,
+                                                          .menu_bkg_border_color = COLOR_WHITE};
                 /* dummy name */
-                sprintf(custom_themes[num_custom_themes].name, "CUSTOM #%d", theme_num);
+                sprintf(custom_themes[idx].name, "CUSTOM #%d", theme_num);
 
                 /* load INI if available, for name & colors */
                 strcat(path, "THEME.INI");
-                theme_read(path, &custom_themes[num_custom_themes], 0);
-
-                num_custom_themes++;
+                theme_read(path, &custom_themes[idx], 0);
             } else if (strncasecmp(dp->d_name, "SCROLL_", 7) == 0) {
+                int theme_num = theme_slot_number(dp->d_name, 7);
+                if (theme_num < 0) {
+                    continue;
+                }
+                int idx =
+                    theme_insert_slot(scroll_themes, sizeof(theme_scroll), scroll_slots, &num_scroll_themes, theme_num);
+                if (idx < 0) {
+                    continue;
+                }
                 extern theme_scroll* get_def_scr_thm();
-                memcpy(&scroll_themes[num_scroll_themes], get_def_scr_thm(), sizeof(struct theme_scroll));
-                int theme_num = dp->d_name[7] - '0';
+                memcpy(&scroll_themes[idx], get_def_scr_thm(), sizeof(struct theme_scroll));
 
                 strcpy(path, basePath);
                 strcat(path, "/");
@@ -358,23 +414,29 @@ load_themes(char* basePath) {
                 /* printf("scroll theme #%d: %s @ %s\n", theme_num, dp->d_name, path); */
 
                 /* Add the theme */
-                strcpy(scroll_themes[num_scroll_themes].bg_left, path + 4);
-                strcat(scroll_themes[num_scroll_themes].bg_left, "BG_L.PVR");
-                strcpy(scroll_themes[num_scroll_themes].bg_right, path + 4);
-                strcat(scroll_themes[num_scroll_themes].bg_right, "BG_R.PVR");
+                strcpy(scroll_themes[idx].bg_left, path + 4);
+                strcat(scroll_themes[idx].bg_left, "BG_L.PVR");
+                strcpy(scroll_themes[idx].bg_right, path + 4);
+                strcat(scroll_themes[idx].bg_right, "BG_R.PVR");
 
                 /* dummy name */
-                sprintf(scroll_themes[num_scroll_themes].name, "CUSTOM #%d", theme_num);
+                sprintf(scroll_themes[idx].name, "CUSTOM #%d", theme_num);
 
                 /* load INI if available, for name & colors */
                 strcat(path, "THEME.INI");
-                theme_read(path, &scroll_themes[num_scroll_themes], 1);
-
-                num_scroll_themes++;
+                theme_read(path, &scroll_themes[idx], 1);
             } else if (strncasecmp(dp->d_name, "FOLDERS_", 8) == 0) {
+                int theme_num = theme_slot_number(dp->d_name, 8);
+                if (theme_num < 0) {
+                    continue;
+                }
+                int idx =
+                    theme_insert_slot(folder_themes, sizeof(theme_scroll), folder_slots, &num_folder_themes, theme_num);
+                if (idx < 0) {
+                    continue;
+                }
                 extern theme_scroll* get_def_scr_thm();
-                memcpy(&folder_themes[num_folder_themes], get_def_scr_thm(), sizeof(struct theme_scroll));
-                int theme_num = dp->d_name[8] - '0';
+                memcpy(&folder_themes[idx], get_def_scr_thm(), sizeof(struct theme_scroll));
 
                 strcpy(path, basePath);
                 strcat(path, "/");
@@ -384,19 +446,17 @@ load_themes(char* basePath) {
                 /* printf("folders theme #%d: %s @ %s\n", theme_num, dp->d_name, path); */
 
                 /* Add the theme */
-                strcpy(folder_themes[num_folder_themes].bg_left, path + 4);
-                strcat(folder_themes[num_folder_themes].bg_left, "BG_L.PVR");
-                strcpy(folder_themes[num_folder_themes].bg_right, path + 4);
-                strcat(folder_themes[num_folder_themes].bg_right, "BG_R.PVR");
+                strcpy(folder_themes[idx].bg_left, path + 4);
+                strcat(folder_themes[idx].bg_left, "BG_L.PVR");
+                strcpy(folder_themes[idx].bg_right, path + 4);
+                strcat(folder_themes[idx].bg_right, "BG_R.PVR");
 
                 /* dummy name */
-                sprintf(folder_themes[num_folder_themes].name, "CUSTOM #%d", theme_num);
+                sprintf(folder_themes[idx].name, "CUSTOM #%d", theme_num);
 
                 /* load INI if available, for name & colors */
                 strcat(path, "THEME.INI");
-                theme_read(path, &folder_themes[num_folder_themes], 2);
-
-                num_folder_themes++;
+                theme_read(path, &folder_themes[idx], 2);
             }
         }
     }

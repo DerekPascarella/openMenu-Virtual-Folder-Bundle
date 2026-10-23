@@ -6,11 +6,12 @@
         xmlns:local="clr-namespace:GDMENUCardManager"
         mc:Ignorable="d"
         Title="Batch Rename" Height="270" Width="350"
-        WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        FocusManager.FocusedElement="{Binding ElementName=OnCardCheckBox}">
     <StackPanel>
         <GroupBox Header="Rename all games located on" Margin="5">
             <StackPanel>
-                <CheckBox IsChecked="{Binding OnCard, Mode=TwoWay}" ToolTip="Include games located on the SD card">SD card</CheckBox>
+                <CheckBox x:Name="OnCardCheckBox" IsChecked="{Binding OnCard, Mode=TwoWay}" ToolTip="Include games located on the SD card">SD card</CheckBox>
                 <CheckBox IsChecked="{Binding NotOnCard, Mode=TwoWay}" ToolTip="Include games not located on the SD card">Other</CheckBox>
             </StackPanel>
         </GroupBox>
@@ -25,7 +26,7 @@
             <CheckBox IsChecked="{Binding ParseTosec, Mode=TwoWay}" ToolTip="Strip TOSEC-style suffixes (e.g. region, version, dump flags) from the name">Read TOSEC naming</CheckBox>
         </GroupBox>
 
-        <Button Click="Button_Click" IsDefault="True" Margin="5" Padding="15,8"
+        <Button Click="Button_Click" Margin="5" Padding="15,8"
                 ToolTip="Apply the batch rename to the matching games">Ok</Button>
 
     </StackPanel>

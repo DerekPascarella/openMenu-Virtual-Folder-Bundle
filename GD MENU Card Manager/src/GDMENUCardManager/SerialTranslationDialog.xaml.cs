@@ -1,6 +1,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Windows.Media;
 using GDMENUCardManager.Core;
 
 namespace GDMENUCardManager
@@ -31,6 +34,22 @@ namespace GDMENUCardManager
             }).ToList();
 
             TranslationList.ItemsSource = _items;
+
+            Loaded += (s, e) =>
+            {
+                var firstRow = TranslationList.ItemContainerGenerator.ContainerFromIndex(0) as ContentPresenter;
+                if (firstRow != null && VisualTreeHelper.GetChildrenCount(firstRow) > 0)
+                    (VisualTreeHelper.GetChild(firstRow, 0) as CheckBox)?.Focus();
+            };
+
+            KeyDown += (s, e) =>
+            {
+                if (e.Key == Key.Escape)
+                {
+                    e.Handled = true;
+                    Close();
+                }
+            };
         }
 
         private void OkButton_Click(object sender, RoutedEventArgs e)

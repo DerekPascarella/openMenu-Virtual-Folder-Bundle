@@ -63,7 +63,7 @@ namespace GDMENUCardManager
                 IpInfo = "Compressed file";
             }
 
-            this.KeyUp += (ss, ee) => { if (ee.Key == Key.Escape) Close(); };
+            this.KeyDown += (ss, ee) => { if (ee.Key == Key.Escape) { ee.Handled = true; Close(); } };
             DataContext = this;
 
         }

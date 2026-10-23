@@ -1,5 +1,6 @@
 ﻿using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Markup.Xaml;
 using System;
 using System.ComponentModel;
@@ -23,11 +24,26 @@ namespace GDMENUCardManager
         {
             InitializeComponent();
             DataContext = this;
+
+            KeyDown += (s, e) =>
+            {
+                if (e.Key == Key.Escape)
+                {
+                    e.Handled = true;
+                    Close();
+                }
+            };
         }
 
         private void InitializeComponent()
         {
             AvaloniaXamlLoader.Load(this);
+        }
+
+        protected override void OnOpened(EventArgs e)
+        {
+            base.OnOpened(e);
+            this.FindControl<CheckBox>("OnCardCheckBox")?.Focus(NavigationMethod.Tab);
         }
 
         private void Button_Click(object sender, RoutedEventArgs e)

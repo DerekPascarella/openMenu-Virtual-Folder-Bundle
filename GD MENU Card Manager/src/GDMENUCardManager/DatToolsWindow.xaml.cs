@@ -29,7 +29,8 @@ namespace GDMENUCardManager
             _manager = manager;
             _reloadCallback = reloadCallback;
 
-            this.KeyUp += (s, e) => { if (e.Key == System.Windows.Input.Key.Escape) Close(); };
+            // An owned progress window means an operation is still running.
+            this.KeyDown += (s, e) => { if (e.Key == System.Windows.Input.Key.Escape && OwnedWindows.Count == 0) { e.Handled = true; Close(); } };
         }
 
         #region Import Tab

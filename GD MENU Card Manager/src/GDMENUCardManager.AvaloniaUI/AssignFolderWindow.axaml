@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:GDMENUCardManager"
         mc:Ignorable="d" d:DesignWidth="400" d:DesignHeight="150"
         x:Class="GDMENUCardManager.AssignFolderWindow"
         Title="Assign Folder Path" SizeToContent="Height" Width="400" CanResize="False" CanMinimize="False"
@@ -10,13 +11,20 @@
     <TextBlock Text="{Binding SelectionInfo}" Margin="0 0 0 15" FontWeight="Bold"/>
 
     <TextBlock Text="Folder Path:" Margin="0 0 0 5"/>
-    <TextBox x:Name="FolderInput"
-             Text="{Binding FolderPath, Mode=TwoWay}"
-             MaxLength="256"
-             Watermark="e.g., Games\Action\US"/>
+    <ComboBox x:Name="FolderInput"
+              ItemsSource="{Binding KnownFolders}"
+              Text="{Binding FolderPath, Mode=TwoWay}"
+              IsEditable="True"
+              MaxDropDownHeight="200"
+              HorizontalAlignment="Stretch"
+              PlaceholderText="e.g., Games\Action\US"
+              local:EditableComboBehavior.IsEnabled="True"
+              GotFocus="FolderInput_GotFocus"
+              KeyDown="FolderInput_KeyDown"
+              LostFocus="FolderInput_LostFocus"/>
 
     <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 20 0 0">
-      <Button Content="OK" Click="OkButton_Click" IsDefault="True" Width="80" Padding="15,8" Margin="0 0 10 0"
+      <Button Content="OK" Click="OkButton_Click" Width="80" Padding="15,8" Margin="0 0 10 0"
               ToolTip.Tip="Assign the entered folder path to the selected game(s)"/>
       <Button Content="Cancel" Click="CancelButton_Click" IsCancel="True" Width="80" Padding="15,8"
               ToolTip.Tip="Close without assigning a folder path"/>

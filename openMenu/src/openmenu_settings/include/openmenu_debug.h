@@ -38,20 +38,13 @@
  *
  * Each flash lasts 300ms, so boot will be ~4.5 seconds slower when enabled.
  */
-#define DEBUG_MAPLE_FLASH     0
+#define DEBUG_MAPLE_FLASH 0
 
-/*
- * DEBUG_COMPACTION_TEST - Enable flashrom partition compaction test menu
- *
- * When enabled, adds a hidden menu option to test the flashrom partition
- * compaction feature. Accessible via a specific button combo in the
- * settings menu (currently disabled - see ui_menu_credits.c menu_accept).
- *
- * WARNING: This test writes to flashrom! Use with caution. It backs up
- * the partition first and restores it after, but power loss during the
- * test could corrupt flashrom data.
- */
-#define DEBUG_COMPACTION_TEST 0
+/* Logs each boot step on screen with its result and time, then holds the log
+ * until START. See BOOT_TRACE_PLAN.md. */
+#ifndef DEBUG_BOOT_TRACE
+#define DEBUG_BOOT_TRACE 0
+#endif
 
 /* Replaces VMU time sync with a read-only clock probe and packet popup. */
 #ifndef DEBUG_VMU_SYNC

@@ -145,11 +145,15 @@ namespace GDMENUCardManager
                     else Navigate(step);
                     e.Handled = true;
                 }
+                else if (e.Key == Avalonia.Input.Key.Escape)
+                {
+                    e.Handled = true;
+                    Close();
+                }
             };
             this.KeyUp += (s, e) =>
             {
-                if (e.Key == Avalonia.Input.Key.Escape) Close();
-                else if (e.Key == Avalonia.Input.Key.Left || e.Key == Avalonia.Input.Key.Right)
+                if (e.Key == Avalonia.Input.Key.Left || e.Key == Avalonia.Input.Key.Right)
                     _keyHoldCount = 0;
             };
             DataContext = this;
@@ -266,13 +270,14 @@ namespace GDMENUCardManager
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 ButtonDefinitions = new ButtonDefinition[]
                 {
-                    new ButtonDefinition { Name = "Save" },
+                    new ButtonDefinition { Name = "Save", IsDefault = true },
                     new ButtonDefinition { Name = "Discard" },
-                    new ButtonDefinition { Name = "Cancel" }
+                    new ButtonDefinition { Name = "Cancel", IsCancel = true }
                 }
             }).ShowWindowDialogAsync(this);
 
-            if (result == "Cancel")
+            // The title-bar X returns null, which stays on the item like Cancel.
+            if (result == null || result == "Cancel")
                 return false;
 
             if (result == "Save")
@@ -432,8 +437,8 @@ namespace GDMENUCardManager
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 ButtonDefinitions = new ButtonDefinition[]
                 {
-                    new ButtonDefinition { Name = "Delete" },
-                    new ButtonDefinition { Name = "Cancel" }
+                    new ButtonDefinition { Name = "Delete", IsDefault = true },
+                    new ButtonDefinition { Name = "Cancel", IsCancel = true }
                 }
             }).ShowWindowDialogAsync(this);
 
@@ -549,8 +554,8 @@ namespace GDMENUCardManager
                     WindowStartupLocation = WindowStartupLocation.CenterOwner,
                     ButtonDefinitions = new ButtonDefinition[]
                     {
-                        new ButtonDefinition { Name = "Discard" },
-                        new ButtonDefinition { Name = "Cancel" }
+                        new ButtonDefinition { Name = "Discard", IsDefault = true },
+                        new ButtonDefinition { Name = "Cancel", IsCancel = true }
                     }
                 }).ShowWindowDialogAsync(this);
 

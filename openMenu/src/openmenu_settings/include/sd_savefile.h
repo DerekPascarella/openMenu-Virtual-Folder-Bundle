@@ -29,7 +29,8 @@ typedef enum SD_STATUS {
     SD_STATUS_OLD,             /* SD has older version config (will upgrade) */
     SD_STATUS_INVALID,         /* SD has corrupt/invalid config file */
     SD_STATUS_FUTURE,          /* SD has config from newer program version */
-    SD_STATUS_NO_SPACE         /* SD card is full */
+    SD_STATUS_NO_SPACE,        /* SD card is full */
+    SD_STATUS_UNREADABLE       /* Card answered but could not be read */
 } SD_STATUS;
 
 /* SD card save file header structure */

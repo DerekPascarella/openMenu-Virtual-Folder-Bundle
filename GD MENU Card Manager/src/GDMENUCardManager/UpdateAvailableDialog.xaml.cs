@@ -1,7 +1,6 @@
 using System.Configuration;
 using System.Diagnostics;
 using System.Windows;
-using System.Windows.Input;
 using GDMENUCardManager.Core;
 
 namespace GDMENUCardManager
@@ -18,12 +17,6 @@ namespace GDMENUCardManager
             LatestTag = latestTag;
             LatestVersion = latestVersion;
             VersionText.Text = latestVersion;
-
-            this.PreviewKeyDown += (s, e) =>
-            {
-                if (e.Key == Key.Escape)
-                    Close();
-            };
         }
 
         private void UpdateButton_Click(object sender, RoutedEventArgs e)
@@ -65,6 +58,7 @@ namespace GDMENUCardManager
                     config.AppSettings.Settings["SkippedUpdateVersion"].Value = tag;
                 else
                     config.AppSettings.Settings.Add("SkippedUpdateVersion", tag);
+                RetiredSettings.Remove(config);
                 config.Save(ConfigurationSaveMode.Modified);
                 ConfigurationManager.RefreshSection("appSettings");
             }

@@ -1,6 +1,10 @@
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -39,6 +43,15 @@ namespace GDMENUCardManager
         public SerialTranslationDialog()
         {
             InitializeComponent();
+
+            KeyDown += (s, e) =>
+            {
+                if (e.Key == Key.Escape)
+                {
+                    e.Handled = true;
+                    Close();
+                }
+            };
         }
 
         public SerialTranslationDialog(IEnumerable<GdItem> translatedItems) : this()
@@ -59,6 +72,16 @@ namespace GDMENUCardManager
         private void InitializeComponent()
         {
             AvaloniaXamlLoader.Load(this);
+        }
+
+        protected override void OnOpened(EventArgs e)
+        {
+            base.OnOpened(e);
+            Dispatcher.UIThread.Post(() =>
+            {
+                var listControl = this.FindControl<ItemsControl>("TranslationList");
+                listControl?.GetVisualDescendants().OfType<CheckBox>().FirstOrDefault()?.Focus(NavigationMethod.Tab);
+            }, DispatcherPriority.Loaded);
         }
 
         private void OkButton_Click(object sender, RoutedEventArgs e)

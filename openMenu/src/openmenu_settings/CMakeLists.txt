@@ -1,5 +1,6 @@
 add_library(openmenu_settings
         STATIC
+        src/boot_trace.c
         src/openmenu_savefile.c
         src/openmenu_settings.c
         src/sd_savefile.c
@@ -7,6 +8,7 @@ add_library(openmenu_settings
 )
 target_sources(openmenu_settings
         PUBLIC
+        include/boot_trace.h
         include/openmenu_lcd.h
         include/openmenu_pal.h
         include/openmenu_savefile.h

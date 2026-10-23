@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel;
+using GDMENUCardManager.Core;
 using System.Windows;
 
 namespace GDMENUCardManager
@@ -15,6 +16,7 @@ namespace GDMENUCardManager
         private bool _originalEnableVgaPatchExisting;
         private bool _originalEnableRegionPatch;
         private bool _originalEnableRegionPatchExisting;
+        private DiscConversionFormat _originalConversionFormat;
         private bool _saved;
         private readonly Action _saveConfigCallback;
 
@@ -23,6 +25,14 @@ namespace GDMENUCardManager
             InitializeComponent();
             this.Loaded += DiscImageOptionsWindow_Loaded;
             this.Closing += DiscImageOptionsWindow_Closing;
+            this.KeyDown += (s, e) =>
+            {
+                if (e.Key == System.Windows.Input.Key.Escape)
+                {
+                    e.Handled = true;
+                    Close();
+                }
+            };
         }
 
         public DiscImageOptionsWindow(Action saveConfigCallback) : this()
@@ -43,6 +53,7 @@ namespace GDMENUCardManager
                 _originalEnableVgaPatchExisting = vm.EnableVgaPatchExisting;
                 _originalEnableRegionPatch = vm.EnableRegionPatch;
                 _originalEnableRegionPatchExisting = vm.EnableRegionPatchExisting;
+                _originalConversionFormat = vm.ConversionFormat;
             }
         }
 
@@ -67,6 +78,7 @@ namespace GDMENUCardManager
                 vm.EnableVgaPatchExisting = _originalEnableVgaPatchExisting;
                 vm.EnableRegionPatch = _originalEnableRegionPatch;
                 vm.EnableRegionPatchExisting = _originalEnableRegionPatchExisting;
+                vm.ConversionFormat = _originalConversionFormat;
             }
         }
 
@@ -90,5 +102,8 @@ namespace GDMENUCardManager
         bool EnableVgaPatchExisting { get; set; }
         bool EnableRegionPatch { get; set; }
         bool EnableRegionPatchExisting { get; set; }
+        DiscConversionFormat ConversionFormat { get; set; }
+        bool UseCcdConversion { get; set; }
+        bool UseCdiConversion { get; set; }
     }
 }

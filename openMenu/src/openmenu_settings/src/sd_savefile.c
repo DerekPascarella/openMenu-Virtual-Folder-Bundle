@@ -18,6 +18,7 @@
 #include <fat/fs_fat.h>
 #include <kos/blockdev.h>
 
+#include "boot_trace.h"
 #include "openmenu_settings.h"
 #include "sd_savefile.h"
 
@@ -79,6 +80,7 @@ static sd_var_entry_t sd_variables[] = {
     {NULL, 1, SFV_ONLINE_TIME_SYNC},     /* sf_online_time_sync */
     {NULL, 1, SFV_MOUSE_SPEEDS},         /* sf_mouse_cursor_speed */
     {NULL, 1, SFV_MOUSE_SPEEDS},         /* sf_mouse_scroll_speed */
+    {NULL, 1, SFV_CLOCK_EXTENDER},       /* sf_clock_extender */
 };
 #define SD_VAR_COUNT (sizeof(sd_variables) / sizeof(sd_variables[0]))
 
@@ -124,6 +126,7 @@ sd_init_var_pointers(void) {
     sd_variables[36].var_ptr = sf_online_time_sync;
     sd_variables[37].var_ptr = sf_mouse_cursor_speed;
     sd_variables[38].var_ptr = sf_mouse_scroll_speed;
+    sd_variables[39].var_ptr = sf_clock_extender;
 }
 
 /* Calculate total data size for current version */
@@ -169,6 +172,13 @@ ensure_directory_exists(const char* path) {
     return mkdir(path, 0755);
 }
 
+/* Tears SD down so nothing touches the card again until the next init. */
+static void
+sd_savefile_mark_unreadable(void) {
+    sd_savefile_shutdown();
+    sd_cached_status = SD_STATUS_UNREADABLE;
+}
+
 int8_t
 sd_savefile_init(void) {
     int ret;
@@ -179,41 +189,55 @@ sd_savefile_init(void) {
 
     sd_init_var_pointers();
 
+    BT_STEP("SD FAT driver");
     if (fs_fat_init() != 0) {
+        BT_DONE("failed");
         sd_cached_status = SD_STATUS_NOT_PRESENT;
         return -1;
     }
+    BT_DONE("ok");
 
-    if (sd_init() != 0) {
+    /* -1 means nothing answered the reset. Any other failure means a card is there. */
+    BT_STEP("SD card init");
+    ret = sd_init();
+    BT_DONE("ret %d", ret);
+    if (ret != 0) {
         fs_fat_shutdown();
-        sd_cached_status = SD_STATUS_NOT_PRESENT;
+        sd_cached_status = ret == -1 ? SD_STATUS_NOT_PRESENT : SD_STATUS_UNREADABLE;
         return -1;
     }
 
     sd_initialized = true;
 
-    if (sd_blockdev_for_partition(0, &sd_dev, &sd_partition_type) != 0) {
-        sd_shutdown();
-        fs_fat_shutdown();
-        sd_initialized = false;
-        sd_cached_status = SD_STATUS_NOT_PRESENT;
-        return -1;
-    }
-
-    ret = fs_fat_mount(SD_MOUNT_PATH, &sd_dev, FS_FAT_MOUNT_READWRITE);
+    BT_STEP("SD partition 0");
+    ret = sd_blockdev_for_partition(0, &sd_dev, &sd_partition_type);
+    BT_DONE("%d type %02X", ret, sd_partition_type);
     if (ret != 0) {
         sd_shutdown();
         fs_fat_shutdown();
         sd_initialized = false;
-        sd_cached_status = SD_STATUS_NOT_PRESENT;
+        sd_cached_status = SD_STATUS_UNREADABLE;
+        return -1;
+    }
+
+    BT_STEP("SD mount");
+    ret = fs_fat_mount(SD_MOUNT_PATH, &sd_dev, FS_FAT_MOUNT_READWRITE);
+    BT_DONE("%d errno %d", ret, ret ? errno : 0);
+    if (ret != 0) {
+        sd_shutdown();
+        fs_fat_shutdown();
+        sd_initialized = false;
+        sd_cached_status = SD_STATUS_UNREADABLE;
         return -1;
     }
 
     sd_mounted = true;
 
+    BT_STEP("SD read config");
     sd_savefile_refresh_status();
+    BT_DONE("st %d errno %d", (int)sd_cached_status, errno);
 
-    return 0;
+    return sd_mounted ? 0 : -1;
 }
 
 void
@@ -270,6 +294,10 @@ sd_savefile_refresh_status(void) {
                 continue; /* Retry */
             }
             /* Final attempt failed - can't open file */
+            if (errno != ENOENT && errno != ENOTDIR) {
+                sd_savefile_mark_unreadable();
+                return;
+            }
             sd_cached_status = SD_STATUS_NO_FILE;
             sd_cached_version = 0;
             return;
@@ -287,6 +315,10 @@ sd_savefile_refresh_status(void) {
             /* Final attempt failed - if previous status was known-good,
              * keep old status. Otherwise mark as invalid. */
             if (!was_known_good) {
+                if (bytes_read < 0) {
+                    sd_savefile_mark_unreadable();
+                    return;
+                }
                 sd_cached_status = SD_STATUS_INVALID;
                 sd_cached_version = 0;
             }
@@ -335,6 +367,9 @@ sd_savefile_load(void) {
             if (attempt < max_attempts - 1) {
                 continue; /* Retry */
             }
+            if (errno != ENOENT && errno != ENOTDIR) {
+                sd_savefile_mark_unreadable();
+            }
             return -1;
         }
 
@@ -345,6 +380,9 @@ sd_savefile_load(void) {
             close(fd);
             if (attempt < max_attempts - 1) {
                 continue; /* Retry */
+            }
+            if (hdr_bytes < 0) {
+                sd_savefile_mark_unreadable();
             }
             return -1;
         }
@@ -387,11 +425,15 @@ sd_savefile_load(void) {
         }
 
         /* Read settings data */
-        if (read(fd, data, header.data_size) != (ssize_t)header.data_size) {
+        ssize_t data_bytes = read(fd, data, header.data_size);
+        if (data_bytes != (ssize_t)header.data_size) {
             free(data);
             close(fd);
             if (attempt < max_attempts - 1) {
                 continue; /* Retry */
+            }
+            if (data_bytes < 0) {
+                sd_savefile_mark_unreadable();
             }
             return -1;
         }
@@ -449,6 +491,10 @@ sd_savefile_load(void) {
         if (header.version < SFV_MOUSE_SPEEDS) {
             sf_mouse_cursor_speed[0] = MOUSE_SPEED_MEDIUM;
             sf_mouse_scroll_speed[0] = MOUSE_SPEED_MEDIUM;
+        }
+
+        if (header.version < SFV_CLOCK_EXTENDER) {
+            sf_clock_extender[0] = CLOCK_EXTENDER_OFF;
         }
 
         /* Let settings_sanitize() handle defaults for any new variables */

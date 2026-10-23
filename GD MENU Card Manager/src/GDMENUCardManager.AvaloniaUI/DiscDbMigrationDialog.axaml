@@ -30,9 +30,9 @@
 
     <!-- Buttons -->
     <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 20 0 0">
-      <Button Content="Cancel" Click="CancelButton_Click" Width="110" Padding="15,8" Margin="0 0 10 0"
+      <Button Content="Cancel" Click="CancelButton_Click" Width="110" Padding="15,8" Margin="0 0 10 0" IsCancel="True"
               ToolTip.Tip="Load the card without migrating"/>
-      <Button Content="Proceed" Click="ProceedButton_Click" Width="110" Padding="15,8" IsDefault="True"
+      <Button x:Name="ProceedButton" Content="Proceed" Click="ProceedButton_Click" Width="110" Padding="15,8"
               ToolTip.Tip="Migrate this card to DISCDB.JSON"/>
     </StackPanel>
   </Grid>

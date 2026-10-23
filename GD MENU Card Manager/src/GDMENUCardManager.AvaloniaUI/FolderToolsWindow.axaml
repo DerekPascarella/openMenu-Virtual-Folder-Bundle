@@ -128,7 +128,7 @@
               <TreeView.ItemTemplate>
                 <TreeDataTemplate ItemsSource="{Binding Children}">
                   <Border Background="{Binding IsDropTarget, Converter={StaticResource DropTargetBrush}}"
-                          Padding="2" CornerRadius="2">
+                          Padding="2" CornerRadius="2" DoubleTapped="Tree_DoubleTapped">
                     <Grid>
                       <TextBlock Text="{Binding DisplayName}" IsVisible="{Binding !IsEditing}" VerticalAlignment="Center"/>
                       <TextBox Text="{Binding Name, Mode=TwoWay}" IsVisible="{Binding IsEditing}"
@@ -148,7 +148,7 @@
                     Click="UndoButton_Click" IsEnabled="{Binding CanUndo}"
                     ToolTip.Tip="Revert the most recent rename or move"/>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-              <Button Content="Apply Changes" Padding="15,8" Margin="0,0,10,0" Click="ApplyButton_Click" IsDefault="True"
+              <Button Content="Apply Changes" Padding="15,8" Margin="0,0,10,0" Click="ApplyButton_Click"
                       ToolTip.Tip="Apply all folder renames and moves"/>
               <Button Content="Cancel" Width="80" Padding="15,8" Click="CancelButton_Click"
                       ToolTip.Tip="Discard all pending folder changes and close"/>

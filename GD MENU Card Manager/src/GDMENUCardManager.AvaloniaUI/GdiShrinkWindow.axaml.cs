@@ -1,7 +1,9 @@
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using GDMENUCardManager.Core;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
@@ -56,6 +58,20 @@ namespace GDMENUCardManager
         private void InitializeComponent()
         {
             AvaloniaXamlLoader.Load(this);
+        }
+
+        protected override void OnOpened(EventArgs e)
+        {
+            base.OnOpened(e);
+            this.FindControl<DataGrid>("ShrinkGrid")?.Focus(NavigationMethod.Tab);
+        }
+
+        protected override void OnClosing(WindowClosingEventArgs e)
+        {
+            // Only Proceed closes the window.
+            if (Result == null && e.CloseReason == WindowCloseReason.WindowClosing)
+                e.Cancel = true;
+            base.OnClosing(e);
         }
 
         private void ButtonShrink_Click(object sender, RoutedEventArgs e)

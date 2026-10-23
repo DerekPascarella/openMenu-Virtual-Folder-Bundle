@@ -5,7 +5,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Metadata Cache Required" SizeToContent="Height" Width="500"
-        WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        FocusManager.FocusedElement="{Binding ElementName=StartScanButton}">
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -47,7 +48,7 @@
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
             <Button Content="Quit" Click="QuitButton_Click" Width="110" Padding="15,8" Margin="0 0 10 0"
                     ToolTip="Exit the application without scanning"/>
-            <Button Content="Start Scan" Click="StartScanButton_Click" Width="110" Padding="15,8" IsDefault="True"
+            <Button x:Name="StartScanButton" Content="Start Scan" Click="StartScanButton_Click" Width="110" Padding="15,8"
                     ToolTip="Begin the one-time metadata scan"/>
         </StackPanel>
     </Grid>

@@ -295,12 +295,12 @@ unused.
 `mouse_middle_button.patch` adds `MOUSE_MIDDLEBUTTON` for bit 0 in
 `kernel/arch/dreamcast/include/dc/maple/mouse.h` and changes the cooked button
 mask from 14 to 15 in `kernel/arch/dreamcast/hardware/maple/mouse.c`. The Japanese
-HKT-9900 center button uses bit 0. The western side button uses bit 3. OpenMenu
+HKT-9900 center button uses bit 0. The western side button uses bit 3. openMenu
 accepts either as its third-button action. Polarity and axis conversion stay
 unchanged.
 
-OpenMenu requires the patched header at compile time. The KOS library must also
-be rebuilt, then OpenMenu must be rebuilt and relinked. A header change alone
+openMenu requires the patched header at compile time. The KOS library must also
+be rebuilt, then openMenu must be rebuilt and relinked. A header change alone
 cannot restore a button bit discarded by the linked driver.
 
 ## Existing Containers
@@ -312,7 +312,7 @@ KOS is owned by UID 100, and `sudo` is absent.
 
 From the Docker host, use `docker exec -it --user root CONTAINER bash`, replacing
 `CONTAINER` with your container's name or ID. Then run this inside that shell,
-with OpenMenu mounted at `/workspaces/openmenu`:
+with openMenu mounted at `/workspaces/openmenu`:
 
 ```bash
 cd /opt/toolchains/dc/kos
@@ -334,8 +334,8 @@ function ABI. `kos-cc` invokes the configured SH-4 compiler with KOS's flags;
 index in `libkallisti.a`, preserving its other members. No addon rebuild or
 KOS-root clean is needed. `libkosfat.a` and `libppp.a` remain untouched.
 
-Afterward, leave the root shell and rebuild and relink OpenMenu using your
-normal container workflow. An existing OpenMenu executable still contains
+Afterward, leave the root shell and rebuild and relink openMenu using your
+normal container workflow. An existing openMenu executable still contains
 its previously linked KOS driver.
 
 If the forward check fails, inspect the error before applying anything. This
@@ -359,16 +359,74 @@ image such as `sbstnc/openmenu-dev:0.2.2` still needs the manual procedure unles
 it has already been patched and rebuilt. Building or publishing a replacement
 image and changing a devcontainer image reference are separate user actions.
 
-OpenMenu takes an interrupt-protected snapshot of the selected mouse's current
+openMenu takes an interrupt-protected snapshot of the selected mouse's current
 cooked state and clears its relative deltas once per input pass. Status reads
 alone do not consume these deltas. The driver retains only its latest sample,
 so intermediate movement or wheel samples can be lost while the UI is stalled
 or blocked. This patch does not add a motion queue or change that driver
 behavior.
 
-OpenMenu uses KOS's single application detach callback slot, filtered to mouse
+openMenu uses KOS's single application detach callback slot, filtered to mouse
 devices, to detect same-port reconnects between input passes. No other
-OpenMenu code currently registers that callback. A future application detach
+openMenu code currently registers that callback. A future application detach
 handler must share that registration. Third-button mapping, wheel polarity,
 movement sensitivity, and cursor readability still require real mouse and
 display checks.
+
+# KallistiOS Patch: Serial SD Startup Status and Timeout
+
+`sd_init_status.patch` changes `kernel/arch/dreamcast/hardware/sd.c` and the
+`sd_init()` documentation in `kernel/arch/dreamcast/include/dc/sd.h`.
+
+- `sd_init()` still returns `-1` when nothing answers the reset command (CMD0),
+  which means no adapter or no card. Every failure after a card has answered
+  now returns `-2`. openMenu uses this to warn about a card it can't read
+  while staying silent when no card is inserted.
+- `acmd41_loop()` and `cmd1_loop()` give up after 3000 ms instead of after
+  500000 tries. In slow SPI mode those tries could take minutes, and running
+  out of them was reported as success. A healthy card still finishes as soon
+  as it reports ready, and a missing card never reaches these loops.
+
+No structure or function signature changes. Only `sd.c` needs recompiling.
+
+# KallistiOS Patch: libkosfat Boot Sector and Directory Bounds
+
+`libkosfat_bounds.patch` changes `addons/libkosfat/bpb.c` and
+`addons/libkosfat/directory.c`. Apply it after `libkosfat_directory.patch`.
+
+- `fat_parse_boot()` rejects a boot sector whose bytes per sector or sectors
+  per cluster is zero, before dividing by either. Both are zero in an exFAT
+  boot sector, so mounting one now fails with `-EINVAL`.
+- `fat_search_dir()` returns `-EIO` once a directory's cluster chain goes past
+  65536 entries, the FAT limit. A looped chain on a corrupted card used to
+  make the search run forever. Other chain walks in libkosfat are unchanged.
+
+## Existing Containers
+
+Use a root shell as described for the mouse patch, then run:
+
+```bash
+cd /opt/toolchains/dc/kos
+source ./environ.sh
+
+P=/workspaces/openmenu/docker/kos_patch
+patch --dry-run --batch --forward -p1 < $P/sd_init_status.patch &&
+patch --dry-run --batch --forward -p1 < $P/libkosfat_bounds.patch &&
+patch --batch --forward -p1 < $P/sd_init_status.patch &&
+patch --batch --forward -p1 < $P/libkosfat_bounds.patch &&
+kos-cc $KOS_CSTD -Wextra -Wno-deprecated \
+    -c kernel/arch/dreamcast/hardware/sd.c \
+    -o kernel/build/sd.o &&
+kos-ar rcs lib/dreamcast/libkallisti.a kernel/build/sd.o &&
+make -C addons/libkosfat
+```
+
+`kos-ar rcs` replaces the existing `sd.o` member of `libkallisti.a`.
+`make -C addons/libkosfat` recompiles `bpb.c` and `directory.c` and rewrites
+`addons/lib/dreamcast/libkosfat.a`. If the other libkosfat objects are
+missing, it rebuilds them too. Don't run `make clean` at the KOS root.
+
+Afterward, rebuild and relink openMenu with your normal container workflow.
+
+If a forward check fails, use the reverse dry run described for the mouse
+patch to see whether that patch is already applied.

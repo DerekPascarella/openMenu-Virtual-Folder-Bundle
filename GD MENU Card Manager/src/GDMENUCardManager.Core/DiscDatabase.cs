@@ -94,6 +94,39 @@ namespace GDMENUCardManager.Core
             }
         }
 
+        internal string Serialize() => JsonSerializer.Serialize(this, serializerOptions);
+
+        internal static DiscDatabase Parse(string payload)
+        {
+            using var document = JsonDocument.Parse(payload);
+            var root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object ||
+                !root.TryGetProperty("version", out var version) || version.ValueKind != JsonValueKind.Number || !version.TryGetInt32(out int number) || number != 1 ||
+                !root.TryGetProperty("items", out var items) || items.ValueKind != JsonValueKind.Object)
+                throw new InvalidDataException("Incomplete database payload in save recovery record.");
+            RejectDuplicateProperties(root);
+            RejectDuplicateProperties(items);
+            foreach (var item in items.EnumerateObject())
+            {
+                if (item.Value.ValueKind != JsonValueKind.Object)
+                    throw new InvalidDataException("Invalid database entry in save recovery record.");
+                RejectDuplicateProperties(item.Value);
+            }
+            var database = JsonSerializer.Deserialize<DiscDatabase>(payload, serializerOptions);
+            if (database == null || database.Version != 1 || database.Items == null ||
+                database.Items.Any(x => !CardSaveTransaction.IsNumber(x.Key) || x.Value == null))
+                throw new InvalidDataException("Invalid database payload in save recovery record.");
+            return database;
+        }
+
+        private static void RejectDuplicateProperties(JsonElement element)
+        {
+            var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var property in element.EnumerateObject())
+                if (!names.Add(property.Name))
+                    throw new InvalidDataException("Duplicate database field in save recovery record.");
+        }
+
         // A card pulled the moment this method returns must not lose the file.
         public async Task SaveAsync(string sdPath)
         {

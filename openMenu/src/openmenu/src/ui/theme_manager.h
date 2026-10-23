@@ -17,6 +17,9 @@
 
 struct image;
 
+/* Per family cap on CUST_n, SCROLL_n and FOLDERS_n folders, n is 0 to 19 */
+#define THEME_SLOTS_MAX (THEME_NUM_END + 1)
+
 typedef struct theme_color {
     uint32_t text_color;
     uint32_t highlight_color;

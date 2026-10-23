@@ -46,6 +46,8 @@ static dat_system box_system;
 /* Folder artwork entries, box format, shares the large pool and cache */
 static struct dat_file folder_dat;
 
+static int defer_loads;
+
 unsigned int
 block_pool_add_cb(const char* key, void* user) {
     /* unused here but could be good info to know */
@@ -127,6 +129,11 @@ txr_empty_large_pool(void) {
     pool_dealloc_all(&box_system.pool);
 }
 
+void
+txr_defer_loads(int defer) {
+    defer_loads = defer;
+}
+
 static int
 txr_get_from_dat_set(const char* id, struct image* img, dat_system* system) {
     void* txr_ptr;
@@ -151,6 +158,10 @@ txr_get_from_dat_set(const char* id, struct image* img, dat_system* system) {
     }
     slot_num = find_in_cache(&system->cache, id_santized);
     if (slot_num == -1) {
+        if (defer_loads) {
+            draw_load_missing_icon(img);
+            return TXR_DEFERRED;
+        }
         add_to_cache(&system->cache, id_santized, 0);
         slot_num = find_in_cache(&system->cache, id_santized);
         txr_ptr = pool_get_slot_addr(&system->pool, slot_num);
@@ -195,6 +206,10 @@ txr_get_folder(const char* id, struct image* img) {
     }
     slot_num = find_in_cache(&box_system.cache, id);
     if (slot_num == -1) {
+        if (defer_loads) {
+            draw_load_missing_icon(img);
+            return TXR_DEFERRED;
+        }
         add_to_cache(&box_system.cache, id, 0);
         slot_num = find_in_cache(&box_system.cache, id);
         txr_ptr = pool_get_slot_addr(&box_system.pool, slot_num);

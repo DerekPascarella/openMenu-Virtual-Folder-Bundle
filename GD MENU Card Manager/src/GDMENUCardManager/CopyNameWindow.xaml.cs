@@ -1,4 +1,5 @@
 ﻿using System.Windows;
+using System.Windows.Input;
 
 namespace GDMENUCardManager
 {
@@ -16,6 +17,15 @@ namespace GDMENUCardManager
         {
             InitializeComponent();
             DataContext = this;
+
+            KeyDown += (s, e) =>
+            {
+                if (e.Key == Key.Escape)
+                {
+                    e.Handled = true;
+                    Close();
+                }
+            };
         }
 
         private void Button_Click(object sender, RoutedEventArgs e)

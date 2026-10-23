@@ -34,7 +34,7 @@
       <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 20 0 0">
         <Button Content="Cancel" Click="CancelButton_Click" MinWidth="90" Padding="15,8" Margin="0 0 10 0"
                 ToolTip.Tip="Close the wizard without updating"/>
-        <Button Content="Next" Click="NextButton_Click" MinWidth="90" Padding="15,8" IsDefault="True"
+        <Button Content="Next" Click="NextButton_Click" MinWidth="90" Padding="15,8"
                 ToolTip.Tip="Continue to the download step"/>
       </StackPanel>
     </StackPanel>

@@ -45,6 +45,7 @@ namespace GDMENUCardManager
             }
         }
 
+        private bool _closed;
         private readonly Queue<Key> lastKeys = new Queue<Key>(10);
         private readonly Key[] konamiCodeKeys = new Key[] { Key.Up, Key.Up, Key.Down, Key.Down, Key.Left, Key.Right, Key.Left, Key.Right, Key.B, Key.A };
 
@@ -85,6 +86,12 @@ namespace GDMENUCardManager
             e.Handled = true;
         }
 
+        protected override void OnClosed(System.EventArgs e)
+        {
+            _closed = true;
+            base.OnClosed(e);
+        }
+
         private async void CheckForUpdatesButton_Click(object sender, RoutedEventArgs e)
         {
             var btn = (Button)sender;
@@ -93,6 +100,10 @@ namespace GDMENUCardManager
             try
             {
                 var result = await UpdateManager.CheckForUpdateAsync();
+
+                // Closing the window abandons the check.
+                if (_closed)
+                    return;
                 if (result.ManualUpdateRequired)
                 {
                     var manualDialog = new ManualUpdateDialog(result.LatestTag, result.LatestVersion, result.ManualReason);
@@ -124,6 +135,9 @@ namespace GDMENUCardManager
             }
             catch
             {
+                if (_closed)
+                    return;
+
                 MessageBox.Show(this, "Could not check for updates. Please check your internet connection.", "Information", MessageBoxButton.OK, MessageBoxImage.None);
             }
             finally

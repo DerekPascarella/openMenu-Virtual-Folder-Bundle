@@ -30,6 +30,7 @@ debug_flash_sf(uint8_t r, uint8_t g, uint8_t b) {
 #include <stdbool.h>
 #include <string.h>
 
+#include "boot_trace.h"
 #include "openmenu_savefile.h"
 #include "openmenu_settings.h"
 #include "vmu_sync_debug.h"
@@ -68,6 +69,23 @@ static bool savefile_was_migrated = false;
 static int8_t startup_device_id = -1; /* Device we loaded settings from at startup */
 static bool loaded_from_sd = false;   /* True if settings were loaded from SD at startup */
 static bool vmu_time_sync_warning;
+static bool clock_storage_is_full;
+static bool clock_storage_warning;
+
+bool
+clock_sync_storage_full(void) {
+    return clock_storage_is_full;
+}
+
+bool
+clock_sync_warning_pending(void) {
+    return clock_storage_warning;
+}
+
+void
+clock_sync_warning_dismiss(void) {
+    clock_storage_warning = false;
+}
 
 bool
 vmu_time_sync_warning_pending(void) {
@@ -162,6 +180,7 @@ savefile_defaults() {
     sf_dcnow_refresh[0] = DCNOW_REFRESH_OFF;
     sf_dcnow_vmu[0] = DCNOW_VMU_OFF;
     sf_online_time_sync[0] = ONLINE_TIME_SYNC_OFF;
+    sf_clock_extender[0] = CLOCK_EXTENDER_OFF;
 }
 
 /* Called by crayon_savefile_deserialise_savedata() when loading a save written
@@ -251,6 +270,9 @@ update_savefile(void** loaded_variables, crayon_savefile_version_t loaded_versio
     if (loaded_version < SFV_MOUSE_SPEEDS) {
         sf_mouse_cursor_speed[0] = MOUSE_SPEED_MEDIUM;
         sf_mouse_scroll_speed[0] = MOUSE_SPEED_MEDIUM;
+    }
+    if (loaded_version < SFV_CLOCK_EXTENDER) {
+        sf_clock_extender[0] = CLOCK_EXTENDER_OFF;
     }
     return 0;
 }
@@ -360,6 +382,8 @@ setup_savefile_internal(crayon_savefile_details_t* details, bool skip_vmu_lcd) {
                                  sf_mouse_cursor_speed_length, SFV_MOUSE_SPEEDS, VAR_STILL_PRESENT);
     crayon_savefile_add_variable(details, &sf_mouse_scroll_speed, sf_mouse_scroll_speed_type,
                                  sf_mouse_scroll_speed_length, SFV_MOUSE_SPEEDS, VAR_STILL_PRESENT);
+    crayon_savefile_add_variable(details, &sf_clock_extender, sf_clock_extender_type, sf_clock_extender_length,
+                                 SFV_CLOCK_EXTENDER, VAR_STILL_PRESENT);
 
     if (crayon_savefile_solidify(details)) {
         return 1;
@@ -394,7 +418,9 @@ savefile_init() {
     DFLASH_SF(0, 0, 128);
 
     /* init savefile (skip VMU LCD for now, updated after VMU check below) */
+    BT_STEP("VMU save setup");
     uint8_t setup_res = setup_savefile_internal(&savefile_details, true);
+    BT_DONE("%d", setup_res);
 
     /* DEBUG: Dark Yellow (128,128,0) = after setup_savefile_internal */
     DFLASH_SF(128, 128, 0);
@@ -412,7 +438,10 @@ savefile_init() {
     if (sd_savefile_available()) {
         SD_STATUS status = sd_savefile_get_status();
         if (status == SD_STATUS_READY || status == SD_STATUS_OLD || status == SD_STATUS_FUTURE) {
-            if (sd_savefile_load() == 0) {
+            BT_STEP("SD load settings");
+            int8_t sd_load_res = sd_savefile_load();
+            BT_DONE("%d", sd_load_res);
+            if (sd_load_res == 0) {
                 loaded_from_sd = true;
                 startup_device_id = -1; /* Not a VMU */
 
@@ -420,15 +449,22 @@ savefile_init() {
                 /* DEBUG: Dark Red (128,0,0) = before has_any_vmu (SD path) */
                 DFLASH_SF(128, 0, 0);
 
-                if (has_any_vmu()) {
+                BT_STEP("VMU detect");
+                bool sd_path_vmu = has_any_vmu();
+                BT_DONE("%s", sd_path_vmu ? "found" : "none");
+                if (sd_path_vmu) {
                     /* DEBUG: Dark Green (0,128,0) = after has_any_vmu, VMU found (SD path) */
                     DFLASH_SF(0, 128, 0);
 #if OPENMENU_ICONS
+                    BT_STEP("VMU LCD icon");
                     vmu_screens_bitmap = crayon_peripheral_dreamcast_get_screens();
                     crayon_peripheral_vmu_display_icon(vmu_screens_bitmap, lcd_logo());
+                    BT_DONE("ok");
 #endif
                     if (sf_vmu_time_sync[0] == VMU_TIME_SYNC_ON) {
-                        sync_rtc_from_vmu();
+                        BT_STEP("VMU clock sync");
+                        int8_t sync_res = sync_rtc_from_vmu();
+                        BT_DONE("%d", sync_res);
                     }
                 } else {
                     /* DEBUG: Orange (255,128,0) = after has_any_vmu, no VMU (SD path) */
@@ -443,7 +479,9 @@ savefile_init() {
     /* DEBUG: Dark Red (128,0,0) = before has_any_vmu */
     DFLASH_SF(128, 0, 0);
 
+    BT_STEP("VMU detect");
     bool vmu_present = has_any_vmu();
+    BT_DONE("%s", vmu_present ? "found" : "none");
 
     /* DEBUG: Dark Green (0,128,0) = after has_any_vmu (VMU found)
      *        Orange (255,128,0) = after has_any_vmu (no VMU) */
@@ -457,14 +495,18 @@ savefile_init() {
         /* DEBUG: Bright Pink (255,128,128) = before find_first_valid_savefile_device */
         DFLASH_SF(255, 128, 128);
 
+        BT_STEP("VMU find save");
         int8_t device_res = find_first_valid_savefile_device(&savefile_details);
+        BT_DONE("%d", device_res);
 
         /* DEBUG: Light Green (128,255,128) = after find_first_valid_savefile_device */
         DFLASH_SF(128, 255, 128);
 
         if (!setup_res && !device_res) {
             savefile_was_migrated = false;
+            BT_STEP("VMU load save");
             int8_t load_res = crayon_savefile_load_savedata(&savefile_details);
+            BT_DONE("%d", load_res);
 
             if (load_res == 0) {
                 settings_sanitize();
@@ -479,13 +521,17 @@ savefile_init() {
 
                 /* Sync RTC from VMU if enabled */
                 if (sf_vmu_time_sync[0] == VMU_TIME_SYNC_ON) {
-                    sync_rtc_from_vmu();
+                    BT_STEP("VMU clock sync");
+                    int8_t sync_res = sync_rtc_from_vmu();
+                    BT_DONE("%d", sync_res);
                 }
 
                 /* VMU is present and valid, show LCD icon */
 #if OPENMENU_ICONS
+                BT_STEP("VMU LCD icon");
                 vmu_screens_bitmap = crayon_peripheral_dreamcast_get_screens();
                 crayon_peripheral_vmu_display_icon(vmu_screens_bitmap, lcd_logo());
+                BT_DONE("ok");
 #endif
 
                 return; /* Done - loaded from VMU */
@@ -493,15 +539,19 @@ savefile_init() {
             /* VMU device exists but no save file on it - show LCD icon anyway,
              * then fall through to defaults */
 #if OPENMENU_ICONS
+            BT_STEP("VMU LCD icon");
             vmu_screens_bitmap = crayon_peripheral_dreamcast_get_screens();
             crayon_peripheral_vmu_display_icon(vmu_screens_bitmap, lcd_logo());
+            BT_DONE("ok");
 #endif
         } else {
             /* VMU present but find_first_valid_savefile_device failed -
              * still show LCD icon since we know VMU exists */
 #if OPENMENU_ICONS
+            BT_STEP("VMU LCD icon");
             vmu_screens_bitmap = crayon_peripheral_dreamcast_get_screens();
             crayon_peripheral_vmu_display_icon(vmu_screens_bitmap, lcd_logo());
+            BT_DONE("ok");
 #endif
         }
     }
@@ -588,160 +638,227 @@ vmu_icon_restore_thread(void* param) {
 #endif
 
 #ifdef _arch_dreamcast
-/* Epoch delta: seconds between Jan 1, 1950 and Jan 1, 1970 */
-#define DC_EPOCH_DELTA 631152000
+#define DC_EPOCH_DELTA   631152000LL
+#define CLOCK_LAST_DATE  0xffd872ffULL
+#define CLOCK_PART_START 0x1c000
+#define CLOCK_PART_SIZE  0x4000
+#define CLOCK_BITMAP     0x3fc0
+#define CLOCK_SLOTS      254
 
-/**
- * CRC calculation for flashrom blocks (matches KOS flashrom_calc_crc).
- * CRC is calculated over the first 62 bytes of the 64-byte block.
- */
+static unsigned checkpoint_generation;
+
+static void
+clock_storage_full(void) {
+    clock_storage_is_full = true;
+    clock_storage_warning = true;
+}
+
+static bool
+clock_date(time_t local_time, uint32_t* date) {
+    int64_t seconds = (int64_t)local_time;
+    if (seconds < 0 || (uint64_t)seconds > CLOCK_LAST_DATE - DC_EPOCH_DELTA) {
+        return false;
+    }
+    *date = (uint32_t)(seconds + DC_EPOCH_DELTA);
+    return true;
+}
+
 static uint16_t
 calc_flashrom_crc(const uint8_t* buffer) {
-    int i, c, n = 0xffff;
+    uint32_t crc = 0xffff;
+    for (int i = 0; i < 62; i++) {
+        crc ^= (uint32_t)buffer[i] << 8;
+        for (int bit = 0; bit < 8; bit++) {
+            crc = ((crc << 1) ^ ((crc & 0x8000) ? 0x1021u : 0u)) & 0xffff;
+        }
+    }
+    return (uint16_t)~crc;
+}
 
-    for (i = 0; i < 62; i++) {
-        n ^= buffer[i] << 8;
-        for (c = 0; c < 8; c++) {
-            if (n & 0x8000) {
-                n = (n << 1) ^ 4129;
-            } else {
-                n = (n << 1);
+static bool
+clock_read(int offset, uint8_t* data, int size) {
+    uint8_t verify[64];
+    if (size <= 0 || size > 64 || offset < CLOCK_PART_START || offset > CLOCK_PART_START + CLOCK_PART_SIZE - size) {
+        return false;
+    }
+    /* Different fills expose partial reads and no-op success returns. */
+    memset(data, 0xa5, size);
+    memset(verify, 0x5a, size);
+    int first = flashrom_read(offset, data, size);
+    int second = flashrom_read(offset, verify, size);
+    return (first == 0 || first == size) && (second == 0 || second == size) && memcmp(data, verify, size) == 0;
+}
+
+static bool
+clock_scan(const uint8_t* part, int* used, int* latest) {
+    const uint8_t* bitmap = part + CLOCK_BITMAP;
+    bool seen_free = false;
+    *used = 0;
+    *latest = 0;
+    if (memcmp(part, "KATANA_FLASH____", 16) != 0 || part[16] != 2 || part[17] != 0) {
+        return false;
+    }
+    for (int bit = 0; bit < CLOCK_SLOTS; bit++) {
+        const uint8_t* record = part + (bit + 1) * 64;
+        if (bitmap[bit / 8] & (0x80 >> (bit % 8))) {
+            seen_free = true;
+            for (int i = 0; i < 64; i++) {
+                if (record[i] != 0xff) {
+                    return false;
+                }
+            }
+        } else {
+            if (seen_free) {
+                return false;
+            }
+            (*used)++;
+            /* Interrupted appends consume a slot but do not replace a valid record. */
+            uint16_t crc = (uint16_t)record[62] | ((uint16_t)record[63] << 8);
+            if (record[0] == FLASHROM_B1_SYSCFG && record[1] == 0 && crc == calc_flashrom_crc(record)) {
+                *latest = bit + 1;
             }
         }
     }
-    return (uint16_t)((~n) & 0xffff);
-}
-
-/* update flashrom BLOCK_1/SYSCFG date so BIOS doesn't prompt for time on next boot.
- * writes bitmap before block data; skips physical block 1 (KOS never reads it).
- * returns 0 on success, -1 on failure */
-static int8_t
-update_flashrom_syscfg_date(time_t unix_time) {
-    uint8_t buffer[64];
-    int start, size;
-    int bmcnt, i;
-    uint8_t* bitmap = NULL;
-    int first_unused = -1;
-    uint32_t dc_time;
-    uint16_t crc, verify_crc;
-    int8_t rv = -1;
-    uint8_t new_bitmap_byte;
-
-    /* Read current syscfg block to preserve other settings */
-    if (flashrom_get_block(FLASHROM_PT_BLOCK_1, FLASHROM_B1_SYSCFG, buffer) < 0) {
-        return -1;
-    }
-
-    /* Verify block_id is correct (should be 5 = FLASHROM_B1_SYSCFG) */
-    if (buffer[0] != 0x05 || buffer[1] != 0x00) {
-        return -1; /* Unexpected block structure */
-    }
-
-    /* Convert Unix time to DC epoch (seconds since Jan 1, 1950) */
-    dc_time = (uint32_t)(unix_time + DC_EPOCH_DELTA);
-
-    /* Update the date field at offset 2 (little-endian, 4 bytes) */
-    buffer[2] = (dc_time) & 0xFF;
-    buffer[3] = (dc_time >> 8) & 0xFF;
-    buffer[4] = (dc_time >> 16) & 0xFF;
-    buffer[5] = (dc_time >> 24) & 0xFF;
-
-    /* Recalculate CRC and store at offset 62 (little-endian, 2 bytes) */
-    crc = calc_flashrom_crc(buffer);
-    buffer[62] = crc & 0xFF;
-    buffer[63] = (crc >> 8) & 0xFF;
-
-    /* Verify our CRC calculation by reading it back */
-    verify_crc = (uint16_t)buffer[62] | ((uint16_t)buffer[63] << 8);
-    if (verify_crc != crc) {
-        return -1; /* CRC storage failed somehow */
-    }
-
-    /* Get partition info */
-    if (flashrom_info(FLASHROM_PT_BLOCK_1, &start, &size) != 0) {
-        return -1;
-    }
-
-    /* Calculate bitmap size (one bit per 64-byte block, rounded to 64 bytes) */
-    bmcnt = size / 64;
-    bmcnt = (bmcnt + (64 * 8) - 1) & ~(64 * 8 - 1);
-    bmcnt = bmcnt / 8;
-
-    if (bmcnt > 65536 || bmcnt <= 0) {
-        return -1;
-    }
-
-    /* Allocate and read bitmap from end of partition */
-    bitmap = (uint8_t*)malloc(bmcnt);
-    if (!bitmap) {
-        return -1;
-    }
-
-    if (flashrom_read(start + size - bmcnt, bitmap, bmcnt) < 0) {
-        goto cleanup;
-    }
-
-    /* Find first unused physical block (first set bit in bitmap).
-     * Bit = 1 means unused (erased flash is all 1s).
-     * IMPORTANT: Skip bit 0 - KOS's flashrom_get_block() uses "i > 0" in its
-     * read loop, meaning it never checks bitmap bit 0 / physical block 1.
-     * If we wrote there, it would never be found! */
-    for (i = 1; i < bmcnt * 8; i++) {
-        if (bitmap[i / 8] & (0x80 >> (i % 8))) {
-            first_unused = i;
-            break;
+    for (int bit = CLOCK_SLOTS; bit < 64 * 8; bit++) {
+        if (!(bitmap[bit / 8] & (0x80 >> (bit % 8)))) {
+            return false;
         }
     }
-
-    if (first_unused < 0) {
-        /* No free blocks - partition is full. This is extremely rare
-         * (partition is 16KB = 256 blocks). Fail gracefully. */
-        goto cleanup;
-    }
-
-    /* SAFETY: Write bitmap FIRST, then block data.
-     * If block write fails after bitmap update, we lose one 64-byte slot
-     * but cause no data corruption - the old syscfg remains valid.
-     * The alternative order (block then bitmap) risks having an orphaned
-     * block that could be overwritten by the next partition write. */
-
-    /* Prepare new bitmap byte with the bit cleared (1->0 = mark as used) */
-    new_bitmap_byte = bitmap[first_unused / 8] & ~(0x80 >> (first_unused % 8));
-
-    /* Write updated bitmap byte to flash - syscall returns 0 on success */
-    if (flashrom_write(start + size - bmcnt + (first_unused / 8), &new_bitmap_byte, 1) < 0) {
-        /* Bitmap update failed - abort without writing block */
-        goto cleanup;
-    }
-
-    /* Now write the block data to the slot we just reserved.
-     * Physical block offset: start + (first_unused + 1) * 64
-     * (bit 0 = physical block 1, bit N = physical block N+1) */
-    if (flashrom_write(start + (first_unused + 1) * 64, buffer, 64) < 0) {
-        /* Block write failed. We've "lost" one slot (it's marked used but
-         * has invalid/partial data). This is unfortunate but not corruption.
-         * The old syscfg block remains valid and will be found. */
-        goto cleanup;
-    }
-
-    rv = 0; /* Success */
-
-cleanup:
-    free(bitmap);
-    return rv;
+    return *latest != 0;
 }
 
-/* Sets the console clock, then the SYSCFG date the BIOS checks at boot so it
- * does not ask for the time. Returns 0 when the clock was set. */
+static int8_t
+clock_prepare(uint8_t** part, int* used, int* latest) {
+    int start = -1, size = -1;
+    *part = NULL;
+    if (clock_storage_is_full) {
+        return CLOCK_SYNC_STORAGE_FULL;
+    }
+    if (flashrom_info(FLASHROM_PT_BLOCK_1, &start, &size) != 0 || start != CLOCK_PART_START
+        || size != CLOCK_PART_SIZE) {
+        return CLOCK_SYNC_STORAGE_ERROR;
+    }
+    *part = malloc(CLOCK_PART_SIZE);
+    if (*part == NULL) {
+        return CLOCK_SYNC_STORAGE_ERROR;
+    }
+    for (int offset = 0; offset < CLOCK_PART_SIZE; offset += 64) {
+        if (!clock_read(start + offset, *part + offset, 64)) {
+            free(*part);
+            *part = NULL;
+            return CLOCK_SYNC_STORAGE_ERROR;
+        }
+    }
+    if (!clock_scan(*part, used, latest)) {
+        free(*part);
+        *part = NULL;
+        return CLOCK_SYNC_STORAGE_ERROR;
+    }
+    if (*used == CLOCK_SLOTS) {
+        free(*part);
+        *part = NULL;
+        clock_storage_full();
+        return CLOCK_SYNC_STORAGE_FULL;
+    }
+    return CLOCK_SYNC_OK;
+}
+
+static bool
+clock_verify_partition(const uint8_t* expected) {
+    uint8_t actual[64];
+    for (int offset = 0; offset < CLOCK_PART_SIZE; offset += 64) {
+        if (!clock_read(CLOCK_PART_START + offset, actual, 64) || memcmp(actual, expected + offset, 64) != 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
+static bool
+clock_program(uint8_t* expected, int offset, uint8_t* data, int size) {
+    bool bitmap = size == 1 && offset >= CLOCK_BITMAP && offset < CLOCK_BITMAP + (CLOCK_SLOTS + 7) / 8;
+    bool body = size == 62 && offset >= 66 && offset <= CLOCK_BITMAP - 62 && offset % 64 == 2;
+    bool id = size == 2 && offset >= 64 && offset <= CLOCK_BITMAP - 64 && offset % 64 == 0;
+    if ((!bitmap && !body && !id) || flashrom_write(CLOCK_PART_START + offset, data, size) != size) {
+        return false;
+    }
+    memcpy(expected + offset, data, size);
+    return clock_verify_partition(expected);
+}
+
+static bool
+clock_append(uint8_t* part, int used, int latest, uint32_t date) {
+    uint8_t record[64];
+    memcpy(record, part + latest * 64, sizeof(record));
+    for (int i = 0; i < 4; i++) {
+        record[2 + i] = date >> (i * 8);
+    }
+    uint16_t crc = calc_flashrom_crc(record);
+    record[62] = crc;
+    record[63] = crc >> 8;
+    int offset = (used + 1) * 64;
+    int bitmap_offset = CLOCK_BITMAP + used / 8;
+    uint8_t bitmap = part[bitmap_offset] & ~(0x80 >> (used % 8));
+    if (!clock_program(part, bitmap_offset, &bitmap, 1)) {
+        return false;
+    }
+    if (used + 1 == CLOCK_SLOTS) {
+        clock_storage_full();
+    }
+    if (!clock_program(part, offset + 2, record + 2, 62) || !clock_program(part, offset, record, 2)) {
+        return false;
+    }
+    int final_used, final_latest;
+    if (!clock_scan(part, &final_used, &final_latest) || final_used != used + 1 || final_latest != used + 1
+        || memcmp(part + final_latest * 64, record, sizeof(record)) != 0) {
+        return false;
+    }
+    checkpoint_generation++;
+    return true;
+}
+
 int8_t
 set_rtc_and_syscfg(time_t local_time) {
-    if (rtc_set_unix_secs(local_time) != 0) {
-        return -1;
+    uint32_t date;
+    uint8_t* part;
+    int used, latest;
+    if (clock_storage_is_full) {
+        return CLOCK_SYNC_STORAGE_FULL;
     }
-    /* If the flash ROM write fails the time is still set. The user may just
-     * see the BIOS date screen on the next boot. */
-    update_flashrom_syscfg_date(local_time);
-    return 0;
+    if (!clock_date(local_time, &date)) {
+        return CLOCK_SYNC_INVALID_TIME;
+    }
+    int8_t result = clock_prepare(&part, &used, &latest);
+    if (result != CLOCK_SYNC_OK) {
+        return result;
+    }
+    if (rtc_set_unix_secs(local_time) != 0) {
+        free(part);
+        return CLOCK_SYNC_RTC_FAILED;
+    }
+    bool saved = clock_append(part, used, latest, date);
+    free(part);
+    return saved ? CLOCK_SYNC_OK : CLOCK_SYNC_CHECKPOINT_FAILED;
+}
+
+void
+clock_extender_tick(void) {
+    static int seen_setting = -1;
+    static unsigned seen_generation;
+    int setting = sf_clock_extender[0];
+    bool extend = setting == CLOCK_EXTENDER_ON && setting != seen_setting
+                  && (seen_setting == -1 ? checkpoint_generation == 0 : checkpoint_generation == seen_generation);
+    seen_setting = setting;
+    if (extend && !clock_storage_is_full) {
+        uint32_t date;
+        uint8_t* part;
+        int used, latest;
+        if (clock_date(rtc_unix_secs(), &date) && clock_prepare(&part, &used, &latest) == CLOCK_SYNC_OK) {
+            clock_append(part, used, latest, date);
+            free(part);
+        }
+    }
+    seen_generation = checkpoint_generation;
 }
 
 static bool
@@ -840,13 +957,16 @@ vmu_get_datetime_checked(maple_device_t* dev, time_t* result) {
     return vmu_decode_datetime(reply, result) ? MAPLE_EOK : MAPLE_EFAIL;
 }
 
-/* Returns 0 when a VMU sets the console clock, or -1 if synchronization fails. */
+/* Checkpoint failures are separate from an incompatible VMU warning. */
 int8_t
 sync_rtc_from_vmu(void) {
     vmu_time_sync_warning = false;
 #if DEBUG_VMU_SYNC
     return vmu_sync_debug_query();
 #else
+    if (clock_sync_storage_full()) {
+        return CLOCK_SYNC_STORAGE_FULL;
+    }
     bool attached = false;
     bool received_time = false;
     for (int i = 0; i < 8; i++) {
@@ -870,8 +990,9 @@ sync_rtc_from_vmu(void) {
         received_time = true;
 
         /* Set Dreamcast RTC */
-        if (set_rtc_and_syscfg(vmu_time) == 0) {
-            return 0; /* Success */
+        int8_t sync_result = set_rtc_and_syscfg(vmu_time);
+        if (sync_result != CLOCK_SYNC_RTC_FAILED && sync_result != CLOCK_SYNC_INVALID_TIME) {
+            return sync_result;
         }
     }
     vmu_time_sync_warning = attached && !received_time;
@@ -889,8 +1010,11 @@ sync_rtc_from_vmu(void) {
 int8_t
 set_rtc_and_syscfg(time_t local_time) {
     (void)local_time;
-    return -1;
+    return CLOCK_SYNC_RTC_FAILED;
 }
+
+void
+clock_extender_tick(void) {}
 #endif
 
 int8_t
@@ -1066,6 +1190,15 @@ savefile_get_sd_status(void) {
 #endif
 }
 
+bool
+savefile_sd_unreadable(void) {
+#ifdef _arch_dreamcast
+    return sd_savefile_get_status() == SD_STATUS_UNREADABLE;
+#else
+    return false;
+#endif
+}
+
 uint32_t
 savefile_get_sd_version(void) {
 #ifdef _arch_dreamcast
@@ -1117,321 +1250,13 @@ savefile_refresh_sd_status(void) {
         if (sd_savefile_init() == 0) {
             return; /* Status already refreshed by init */
         }
-        /* Init failed, status is already set to NOT_PRESENT */
+        /* Init failed, status is already set to NOT_PRESENT or UNREADABLE */
         return;
     }
     /* SD already initialized, refresh the status */
     sd_savefile_refresh_status();
 #endif
 }
-
-/* COMPACTION_TEST_START */
-#ifdef _arch_dreamcast
-
-#include <stdio.h>
-
-/* Compaction test state */
-static int ct_write_count = 0;
-static int ct_total_blocks = 0;
-static int ct_result = 0; /* 0 = not done, 1 = no compaction, 2 = compaction detected */
-static const char* ct_status = "Not started";
-static char ct_debug_buf[64] = {0}; /* Debug info buffer */
-static uint8_t* ct_backup_data = NULL;
-static int ct_backup_start = 0;
-static int ct_backup_size = 0;
-static bool ct_initialized = false;
-
-/* Count free blocks in partition 2 */
-static int
-ct_count_free_blocks(int start, int size) {
-    int bmcnt = size / 64;
-    bmcnt = (bmcnt + (64 * 8) - 1) & ~(64 * 8 - 1);
-    bmcnt = bmcnt / 8;
-
-    uint8_t* bitmap = (uint8_t*)malloc(bmcnt);
-    if (!bitmap) {
-        return -1;
-    }
-
-    if (flashrom_read(start + size - bmcnt, bitmap, bmcnt) < 0) {
-        free(bitmap);
-        return -1;
-    }
-
-    int free_count = 0;
-    for (int i = 1; i < bmcnt * 8; i++) {
-        if (bitmap[i / 8] & (0x80 >> (i % 8))) {
-            free_count++;
-        }
-    }
-
-    free(bitmap);
-    return free_count;
-}
-
-/* Initialize the compaction test - backup partition to RAM */
-int8_t
-compaction_test_init(void) {
-    int info_ret, read_ret;
-
-    if (ct_initialized) {
-        ct_status = "Already running";
-        return -1;
-    }
-
-    /* Get partition info */
-    info_ret = flashrom_info(FLASHROM_PT_BLOCK_1, &ct_backup_start, &ct_backup_size);
-    if (info_ret != 0) {
-        snprintf(ct_debug_buf, sizeof(ct_debug_buf), "info ret=%d", info_ret);
-        ct_status = ct_debug_buf;
-        return -1;
-    }
-
-    /* Allocate backup buffer */
-    ct_backup_data = (uint8_t*)malloc(ct_backup_size);
-    if (!ct_backup_data) {
-        snprintf(ct_debug_buf, sizeof(ct_debug_buf), "alloc fail sz=%d", ct_backup_size);
-        ct_status = ct_debug_buf;
-        return -1;
-    }
-
-    /* Read entire partition - syscall returns 0 on success, -1 on failure */
-    ct_status = "Backing up...";
-    read_ret = flashrom_read(ct_backup_start, ct_backup_data, ct_backup_size);
-    if (read_ret < 0) {
-        snprintf(ct_debug_buf, sizeof(ct_debug_buf), "read ret=%d start=%X sz=%d", read_ret, ct_backup_start,
-                 ct_backup_size);
-        ct_status = ct_debug_buf;
-        free(ct_backup_data);
-        ct_backup_data = NULL;
-        return -1;
-    }
-
-    /* Count initial free blocks */
-    ct_total_blocks = ct_count_free_blocks(ct_backup_start, ct_backup_size);
-    if (ct_total_blocks <= 0) {
-        free(ct_backup_data);
-        ct_backup_data = NULL;
-        ct_status = "No free blocks";
-        return -1;
-    }
-
-    ct_write_count = 0;
-    ct_result = 0;
-    ct_initialized = true;
-    ct_status = "Ready";
-
-    return 0;
-}
-
-/* Perform one write step - call each frame */
-int8_t
-compaction_test_step(void) {
-    if (!ct_initialized || !ct_backup_data) {
-        return -1;
-    }
-
-    uint8_t buffer[64];
-    int bmcnt, i, first_unused = -1;
-    uint8_t* bitmap;
-    uint16_t crc;
-    uint32_t test_date;
-
-    /* Read current syscfg */
-    if (flashrom_get_block(FLASHROM_PT_BLOCK_1, FLASHROM_B1_SYSCFG, buffer) < 0) {
-        ct_status = "Read syscfg failed";
-        ct_result = 1;
-        return 1; /* Done with error */
-    }
-
-    /* Update date field with unique test value */
-    test_date = 0x50000000 + ct_write_count;
-    buffer[2] = (test_date) & 0xFF;
-    buffer[3] = (test_date >> 8) & 0xFF;
-    buffer[4] = (test_date >> 16) & 0xFF;
-    buffer[5] = (test_date >> 24) & 0xFF;
-
-    /* Recalculate CRC */
-    crc = calc_flashrom_crc(buffer);
-    buffer[62] = crc & 0xFF;
-    buffer[63] = (crc >> 8) & 0xFF;
-
-    /* Calculate bitmap size */
-    bmcnt = ct_backup_size / 64;
-    bmcnt = (bmcnt + (64 * 8) - 1) & ~(64 * 8 - 1);
-    bmcnt = bmcnt / 8;
-
-    /* Read bitmap */
-    bitmap = (uint8_t*)malloc(bmcnt);
-    if (!bitmap) {
-        ct_status = "Bitmap alloc failed";
-        ct_result = 1;
-        return 1;
-    }
-
-    if (flashrom_read(ct_backup_start + ct_backup_size - bmcnt, bitmap, bmcnt) < 0) {
-        free(bitmap);
-        ct_status = "Bitmap read failed";
-        ct_result = 1;
-        return 1;
-    }
-
-    /* Find first unused block (skip bit 0) */
-    for (i = 1; i < bmcnt * 8; i++) {
-        if (bitmap[i / 8] & (0x80 >> (i % 8))) {
-            first_unused = i;
-            break;
-        }
-    }
-
-    if (first_unused < 0) {
-        /* Partition full! Check if compaction happened */
-        int new_free = ct_count_free_blocks(ct_backup_start, ct_backup_size);
-        free(bitmap);
-
-        if (new_free > 5) {
-            /* Significant free space appeared - compaction detected! */
-            ct_status = "COMPACTION DETECTED!";
-            ct_result = 2;
-        } else {
-            ct_status = "NO compaction";
-            ct_result = 1;
-        }
-        return 1; /* Done */
-    }
-
-    /* Update status */
-    ct_status = "Writing...";
-
-    /* Write bitmap byte first (mark slot as used) */
-    uint8_t new_bm_byte = bitmap[first_unused / 8] & ~(0x80 >> (first_unused % 8));
-    free(bitmap);
-
-    /* Syscalls return 0 on success, -1 on failure */
-    if (flashrom_write(ct_backup_start + ct_backup_size - bmcnt + (first_unused / 8), &new_bm_byte, 1) < 0) {
-        ct_status = "Bitmap write failed";
-        ct_result = 1;
-        return 1;
-    }
-
-    /* Write block data */
-    if (flashrom_write(ct_backup_start + (first_unused + 1) * 64, buffer, 64) < 0) {
-        ct_status = "Block write failed";
-        ct_result = 1;
-        return 1;
-    }
-
-    ct_write_count++;
-    return 0; /* Continue */
-}
-
-/* Restore partition from backup */
-int8_t
-compaction_test_restore(void) {
-    if (!ct_backup_data) {
-        ct_status = "No backup data";
-        return -1;
-    }
-
-    ct_status = "Erasing...";
-
-    /* Erase partition (takes partition start address) */
-    if (flashrom_delete(ct_backup_start) != 0) {
-        ct_status = "Erase failed!";
-        return -1;
-    }
-
-    ct_status = "Restoring...";
-
-    /* Write backup data back - syscall returns 0 on success, -1 on failure */
-    int write_ret = flashrom_write(ct_backup_start, ct_backup_data, ct_backup_size);
-    if (write_ret < 0) {
-        snprintf(ct_debug_buf, sizeof(ct_debug_buf), "write ret=%d", write_ret);
-        ct_status = ct_debug_buf;
-        return -1;
-    }
-
-    ct_status = "Restored OK";
-    return 0;
-}
-
-/* Cleanup - free resources */
-void
-compaction_test_cleanup(void) {
-    if (ct_backup_data) {
-        free(ct_backup_data);
-        ct_backup_data = NULL;
-    }
-    ct_initialized = false;
-    ct_write_count = 0;
-    ct_total_blocks = 0;
-    ct_result = 0;
-    ct_status = "Not started";
-}
-
-/* Getters for UI */
-int
-compaction_test_get_write_count(void) {
-    return ct_write_count;
-}
-
-int
-compaction_test_get_total_blocks(void) {
-    return ct_total_blocks;
-}
-
-int
-compaction_test_get_result(void) {
-    return ct_result;
-}
-
-const char*
-compaction_test_get_status(void) {
-    return ct_status;
-}
-
-#else
-/* Non-Dreamcast stubs */
-int8_t
-compaction_test_init(void) {
-    return -1;
-}
-
-int8_t
-compaction_test_step(void) {
-    return -1;
-}
-
-int8_t
-compaction_test_restore(void) {
-    return -1;
-}
-
-void
-compaction_test_cleanup(void) {}
-
-int
-compaction_test_get_write_count(void) {
-    return 0;
-}
-
-int
-compaction_test_get_total_blocks(void) {
-    return 0;
-}
-
-int
-compaction_test_get_result(void) {
-    return 0;
-}
-
-const char*
-compaction_test_get_status(void) {
-    return "N/A";
-}
-#endif
-
-/* COMPACTION_TEST_END */
 
 /* Every call repaints. The app calls this when the icon changes and again
  * when it hands the LCD back with the same variant. */

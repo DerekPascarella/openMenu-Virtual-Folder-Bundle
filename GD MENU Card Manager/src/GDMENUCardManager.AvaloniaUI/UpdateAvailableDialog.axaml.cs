@@ -27,17 +27,17 @@ namespace GDMENUCardManager
             LatestTag = latestTag;
             LatestVersion = latestVersion;
             this.FindControl<TextBlock>("VersionText").Text = latestVersion;
-
-            this.KeyDown += (s, e) =>
-            {
-                if (e.Key == Key.Escape)
-                    Close();
-            };
         }
 
         private void InitializeComponent()
         {
             AvaloniaXamlLoader.Load(this);
+        }
+
+        protected override void OnOpened(EventArgs e)
+        {
+            base.OnOpened(e);
+            this.FindControl<Button>("UpdateButton")?.Focus(NavigationMethod.Tab);
         }
 
         private void UpdateButton_Click(object sender, RoutedEventArgs e)
@@ -88,6 +88,7 @@ namespace GDMENUCardManager
                     config.AppSettings.Settings["SkippedUpdateVersion"].Value = tag;
                 else
                     config.AppSettings.Settings.Add("SkippedUpdateVersion", tag);
+                RetiredSettings.Remove(config);
                 config.Save(ConfigurationSaveMode.Modified);
                 ConfigurationManager.RefreshSection("appSettings");
             }

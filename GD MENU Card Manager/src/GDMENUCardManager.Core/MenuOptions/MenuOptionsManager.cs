@@ -92,8 +92,8 @@ namespace GDMENUCardManager.Core.MenuOptions
         /// Themes valid for the given style, built-ins first then the scanned
         /// theme folders. Follows the discovery rules of openMenu's load_themes,
         /// including the CUSTOM #n fallback name for folders that have no
-        /// theme.ini. The ten per family cap matches the console's fixed theme
-        /// arrays, which openMenu itself never bounds checks.
+        /// theme.ini. Only slots 0 to 19 are accepted and they are listed in
+        /// slot order, the same set and order the console builds.
         /// </summary>
         public List<ThemeEntry> GetThemesForStyle(MenuStyle style)
         {
@@ -127,24 +127,33 @@ namespace GDMENUCardManager.Core.MenuOptions
             {
                 var dirs = Directory.GetDirectories(themeScanPath)
                     .Select(Path.GetFileName)
-                    .Where(d => d.Length > prefix.Length && d.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-                    .OrderBy(d => d, StringComparer.OrdinalIgnoreCase)
-                    .Take(10);
+                    .Where(d => d.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                    .Select(d => (Dir: d, Slot: ThemeSlotNumber(d.Substring(prefix.Length))))
+                    .Where(t => t.Slot >= 0)
+                    .OrderBy(t => t.Slot)
+                    .Take(ThemeSlotsMax);
 
-                foreach (var dir in dirs)
+                foreach (var (dir, slot) in dirs)
                 {
-                    var name = ReadThemeName(Path.Combine(themeScanPath, dir));
-                    if (name == null)
-                    {
-                        // openMenu names INI-less themes CUSTOM #n from the char after the prefix
-                        int n = dir[prefix.Length] - '0';
-                        name = $"CUSTOM #{n}";
-                    }
+                    var name = ReadThemeName(Path.Combine(themeScanPath, dir)) ?? $"CUSTOM #{slot}";
                     result.Add(new ThemeEntry { Id = dir.ToUpperInvariant(), DisplayName = name });
                 }
             }
 
             return result;
+        }
+
+        private const int ThemeSlotsMax = 20;
+
+        // Accepts "0" to "19" with no leading zero and nothing after it.
+        private static int ThemeSlotNumber(string suffix)
+        {
+            if (suffix.Length == 0 || suffix.Length > 2 || !suffix.All(c => c >= '0' && c <= '9'))
+                return -1;
+            if (suffix.Length == 2 && suffix[0] == '0')
+                return -1;
+            int slot = int.Parse(suffix);
+            return slot < ThemeSlotsMax ? slot : -1;
         }
 
         private static string ReadThemeName(string themeDir)

@@ -79,7 +79,7 @@
                                         ToolTip="Select a WAV, MP3, OGG, or FLAC file to convert"/>
                                 <TextBox Text="{Binding SelectedSourceDisplay, Mode=OneWay}" IsReadOnly="True" VerticalContentAlignment="Center"/>
                             </DockPanel>
-                            <TextBlock Text="Select a music file to enable the Apply button." Foreground="DarkRed" FontSize="11" Margin="0,8,0,0"
+                            <TextBlock Text="Select a music file to enable the Apply button." FontSize="11" Margin="0,8,0,0"
                                        Visibility="{Binding ShowBgmHint, Converter={StaticResource BoolToVis}}"/>
                         </StackPanel>
                     </GroupBox>

@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Windows;
-using System.Windows.Input;
 using GDMENUCardManager.Core;
 
 namespace GDMENUCardManager
@@ -18,12 +17,6 @@ namespace GDMENUCardManager
                 ReasonText.Text = $"A new version of GD MENU Card Manager ({latestVersion}) is available. Auto-update is not supported on this platform.";
             else
                 ReasonText.Text = $"A new version of GD MENU Card Manager ({latestVersion}) is available, but this release cannot be auto-updated.";
-
-            this.PreviewKeyDown += (s, e) =>
-            {
-                if (e.Key == Key.Escape)
-                    Close();
-            };
         }
 
         private void OkButton_Click(object sender, RoutedEventArgs e)

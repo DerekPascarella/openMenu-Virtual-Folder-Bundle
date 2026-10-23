@@ -114,6 +114,11 @@ static int navigate_timeout = INPUT_TIMEOUT_INITIAL;
 static enum draw_state draw_current = DRAW_UI;
 static mouse_scroll_state_t wheel_scroll;
 static uint32_t wheel_scroll_identity;
+
+/* Frames a newly hovered row waits before its artwork may load from disc. */
+#define ART_SETTLE_FRAMES (8)
+static int art_settle;
+
 static bool serial_vmu_boot_checked = false;
 static bool dcnow_boot_started = false;
 
@@ -225,6 +230,7 @@ static void
 mouse_select_row(int index) {
     if (index >= 0 && index < list_len && index != current_selected_item) {
         current_selected_item = index;
+        art_settle = ART_SETTLE_FRAMES;
         marquee_reset();
     }
 }
@@ -439,7 +445,9 @@ draw_gameart(void) {
 #endif
 
         {
-            txr_get_large(item->product, &txr_focus);
+            if (txr_get_large(item->product, &txr_focus) == TXR_DEFERRED) {
+                return;
+            }
             if (txr_focus.texture == img_empty_boxart.texture) {
                 txr_get_small(item->product, &txr_focus);
             }
@@ -1360,7 +1368,12 @@ FUNCTION(UI_NAME, drawOP) { draw_bg_layers(); }
 FUNCTION(UI_NAME, drawTR) {
     /* List, artwork and details always draw, popups go on top of them. */
     draw_gamelist();
+    txr_defer_loads(art_settle > 0);
     draw_gameart();
+    txr_defer_loads(0);
+    if (art_settle > 0) {
+        art_settle--;
+    }
     draw_item_details();
     draw_clock();
 
@@ -1401,12 +1414,6 @@ FUNCTION(UI_NAME, drawTR) {
         case DRAW_SAVELOAD: {
             draw_saveload_tr();
         } break;
-        /* COMPACTION_TEST_START */
-        case DRAW_COMPACTION_TEST: {
-            draw_compaction_test_op();
-            draw_compaction_test_tr();
-        } break;
-        /* COMPACTION_TEST_END */
         case DRAW_SERIAL_VMU: {
             draw_serial_vmu_op();
             draw_serial_vmu_tr();
@@ -1492,11 +1499,6 @@ FUNCTION_INPUT(UI_NAME, handle_input) {
         case DRAW_SAVELOAD: {
             handle_input_saveload(input_current);
         } break;
-        /* COMPACTION_TEST_START */
-        case DRAW_COMPACTION_TEST: {
-            handle_input_compaction_test(input_current);
-        } break;
-        /* COMPACTION_TEST_END */
         case DRAW_SERIAL_VMU: {
             handle_input_serial_vmu(input_current);
         } break;

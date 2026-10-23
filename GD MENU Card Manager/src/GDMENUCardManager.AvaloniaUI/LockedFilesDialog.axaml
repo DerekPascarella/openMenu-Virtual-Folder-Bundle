@@ -31,9 +31,9 @@
     </ListBox>
 
     <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
-      <Button Content="Retry" Width="80" Padding="15,8" Margin="0,0,10,0" Click="RetryButton_Click" IsDefault="True"
+      <Button x:Name="RetryButton" Content="Retry" Width="80" Padding="15,8" Margin="0,0,10,0" Click="RetryButton_Click"
               ToolTip.Tip="Check the listed files again after closing the programs using them"/>
-      <Button Content="Cancel" Width="80" Padding="15,8" Click="CancelButton_Click"
+      <Button Content="Cancel" Width="80" Padding="15,8" Click="CancelButton_Click" IsCancel="True"
               ToolTip.Tip="Cancel the save operation"/>
     </StackPanel>
   </Grid>

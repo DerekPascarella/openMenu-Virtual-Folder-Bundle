@@ -26,10 +26,6 @@ void cb_menu_setup(enum draw_state* state, struct theme_color* _colors, int* tim
 void recent_manage_setup(enum draw_state* state, struct theme_color* _colors, int* timeout_ptr, uint32_t title_color);
 void saveload_setup(enum draw_state* state, struct theme_color* _colors, int* timeout_ptr, uint32_t title_color);
 
-/* COMPACTION_TEST_START */
-void compaction_test_setup(enum draw_state* state, struct theme_color* _colors, int* timeout_ptr, uint32_t title_color);
-/* COMPACTION_TEST_END */
-
 void handle_input_menu(enum control input);
 void handle_input_credits(enum control input);
 void handle_input_multidisc(enum control input);
@@ -38,10 +34,6 @@ void handle_input_codebreaker(enum control input);
 void handle_input_psx_launcher(enum control input);
 void handle_input_saveload(enum control input);
 void handle_input_recent_manage(enum control input);
-
-/* COMPACTION_TEST_START */
-void handle_input_compaction_test(enum control input);
-/* COMPACTION_TEST_END */
 
 void draw_menu_op(void);
 void draw_menu_tr(void);
@@ -54,7 +46,7 @@ void draw_popup_menu_ex(int x, int y, int width, int height, int ui_mode);
  * pass, and it draws nothing until the main loop turns it on. */
 void hangup_overlay_set(int on);
 void draw_hangup_overlay(struct theme_color* colors, uint32_t title_color);
-void device_warnings_init(bool serial_sd_missing);
+void device_warnings_init(bool serial_sd_missing, bool serial_sd_unreadable);
 bool handle_input_device_warnings(enum control input);
 void draw_device_warnings(struct theme_color* colors, uint32_t title_color, int ui_mode);
 
@@ -83,12 +75,6 @@ void draw_saveload_tr(void);
 
 void draw_recent_manage_op(void);
 void draw_recent_manage_tr(void);
-
-/* COMPACTION_TEST_START */
-void draw_compaction_test_op(void);
-void draw_compaction_test_tr(void);
-
-/* COMPACTION_TEST_END */
 
 typedef enum {
     SERIAL_VMU_LAUNCH_DC,

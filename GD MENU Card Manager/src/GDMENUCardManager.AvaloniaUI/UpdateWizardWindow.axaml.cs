@@ -72,6 +72,12 @@ namespace GDMENUCardManager
             ChkPreserveSettings = this.FindControl<CheckBox>("ChkPreserveSettings");
         }
 
+        protected override void OnOpened(EventArgs e)
+        {
+            base.OnOpened(e);
+            ChkPreserveDats?.Focus(NavigationMethod.Tab);
+        }
+
         protected override void OnClosing(WindowClosingEventArgs e)
         {
             if (_installing)
@@ -91,6 +97,9 @@ namespace GDMENUCardManager
         {
             Page1.IsVisible = false;
             Page2.IsVisible = true;
+
+            // Focus would otherwise stay on the hidden Next button.
+            CancelDownloadButton.Focus(NavigationMethod.Tab);
             StartDownload();
         }
 

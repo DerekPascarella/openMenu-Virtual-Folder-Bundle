@@ -5,7 +5,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="GDEMU.INI Setup" SizeToContent="Height" Width="460"
-        WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        FocusManager.FocusedElement="{Binding ElementName=CloneRadio}">
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -41,7 +42,7 @@
 
         <!-- Buttons -->
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
-            <Button Content="OK" Click="OkButton_Click" Width="90" Padding="15,8" IsDefault="True"
+            <Button Content="OK" Click="OkButton_Click" Width="90" Padding="15,8"
                     ToolTip="Create GDEMU.INI with timing values for the selected model"/>
         </StackPanel>
     </Grid>

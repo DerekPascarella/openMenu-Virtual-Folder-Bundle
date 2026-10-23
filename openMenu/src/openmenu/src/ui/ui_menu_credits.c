@@ -253,11 +253,12 @@ static const char* menu_choice_text[] = {"Style",
                                          "DC Now!",
                                          "DC Now! Auto-Refresh",
                                          "DC Now! VMU Updates",
-                                         "Online Time Sync",
+                                         "Online Clock Sync",
+                                         "VMU Clock Sync",
+                                         "Clock Checkpoint Extender",
                                          "Serial VMU",
                                          "Serial VMU Multi-Slot",
                                          "VMU Game ID",
-                                         "VMU Time Sync",
                                          "VMU Beep on Save"};
 static const char* theme_choice_text[] = {"LineDesc", "Grid3", "Scroll", "Folders"};
 static const char* region_choice_text[] = {"NTSC-U", "NTSC-J", "PAL"};
@@ -288,6 +289,7 @@ static const char* marquee_speed_choice_text[] = {"Slow", "Medium", "Fast"};
 static const char* mouse_speed_choice_text[] = {"Slow", "Medium", "Fast"};
 static const char* clock_choice_text[] = {"On (12-Hour)", "On (24-Hour)", "Off"};
 static const char* vmu_time_sync_choice_text[] = {"Off", "On"};
+static const char* clock_extender_choice_text[] = {"Off", "On"};
 static const char* serial_vmu_choice_text[] = {"Off",     "On (A1)", "On (A2)", "On (B1)", "On (B2)",
                                                "On (C1)", "On (C2)", "On (D1)", "On (D2)"};
 static const char* serial_vmu_multislot_choice_text[] = {"Off", "On"};
@@ -310,7 +312,7 @@ static const char* save_choice_text[] = {"Save/Load", "Apply"};
 static const char* credits_text[] = {"Credits"};
 static const char* dcnow_button_text = "DC Now!";
 
-const char* custom_theme_text[10] = {0};
+const char* custom_theme_text[THEME_SLOTS_MAX] = {0};
 static theme_custom* custom_themes;
 static theme_scroll* custom_scroll;
 static int num_custom_themes;
@@ -345,6 +347,7 @@ static int REGION_CHOICES = (sizeof(region_choice_text) / sizeof(region_choice_t
 #define MOUSE_SPEED_CHOICES        (sizeof(mouse_speed_choice_text) / sizeof(mouse_speed_choice_text)[0])
 #define CLOCK_CHOICES              (sizeof(clock_choice_text) / sizeof(clock_choice_text)[0])
 #define VMU_TIME_SYNC_CHOICES      (sizeof(vmu_time_sync_choice_text) / sizeof(vmu_time_sync_choice_text)[0])
+#define CLOCK_EXTENDER_CHOICES     (sizeof(clock_extender_choice_text) / sizeof(clock_extender_choice_text)[0])
 #define SERIAL_VMU_CHOICES         (sizeof(serial_vmu_choice_text) / sizeof(serial_vmu_choice_text)[0])
 #define SERIAL_VMU_MULTISLOT_CHOICES                                                                                   \
     (sizeof(serial_vmu_multislot_choice_text) / sizeof(serial_vmu_multislot_choice_text)[0])
@@ -384,10 +387,11 @@ typedef enum MENU_CHOICE {
     CHOICE_DCNOW_REFRESH,
     CHOICE_DCNOW_VMU,
     CHOICE_ONLINE_TIME_SYNC,
+    CHOICE_VMU_TIME_SYNC,
+    CHOICE_CLOCK_EXTENDER,
     CHOICE_SERIAL_VMU,
     CHOICE_SERIAL_VMU_MULTISLOT,
     CHOICE_VM2_SEND_ALL,
-    CHOICE_VMU_TIME_SYNC,
     CHOICE_BEEP,
     CHOICE_SAVE,
     CHOICE_CREDITS,
@@ -424,10 +428,11 @@ static int choices_max[MENU_CHOICES + 1] = {THEME_CHOICES,
                                             DCNOW_REFRESH_CHOICES,
                                             DCNOW_VMU_CHOICES,
                                             ONLINE_TIME_SYNC_CHOICES,
+                                            VMU_TIME_SYNC_CHOICES,
+                                            CLOCK_EXTENDER_CHOICES,
                                             SERIAL_VMU_CHOICES,
                                             SERIAL_VMU_MULTISLOT_CHOICES,
                                             VM2_SEND_ALL_CHOICES,
-                                            VMU_TIME_SYNC_CHOICES,
                                             BEEP_CHOICES,
                                             2 /* Apply/Save */};
 static const char** menu_choice_array[MENU_CHOICES] = {theme_choice_text,
@@ -457,10 +462,11 @@ static const char** menu_choice_array[MENU_CHOICES] = {theme_choice_text,
                                                        dcnow_refresh_choice_text,
                                                        dcnow_vmu_choice_text,
                                                        online_time_sync_choice_text,
+                                                       vmu_time_sync_choice_text,
+                                                       clock_extender_choice_text,
                                                        serial_vmu_choice_text,
                                                        serial_vmu_multislot_choice_text,
                                                        vm2_send_all_choice_text,
-                                                       vmu_time_sync_choice_text,
                                                        beep_choice_text};
 
 /* Positions on the footer row. DC Now! is there only while the setting is on. */
@@ -479,6 +485,10 @@ static int* input_timeout_ptr = NULL;
 /* Scroll window over the settings rows in the settings menu */
 #define SETTINGS_WINDOW_ROWS 9
 static int settings_scroll_offset = 0;
+
+/* Scroll window over the discs in the multi-disc launcher */
+#define MULTIDISC_WINDOW_ROWS 8
+static int multidisc_scroll_offset = 0;
 
 #pragma endregion Settings_Menu
 
@@ -522,11 +532,6 @@ static void saveload_init_state(void);
 
 /* Forward declaration, menu_setup needs it before its definition */
 static int settings_option_visible(int option);
-
-/* COMPACTION_TEST_START */
-/* Forward declaration for compaction test */
-static void compaction_test_setup_internal(void);
-/* COMPACTION_TEST_END */
 
 /* Build version string (compiled in from VERSION.TXT at build time) */
 #ifndef OPENMENU_BUILD_VERSION
@@ -642,6 +647,7 @@ menu_setup(enum draw_state* state, theme_color* _colors, int* timeout_ptr, uint3
     choices[CHOICE_MOUSE_SCROLL_SPEED] = sf_mouse_scroll_speed[0];
     choices[CHOICE_CLOCK] = sf_clock[0];
     choices[CHOICE_VMU_TIME_SYNC] = sf_vmu_time_sync[0];
+    choices[CHOICE_CLOCK_EXTENDER] = sf_clock_extender[0];
     choices[CHOICE_SERIAL_VMU] = sf_serial_vmu[0];
     choices[CHOICE_SERIAL_VMU_MULTISLOT] = sf_serial_vmu_multislot[0];
     choices[CHOICE_VM2_SEND_ALL] = sf_vm2_send_all[0];
@@ -677,6 +683,7 @@ popup_setup(enum draw_state* state, theme_color* _colors, int* timeout_ptr, uint
     menu_title_color = title_color;
 
     current_choice = CHOICE_START;
+    multidisc_scroll_offset = 0;
     psx_launcher_choice = 0; /* Reset to Bleem! as default */
 }
 
@@ -762,23 +769,12 @@ menu_accept(void) {
         sf_mouse_cursor_speed[0] = choices[CHOICE_MOUSE_CURSOR_SPEED];
         sf_mouse_scroll_speed[0] = choices[CHOICE_MOUSE_SCROLL_SPEED];
         sf_clock[0] = choices[CHOICE_CLOCK];
-        /* If VMU Time Sync was just enabled, sync the RTC now */
+        /* If VMU Clock Sync was just enabled, sync the RTC now */
         if (choices[CHOICE_VMU_TIME_SYNC] == VMU_TIME_SYNC_ON && sf_vmu_time_sync[0] == VMU_TIME_SYNC_OFF) {
             sync_rtc_from_vmu();
         }
-        /* COMPACTION_TEST_START. Enable DEBUG_COMPACTION_TEST in openmenu_debug.h */
-#if DEBUG_COMPACTION_TEST
-        /* Hijack VMU Time Sync enable to trigger compaction test */
-        if (choices[CHOICE_VMU_TIME_SYNC] == VMU_TIME_SYNC_ON && sf_vmu_time_sync[0] == VMU_TIME_SYNC_OFF) {
-            sf_vmu_time_sync[0] = choices[CHOICE_VMU_TIME_SYNC];
-            compaction_test_setup_internal();
-            *state_ptr = DRAW_COMPACTION_TEST;
-            *input_timeout_ptr = 3;
-            return;
-        }
-#endif
-        /* COMPACTION_TEST_END */
         sf_vmu_time_sync[0] = choices[CHOICE_VMU_TIME_SYNC];
+        sf_clock_extender[0] = choices[CHOICE_CLOCK_EXTENDER];
         sf_serial_vmu[0] = choices[CHOICE_SERIAL_VMU];
         sf_serial_vmu_multislot[0] = choices[CHOICE_SERIAL_VMU_MULTISLOT];
         sf_vm2_send_all[0] = choices[CHOICE_VM2_SEND_ALL];
@@ -1127,6 +1123,27 @@ menu_choice_right(void) {
     *input_timeout_ptr = INPUT_TIMEOUT;
 }
 
+/* Keeps the highlighted disc inside the scroll window. Close sits below the
+ * list and leaves the window where it is. Returns the highest valid offset. */
+static int
+multidisc_update_scroll(int count, int window) {
+    const int max_scroll = count - window;
+    if (multidisc_scroll_offset > max_scroll) {
+        multidisc_scroll_offset = max_scroll;
+    }
+    if (multidisc_scroll_offset < 0) {
+        multidisc_scroll_offset = 0;
+    }
+    if (current_choice < count) {
+        if (current_choice < multidisc_scroll_offset) {
+            multidisc_scroll_offset = current_choice;
+        } else if (current_choice >= multidisc_scroll_offset + window) {
+            multidisc_scroll_offset = current_choice - window + 1;
+        }
+    }
+    return max_scroll;
+}
+
 static void
 menu_multidisc_prev(void) {
     if (*input_timeout_ptr > 0) {
@@ -1436,16 +1453,37 @@ static int hangup_overlay = 0;
 
 typedef enum {
     DEVICE_WARNING_NONE,
+    DEVICE_WARNING_CLOCK_SYNC,
     DEVICE_WARNING_VMU_TIME_SYNC,
     DEVICE_WARNING_SERIAL_SD,
+    DEVICE_WARNING_SD_UNREADABLE,
 } device_warning_t;
+
+static const char* const clock_sync_warning_lines[] = {
+    "Flashrom's system settings storage",
+    "is full.",
+    "",
+    "Exit to BIOS and set the date/time",
+    "once to free space.",
+    "",
+    "VMU Clock Sync, Online Clock Sync,",
+    "and Clock Checkpoint Extender",
+    "will work again.",
+    "",
+    "If you chose not to perform this",
+    "action, all openMenu clock sync",
+    "features will be non-functional.",
+    "",
+    "Exit to BIOS",
+    "Close",
+};
 
 static const char* const vmu_time_sync_warning_lines[] = {
     "No attached VMU could provide a valid",
     "date and time.",
     "",
     "Use a compatible device, or turn off",
-    "VMU Time Sync to prevent this",
+    "VMU Clock Sync to prevent this",
     "message from appearing again.",
     "",
     "Close",
@@ -1454,16 +1492,36 @@ static const char* const vmu_time_sync_warning_lines[] = {
 static const char* const serial_sd_warning_lines[] = {
     "No serial SD card reader was detected.",
     "",
-    "To enable Serial VMU functionality,",
-    "either power cycle the console, or",
-    "restart openMenu by exiting to BIOS",
-    "and selecting \"Play\".",
+    "If you know the reader is connected",
+    "and the card is okay, power cycle the",
+    "console, or exit to BIOS and select",
+    "\"Play\" to try again.",
+    "",
+    "Exit to BIOS",
+    "Close",
+};
+
+static const char* const sd_unreadable_warning_lines[] = {
+    "The serial SD adapter's card could",
+    "not be read.",
+    "",
+    "It may be corrupt or formatted with",
+    "an unsupported filesystem (only",
+    "FAT16/32 is supported).",
+    "",
+    "If you know the card is okay, power",
+    "cycle the console, or exit to BIOS",
+    "and select \"Play\" to try again.",
+    "",
+    "Close to continue without Serial VMU",
+    "or saving settings to the SD card.",
     "",
     "Exit to BIOS",
     "Close",
 };
 
 static bool serial_sd_warning_pending;
+static bool sd_unreadable_warning_pending;
 static bool device_warning_drawn;
 static device_warning_t drawn_device_warning;
 static int device_warning_selection;
@@ -1474,8 +1532,14 @@ static int device_warning_action_count;
 
 static device_warning_t
 active_device_warning(void) {
+    if (clock_sync_warning_pending()) {
+        return DEVICE_WARNING_CLOCK_SYNC;
+    }
     if (vmu_time_sync_warning_pending()) {
         return DEVICE_WARNING_VMU_TIME_SYNC;
+    }
+    if (sd_unreadable_warning_pending) {
+        return DEVICE_WARNING_SD_UNREADABLE;
     }
     if (serial_sd_warning_pending) {
         return DEVICE_WARNING_SERIAL_SD;
@@ -1500,8 +1564,9 @@ reset_device_warning_input(void) {
 }
 
 void
-device_warnings_init(bool serial_sd_missing) {
+device_warnings_init(bool serial_sd_missing, bool serial_sd_unreadable) {
     serial_sd_warning_pending = serial_sd_missing;
+    sd_unreadable_warning_pending = serial_sd_unreadable;
     reset_device_warning_input();
 }
 
@@ -1518,6 +1583,17 @@ device_warning_mouse_row(const mouse_frame_t* mouse) {
         }
     }
     return -1;
+}
+
+static void
+dismiss_device_warning(device_warning_t warning) {
+    if (warning == DEVICE_WARNING_CLOCK_SYNC) {
+        clock_sync_warning_dismiss();
+    } else if (warning == DEVICE_WARNING_SD_UNREADABLE) {
+        sd_unreadable_warning_pending = false;
+    } else {
+        serial_sd_warning_pending = false;
+    }
 }
 
 bool
@@ -1555,13 +1631,13 @@ handle_input_device_warnings(enum control input) {
 
     if (input == A || left_clicked) {
         bool exit_to_bios = device_warning_selection == 0;
-        serial_sd_warning_pending = false;
+        dismiss_device_warning(warning);
         reset_device_warning_input();
         if (exit_to_bios) {
             exit_to_bios_ex(0, 0);
         }
     } else if (close_requested) {
-        serial_sd_warning_pending = false;
+        dismiss_device_warning(warning);
         reset_device_warning_input();
     } else if (input == UP || input == DOWN) {
         if (input != device_warning_last_direction) {
@@ -1583,12 +1659,22 @@ draw_device_warnings(theme_color* colors, uint32_t title_color, int ui_mode) {
     if (drawn_device_warning != warning) {
         reset_device_warning_input();
     }
-    const char* title = warning == DEVICE_WARNING_VMU_TIME_SYNC ? "VMU Time Sync" : "Serial VMU";
-    const char* const* lines =
-        warning == DEVICE_WARNING_VMU_TIME_SYNC ? vmu_time_sync_warning_lines : serial_sd_warning_lines;
-    const int count = warning == DEVICE_WARNING_VMU_TIME_SYNC
-                          ? (int)(sizeof(vmu_time_sync_warning_lines) / sizeof(vmu_time_sync_warning_lines[0]))
-                          : (int)(sizeof(serial_sd_warning_lines) / sizeof(serial_sd_warning_lines[0]));
+    const char* title = "Serial VMU";
+    const char* const* lines = serial_sd_warning_lines;
+    int count = (int)(sizeof(serial_sd_warning_lines) / sizeof(serial_sd_warning_lines[0]));
+    if (warning == DEVICE_WARNING_CLOCK_SYNC) {
+        title = "Clock Sync";
+        lines = clock_sync_warning_lines;
+        count = (int)(sizeof(clock_sync_warning_lines) / sizeof(clock_sync_warning_lines[0]));
+    } else if (warning == DEVICE_WARNING_VMU_TIME_SYNC) {
+        title = "VMU Clock Sync";
+        lines = vmu_time_sync_warning_lines;
+        count = (int)(sizeof(vmu_time_sync_warning_lines) / sizeof(vmu_time_sync_warning_lines[0]));
+    } else if (warning == DEVICE_WARNING_SD_UNREADABLE) {
+        title = "Serial SD";
+        lines = sd_unreadable_warning_lines;
+        count = (int)(sizeof(sd_unreadable_warning_lines) / sizeof(sd_unreadable_warning_lines[0]));
+    }
     const int action_start = warning == DEVICE_WARNING_VMU_TIME_SYNC ? count - 1 : count - 2;
     bool bitmap = ui_mode == UI_SCROLL || ui_mode == UI_FOLDERS;
     const int line_height = bitmap ? 24 : 26;
@@ -2183,15 +2269,40 @@ draw_multidisc_tr(void) {
             }
         }
 
+        const int window_rows = multidisc_len < MULTIDISC_WINDOW_ROWS ? multidisc_len : MULTIDISC_WINDOW_ROWS;
+        const int max_scroll = multidisc_update_scroll(multidisc_len, window_rows);
+        const int gutter = multidisc_len > window_rows ? 16 : 0; /* Room for the scrollbar */
+
         const int content_width = max_label * 8;
-        const int width = (content_width > title_width ? content_width : title_width) + padding;
-        const int height = (multidisc_len + 2) * line_height + (line_height / 2) + title_gap + line_height;
+        const int width = (content_width > title_width ? content_width : title_width) + padding + gutter;
+        const int height = (window_rows + 2) * line_height + (line_height / 2) + title_gap + line_height;
         const int x = (640 / 2) - (width / 2);
         const int y = menu_mouse_window_y((480 / 2) - (height / 2), height);
         const int x_item = x + (padding / 2);
+        const int row_width = width - padding - gutter;
+        const int list_top = y + 2 + title_gap + line_height;
 
         /* Draw a popup in the middle of the screen */
         draw_popup_menu(x, y, width, height);
+
+        /* Scrollbar along the right edge, only when the discs do not fit */
+        if (gutter) {
+            menu_mouse_scroll(&current_choice, &multidisc_scroll_offset, multidisc_len, window_rows, NULL);
+            const int track_x = x + width - 12;
+            const int track_y = list_top - 4;
+            const int track_w = 6;
+            const int track_h = window_rows * line_height;
+            int thumb_h = (track_h * window_rows) / multidisc_len;
+            if (thumb_h < 16) {
+                thumb_h = 16;
+            }
+            /* Keep 1px of track visible on all sides of the thumb */
+            const int thumb_y = track_y + 1 + ((track_h - 2 - thumb_h) * multidisc_scroll_offset) / max_scroll;
+            mouse_scrollbar_t bar = {track_x, track_y, track_w, track_h, thumb_y, thumb_h, 1, max_scroll, window_rows};
+            menu_mouse_scrollbar(&bar);
+            draw_draw_quad(track_x, track_y, track_w, track_h, menu_bkg_border_color);
+            draw_draw_quad(track_x + 1, thumb_y, track_w - 2, thumb_h, highlight_color);
+        }
 
         /* overlay our text on top with options */
         int cur_y = y + 2;
@@ -2201,7 +2312,8 @@ draw_multidisc_tr(void) {
         font_bmp_draw_main(x + width / 2 - (10 * 8 / 2), cur_y, "Multi-Disc");
 
         cur_y += title_gap; /* Add spacing after title */
-        for (int i = 0; i < multidisc_len; i++) {
+        for (int row = 0; row < window_rows; row++) {
+            const int i = multidisc_scroll_offset + row;
             cur_y += line_height;
             if (i == current_choice) {
                 font_bmp_set_color(highlight_color);
@@ -2209,28 +2321,47 @@ draw_multidisc_tr(void) {
                 font_bmp_set_color(text_color);
             }
             format_game_row(line_buf, sizeof(line_buf), list_multidisc[i]);
-            menu_mouse_row(x_item, cur_y, width - 16, 20, &current_choice, i, A);
+            menu_mouse_row(x_item, cur_y, row_width, 20, &current_choice, i, A);
             font_bmp_draw_main(x_item, cur_y, line_buf);
         }
 
         /* Close option, one empty row below the discs */
         cur_y += 2 * line_height;
         font_bmp_set_color(current_choice == multidisc_len ? highlight_color : text_color);
-        menu_mouse_row(x_item, cur_y, width - 16, 20, &current_choice, multidisc_len, A);
+        menu_mouse_row(x_item, cur_y, row_width, 20, &current_choice, multidisc_len, A);
         font_bmp_draw_main(x_item, cur_y, "Close");
     } else {
         /* Menu size and placement */
         const int line_height = 32;
-        const int width = 300;
-        const int height = (multidisc_len + 2) * line_height + (line_height / 2) + line_height;
+        const int window_rows = multidisc_len < MULTIDISC_WINDOW_ROWS ? multidisc_len : MULTIDISC_WINDOW_ROWS;
+        const int max_scroll = multidisc_update_scroll(multidisc_len, window_rows);
+        const int gutter = multidisc_len > window_rows ? 20 : 0; /* Room for the scrollbar */
+        const int width = 300 + gutter;
+        const int height = (window_rows + 2) * line_height + (line_height / 2) + line_height;
         const int x = (640 / 2) - (width / 2);
         const int y = (480 / 2) - (height / 2);
         const int x_item = x + 4;
+        const int list_top = y + 2 + (line_height / 4) + line_height;
         char line_buf[72];
         char temp_game_name[62];
 
         /* Draw a popup in the middle of the screen */
         draw_popup_menu(x, y, width, height);
+
+        /* Scrollbar along the right edge, only when the discs do not fit */
+        if (gutter) {
+            const int track_x = x + width - 12;
+            const int track_w = 6;
+            const int track_h = window_rows * line_height;
+            int thumb_h = (track_h * window_rows) / multidisc_len;
+            if (thumb_h < 16) {
+                thumb_h = 16;
+            }
+            /* Keep 1px of track visible on all sides of the thumb */
+            const int thumb_y = list_top + 1 + ((track_h - 2 - thumb_h) * multidisc_scroll_offset) / max_scroll;
+            draw_draw_quad(track_x, list_top, track_w, track_h, menu_bkg_border_color);
+            draw_draw_quad(track_x + 1, thumb_y, track_w - 2, thumb_h, highlight_color);
+        }
 
         /* overlay our text on top with options */
         int cur_y = y + 2;
@@ -2241,7 +2372,8 @@ draw_multidisc_tr(void) {
 
         cur_y += line_height / 4;
 
-        for (int i = 0; i < multidisc_len; i++) {
+        for (int row = 0; row < window_rows; row++) {
+            const int i = multidisc_scroll_offset + row;
             cur_y += line_height;
             uint32_t temp_color = text_color;
             if (i == current_choice) {
@@ -2256,7 +2388,7 @@ draw_multidisc_tr(void) {
             }
             snprintf(line_buf, sizeof(line_buf), "%s (%d/%d)", temp_game_name, disc_num,
                      gd_item_disc_total(list_multidisc[i]->disc));
-            font_bmf_draw_auto_size(x_item, cur_y, temp_color, line_buf, width - 4);
+            font_bmf_draw_auto_size(x_item, cur_y, temp_color, line_buf, width - 4 - gutter);
         }
 
         /* Close option, one empty row below the discs */
@@ -3510,6 +3642,7 @@ saveload_apply_choices_to_settings(void) {
     sf_mouse_scroll_speed[0] = choices[CHOICE_MOUSE_SCROLL_SPEED];
     sf_clock[0] = choices[CHOICE_CLOCK];
     sf_vmu_time_sync[0] = choices[CHOICE_VMU_TIME_SYNC];
+    sf_clock_extender[0] = choices[CHOICE_CLOCK_EXTENDER];
     sf_serial_vmu[0] = choices[CHOICE_SERIAL_VMU];
     sf_serial_vmu_multislot[0] = choices[CHOICE_SERIAL_VMU_MULTISLOT];
     sf_vm2_send_all[0] = choices[CHOICE_VM2_SEND_ALL];
@@ -4703,307 +4836,6 @@ draw_saveload_tr(void) {
 
 #pragma endregion SaveLoad_Menu
 
-/* COMPACTION_TEST_START */
-#pragma region Compaction_Test_Menu
-
-/* Compaction test states */
-typedef enum {
-    COMPACTION_INIT,
-    COMPACTION_CONFIRM,
-    COMPACTION_BACKUP,
-    COMPACTION_FILLING,
-    COMPACTION_RESULT,
-    COMPACTION_RESTORING,
-    COMPACTION_DONE,
-    COMPACTION_ERROR
-} compaction_test_state_t;
-
-static compaction_test_state_t compaction_state = COMPACTION_INIT;
-static const char* compaction_msg = NULL;
-
-static void
-compaction_test_setup_internal(void) {
-    compaction_state = COMPACTION_CONFIRM;
-    compaction_msg = "Test flashrom partition compaction?";
-}
-
-void
-compaction_test_setup(enum draw_state* state, theme_color* _colors, int* timeout_ptr, uint32_t title_color) {
-    common_setup(state, _colors, timeout_ptr);
-    menu_title_color = title_color;
-    compaction_test_setup_internal();
-}
-
-static void
-compaction_test_close(void) {
-    compaction_test_cleanup();
-    *state_ptr = DRAW_MENU;
-    *input_timeout_ptr = 3;
-}
-
-void
-handle_input_compaction_test(enum control input) {
-    switch (compaction_state) {
-        case COMPACTION_CONFIRM:
-            if (input == A) {
-                /* Start the test */
-                compaction_state = COMPACTION_BACKUP;
-            } else if (input == B) {
-                compaction_test_close();
-            }
-            break;
-
-        case COMPACTION_BACKUP:
-            /* handled in draw loop */
-            break;
-
-        case COMPACTION_FILLING:
-            /* handled in draw loop */
-            /* Allow B to cancel and restore */
-            if (input == B) {
-                compaction_state = COMPACTION_RESTORING;
-            }
-            break;
-
-        case COMPACTION_RESULT:
-            /* Test completed, need to restore partition */
-            if (input == A || input == B) {
-                compaction_state = COMPACTION_RESTORING;
-            }
-            break;
-
-        case COMPACTION_ERROR:
-            /* Error occurred (e.g., backup failed), just close, nothing to restore */
-            if (input == A || input == B) {
-                compaction_test_close();
-            }
-            break;
-
-        case COMPACTION_RESTORING:
-            /* handled in draw loop */
-            break;
-
-        case COMPACTION_DONE:
-            if (input == A || input == B) {
-                compaction_test_close();
-            }
-            break;
-
-        default: break;
-    }
-}
-
-static void
-update_compaction_test(void) {
-    int8_t result;
-
-    switch (compaction_state) {
-        case COMPACTION_BACKUP:
-            result = compaction_test_init();
-            if (result == 0) {
-                compaction_state = COMPACTION_FILLING;
-            } else {
-                compaction_msg = compaction_test_get_status();
-                compaction_state = COMPACTION_ERROR;
-            }
-            break;
-
-        case COMPACTION_FILLING:
-            result = compaction_test_step();
-            if (result == 1) {
-                /* Done filling */
-                int test_result = compaction_test_get_result();
-                if (test_result == 1) {
-                    compaction_msg = "SUCCESS: Compaction occurred!";
-                } else if (test_result == 0) {
-                    compaction_msg = "FAILURE: No compaction detected.";
-                } else {
-                    compaction_msg = compaction_test_get_status();
-                }
-                compaction_state = COMPACTION_RESULT;
-            } else if (result < 0) {
-                compaction_msg = compaction_test_get_status();
-                compaction_state = COMPACTION_ERROR;
-            }
-            /* result == 0 means continue */
-            break;
-
-        case COMPACTION_RESTORING:
-            result = compaction_test_restore();
-            if (result == 0) {
-                compaction_msg = "Partition restored.";
-                compaction_state = COMPACTION_DONE;
-            } else {
-                compaction_msg = "WARNING: Restore failed!";
-                compaction_state = COMPACTION_DONE;
-            }
-            break;
-
-        default: break;
-    }
-}
-
-void
-draw_compaction_test_op(void) {
-    /* Update state machine each frame */
-    update_compaction_test();
-}
-
-void
-draw_compaction_test_tr(void) {
-    z_set_cond(205.0f);
-
-    int width = 280;
-    int height = 120;
-    int x = (640 - width) / 2;
-    int y = (480 - height) / 2;
-
-    draw_popup_menu(x, y, width, height);
-
-    int x_text = x + 12;
-    int y_text = y + 8;
-    char line[64];
-
-    if (sf_ui[0] == UI_SCROLL || sf_ui[0] == UI_FOLDERS) {
-        /* Scroll/Folders mode. Bitmap font */
-        int line_height = 20;
-
-        font_bmp_begin_draw();
-
-        /* Title */
-        font_bmp_set_color(menu_title_color);
-        font_bmp_draw_main(x_text, y_text, "Flashrom Compaction Test");
-        y_text += line_height + 4;
-
-        switch (compaction_state) {
-            case COMPACTION_CONFIRM:
-                font_bmp_set_color(text_color);
-                font_bmp_draw_main(x_text, y_text, "Fill flashrom partition 2 to");
-                y_text += line_height;
-                font_bmp_draw_main(x_text, y_text, "test BIOS auto-compaction.");
-                y_text += line_height + 4;
-                font_bmp_set_color(highlight_color);
-                menu_mouse_row(x_text + 88, y_text, 72, 20, NULL, 0, B);
-                menu_mouse_row(x_text, y_text, 64, 20, NULL, 0, A);
-                font_bmp_draw_main(x_text, y_text, "A: Start   B: Cancel");
-                break;
-
-            case COMPACTION_BACKUP:
-                font_bmp_set_color(text_color);
-                font_bmp_draw_main(x_text, y_text, "Backing up partition...");
-                break;
-
-            case COMPACTION_FILLING:
-                snprintf(line, sizeof(line), "Writing: %d / %d", compaction_test_get_write_count(),
-                         compaction_test_get_total_blocks());
-                font_bmp_set_color(text_color);
-                font_bmp_draw_main(x_text, y_text, line);
-                y_text += line_height;
-                menu_mouse_row(x_text, y_text, width - 24, 20, NULL, 0, B);
-                font_bmp_draw_main(x_text, y_text, "B: Cancel and restore");
-                break;
-
-            case COMPACTION_RESULT:
-                font_bmp_set_color(text_color);
-                if (compaction_msg) {
-                    font_bmp_draw_main(x_text, y_text, compaction_msg);
-                }
-                y_text += line_height + 4;
-                font_bmp_set_color(highlight_color);
-                menu_mouse_row(x_text, y_text, width - 24, 20, NULL, 0, A);
-                font_bmp_draw_main(x_text, y_text, "Press A/B to restore");
-                break;
-
-            case COMPACTION_ERROR:
-                font_bmp_set_color(text_color);
-                if (compaction_msg) {
-                    font_bmp_draw_main(x_text, y_text, compaction_msg);
-                }
-                y_text += line_height + 4;
-                font_bmp_set_color(highlight_color);
-                menu_mouse_row(x_text, y_text, width - 24, 20, NULL, 0, B);
-                font_bmp_draw_main(x_text, y_text, "Press A/B to close");
-                break;
-
-            case COMPACTION_RESTORING:
-                font_bmp_set_color(text_color);
-                font_bmp_draw_main(x_text, y_text, "Restoring partition...");
-                break;
-
-            case COMPACTION_DONE:
-                font_bmp_set_color(text_color);
-                if (compaction_msg) {
-                    font_bmp_draw_main(x_text, y_text, compaction_msg);
-                }
-                y_text += line_height + 4;
-                font_bmp_set_color(highlight_color);
-                menu_mouse_row(x_text, y_text, width - 24, 20, NULL, 0, B);
-                font_bmp_draw_main(x_text, y_text, "Press A/B to close");
-                break;
-
-            default: break;
-        }
-    } else {
-        /* LineDesc/Grid mode. BMF font */
-        int line_height = 24;
-
-        /* Title */
-        font_bmf_draw(x_text, y_text, menu_title_color, "Flashrom Compaction Test");
-        y_text += line_height + 4;
-
-        switch (compaction_state) {
-            case COMPACTION_CONFIRM:
-                font_bmf_draw(x_text, y_text, text_color, "Fill flashrom partition 2 to");
-                y_text += line_height;
-                font_bmf_draw(x_text, y_text, text_color, "test BIOS auto-compaction.");
-                y_text += line_height + 4;
-                font_bmf_draw(x_text, y_text, highlight_color, "A: Start   B: Cancel");
-                break;
-
-            case COMPACTION_BACKUP: font_bmf_draw(x_text, y_text, text_color, "Backing up partition..."); break;
-
-            case COMPACTION_FILLING:
-                snprintf(line, sizeof(line), "Writing: %d / %d", compaction_test_get_write_count(),
-                         compaction_test_get_total_blocks());
-                font_bmf_draw(x_text, y_text, text_color, line);
-                y_text += line_height;
-                font_bmf_draw(x_text, y_text, text_color, "B: Cancel and restore");
-                break;
-
-            case COMPACTION_RESULT:
-                if (compaction_msg) {
-                    font_bmf_draw(x_text, y_text, text_color, compaction_msg);
-                }
-                y_text += line_height + 4;
-                font_bmf_draw(x_text, y_text, highlight_color, "Press A/B to restore");
-                break;
-
-            case COMPACTION_ERROR:
-                if (compaction_msg) {
-                    font_bmf_draw(x_text, y_text, text_color, compaction_msg);
-                }
-                y_text += line_height + 4;
-                font_bmf_draw(x_text, y_text, highlight_color, "Press A/B to close");
-                break;
-
-            case COMPACTION_RESTORING: font_bmf_draw(x_text, y_text, text_color, "Restoring partition..."); break;
-
-            case COMPACTION_DONE:
-                if (compaction_msg) {
-                    font_bmf_draw(x_text, y_text, text_color, compaction_msg);
-                }
-                y_text += line_height + 4;
-                font_bmf_draw(x_text, y_text, highlight_color, "Press A/B to close");
-                break;
-
-            default: break;
-        }
-    }
-}
-
-#pragma endregion Compaction_Test_Menu
-/* COMPACTION_TEST_END */
-
 #pragma region Serial_VMU
 
 #define SERIAL_VMU_BLOCKS     256
@@ -5102,9 +4934,16 @@ serial_vmu_setting_to_device_id(uint8_t setting) {
 
 static maple_device_t*
 serial_vmu_get_dev(int device_id) {
+    if (device_id < 0 || device_id > 7) {
+        return NULL;
+    }
     int port = device_id / 2;
     int unit = (device_id % 2 == 0) ? 1 : 2;
-    return maple_enum_dev(port, unit);
+    maple_device_t* dev = maple_enum_dev(port, unit);
+    if (dev && !(dev->info.functions & MAPLE_FUNC_MEMCARD)) {
+        return NULL;
+    }
+    return dev;
 }
 
 static const char*
@@ -7430,6 +7269,7 @@ menu_mouse_signature(enum draw_state owner) {
                 uint32_t identity = gd_item_recent_hash(items[i]);
                 hash = menu_mouse_hash(hash, &identity, sizeof(identity));
             }
+            hash = menu_mouse_hash(hash, &multidisc_scroll_offset, sizeof(multidisc_scroll_offset));
             break;
         }
         case DRAW_EXIT:
@@ -7457,7 +7297,6 @@ menu_mouse_signature(enum draw_state owner) {
             hash = menu_mouse_hash(hash, &saveload_msg_line1, sizeof(saveload_msg_line1));
             break;
         }
-        case DRAW_COMPACTION_TEST: hash = menu_mouse_hash(hash, &compaction_state, sizeof(compaction_state)); break;
         case DRAW_SERIAL_VMU: {
             int state[] = {svmu_ctx.state,           svmu_ctx.launch_action,    svmu_ctx.selected_device,
                            svmu_ctx.vmu_device_id,   svmu_ctx.is_backup,        svmu_ctx.slot_number,
@@ -7491,9 +7330,6 @@ menu_mouse_busy(enum draw_state owner) {
     } else if (owner == DRAW_SERIAL_VMU) {
         busy = busy || svmu_ctx.state == SERIAL_VMU_IDLE || svmu_ctx.state == SERIAL_VMU_RESTORE_BUSY
                || svmu_ctx.state == SERIAL_VMU_BACKUP_BUSY || svmu_ctx.state == SERIAL_VMU_WIPE_BUSY;
-    } else if (owner == DRAW_COMPACTION_TEST) {
-        busy = busy || compaction_state == COMPACTION_INIT || compaction_state == COMPACTION_BACKUP
-               || compaction_state == COMPACTION_RESTORING;
     }
     return busy;
 }

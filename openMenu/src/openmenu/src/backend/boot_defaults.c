@@ -37,7 +37,7 @@ static uint8_t saved_region;
 static uint8_t saved_custom;
 static uint8_t saved_custom_num;
 
-/* Longest valid value is "FOLDERS_0" plus room to see it is oversized */
+/* Longest valid value is "FOLDERS_19" plus room to see it is oversized */
 static char ini_style[16];
 static char ini_theme[16];
 
@@ -74,15 +74,25 @@ resolve_style(const char* text) {
     return -1;
 }
 
-/* Matches values like CUST_3, one digit, nothing after it */
+/* Matches values like CUST_3 or FOLDERS_12, a slot from 0 to 19 and
+ * nothing after it */
 static int
 theme_family_matches(const char* text, const char* prefix) {
     size_t n = strlen(prefix);
-    return strncasecmp(text, prefix, n) == 0 && text[n] >= '0' && text[n] <= '9' && text[n + 1] == '\0';
+    if (strncasecmp(text, prefix, n) != 0 || text[n] < '0' || text[n] > '9') {
+        return 0;
+    }
+    if (text[n + 1] == '\0') {
+        return 1;
+    }
+    if (text[n] == '0' || text[n + 1] < '0' || text[n + 1] > '9' || text[n + 2] != '\0') {
+        return 0;
+    }
+    return (text[n] - '0') * 10 + (text[n + 1] - '0') < THEME_SLOTS_MAX;
 }
 
-/* The scanned theme arrays fill in readdir order, so the digit in the
- * directory name is not guaranteed to equal the array index. Resolve by
+/* The scanned theme arrays are packed in slot order, so a missing slot
+ * means the number in the directory name is not the array index. Resolve by
  * looking for the directory name inside each entry's background path,
  * which the scanner builds as THEME/<dir>/BG_L.PVR. */
 static int

@@ -31,6 +31,7 @@
 #include <backend/dcnow_vmu.h>
 #include <backend/gd_list.h>
 #include <backend/online_time_sync.h>
+#include <boot_trace.h>
 #include <openmenu_debug.h>
 #include <openmenu_savefile.h>
 #include <openmenu_settings.h>
@@ -291,22 +292,42 @@ init() {
 
     savefile_init();
 
+    BT_STEP("Texture pools");
     ret += txr_create_small_pool();
     ret += txr_create_large_pool();
+    BT_DONE("%d", ret);
+    BT_STEP("Texture DATs");
     ret += txr_load_DATs();
+    BT_DONE("%d", ret);
+    BT_STEP("Game list");
     ret += list_read_default();
+    BT_DONE("%d", ret);
+    BT_STEP("BLOOM check");
     check_bloom_available(); /* Check for BLOOM.BIN once at startup */
+    BT_DONE("ok");
+    BT_STEP("Game DB");
     ret += db_load_DAT();
+    BT_DONE("%d", ret);
+    BT_STEP("Themes");
     ret += theme_manager_load();
+    BT_DONE("%d", ret);
+    BT_STEP("BGM check");
     bgm_init(); /* Check for BGM.ADP once at startup */
+    BT_DONE("ok");
 
     /* Force the disc's default style/theme if configured and honored.
      * Needs the theme scan above so names resolve to indices. */
+    BT_STEP("Boot defaults");
     boot_defaults_apply();
-    device_warnings_init(boot_defaults_serial_sd_warning_enabled() && !savefile_sd_available());
+    BT_DONE("ok");
+    bool sd_unreadable = savefile_sd_unreadable();
+    device_warnings_init(boot_defaults_serial_sd_warning_enabled() && !savefile_sd_available() && !sd_unreadable,
+                         sd_unreadable);
 
     /* Initialize folder tree after loading game list */
+    BT_STEP("Folder tree");
     list_folder_init();
+    BT_DONE("ok");
 
     if (!sf_filter[0]) {
         switch (sf_sort[0]) {
@@ -326,13 +347,17 @@ init() {
     }
 
     /* setup internal memory zones */
+    BT_STEP("Draw init");
     draw_init();
+    BT_DONE("ok");
 
     /* The UI setup coming up is the one allowed to jump to the last game */
     last_game_arm();
 
     /* Load UI */
+    BT_STEP("UI setup");
     ui_set_choice(sf_ui[0]);
+    BT_DONE("style %d", sf_ui[0]);
 
     return ret;
 }
@@ -690,11 +715,17 @@ main(int argc, char* argv[]) {
     // gdemu_set_img_num(1);
     // thd_sleep(500);
 
+#if DEBUG_BOOT_TRACE
+    boot_trace_begin();
+#endif
+
     /* DEBUG: RED = before maple_wait_scan */
     DFLASH(255, 0, 0);
 
     /* wait for maple bus scan */
+    BT_STEP("Maple scan");
     maple_wait_scan();
+    BT_DONE("ok");
 
     /* DEBUG: GREEN = after maple_wait_scan */
     DFLASH(0, 255, 0);
@@ -702,17 +733,25 @@ main(int argc, char* argv[]) {
     /* DEBUG: CYAN = before init_gfx_pvr */
     DFLASH(0, 255, 255);
 
+    BT_STEP("Video init");
     init_gfx_pvr();
+    BT_DONE("ok");
+    BT_STEP("Loading screen");
     show_loading_screen();
+    BT_DONE("ok");
 
     /* Maple detection continues while the loading screen is displayed. */
+    BT_STEP("Maple settle");
     thd_sleep(1000);
+    BT_DONE("ok");
 
     /* DEBUG: BLUE = before vm2_rescan */
     DFLASH(0, 0, 255);
 
     /* Scan for VM2/VMUPro/USB4Maple/Pico2Maple devices and send initial ID */
+    BT_STEP("VM2 rescan");
     vm2_rescan();
+    BT_DONE("%d found", vm2_device_count);
 
     /* DEBUG: YELLOW = after vm2_rescan */
     DFLASH(255, 255, 0);
@@ -722,17 +761,23 @@ main(int argc, char* argv[]) {
         int port = vmu->port;
         int unit = vmu->unit;
 
+        BT_STEP("VM2 send ID");
         vm2_set_id(vmu, "openmenu", NULL);
         thd_sleep(200);
+        BT_DONE("%.9s %c%d", vm2_type_names[i], 'A' + port, unit);
 
+        BT_STEP("VM2 reconnect");
         while (!maple_enum_dev(port, unit)) {
             thd_pass();
         }
+        BT_DONE("%c%d", 'A' + port, unit);
     }
 
     /* Profile changes can briefly disconnect a VMU. */
     if (vm2_device_count > 0) {
+        BT_STEP("VM2 settle");
         thd_sleep(1000);
+        BT_DONE("ok");
     }
 
     /* fflush(stdout); */
@@ -750,7 +795,12 @@ main(int argc, char* argv[]) {
     /* DEBUG: WHITE = init complete, entering main loop */
     DFLASH(255, 255, 255);
 
+#if DEBUG_BOOT_TRACE
+    boot_trace_end();
+#endif
+
     dcnow_net_set_hangup_hook(show_hangup);
+    clock_extender_tick();
     for (;;) {
         z_reset();
         enum control input = translate_input();
@@ -766,6 +816,7 @@ main(int argc, char* argv[]) {
         dcnow_conn_tick();
         dcnow_vmu_tick();
         online_time_sync_tick();
+        clock_extender_tick();
         bgm_poll();
         vid_waitvbl();
         if (need_reload_ui) {

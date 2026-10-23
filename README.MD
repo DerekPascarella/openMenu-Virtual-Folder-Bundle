@@ -73,7 +73,9 @@ To accommodate the new openMenu, a modified version of [GD MENU Card Manager](ht
   - [Recently Played](#recently-played)
   - [Remember Last Game](#remember-last-game)
   - [Dreamcast Now!](#dreamcast-now)
-  - [Online Time Sync](#online-time-sync)
+  - [Online Clock Sync](#online-clock-sync)
+  - [Clock Checkpoint Extender](#clock-checkpoint-extender)
+  - [Clock Sync Storage Warning](#clock-sync-storage-warning)
   - [Exiting to BIOS](#exiting-to-bios)
     - [Available Options by Context](#available-options-by-context)
     - [Options Explanation](#options-explanation)
@@ -105,7 +107,7 @@ To accommodate the new openMenu, a modified version of [GD MENU Card Manager](ht
 
 ## Current Version
 
-The latest version of **openMenu Virtual Folder Bundle** is [1.7.0-ateam](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/releases/tag/1.7.0-ateam).
+The latest version of **openMenu Virtual Folder Bundle** is [1.7.1-ateam](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/releases/tag/1.7.1-ateam).
 
 ---
 
@@ -120,13 +122,40 @@ The latest version of **openMenu Virtual Folder Bundle** is [1.7.0-ateam](https:
 ---
 
 ## Changelog
+
+## Changelog
+- **Version 1.7.1-ateam (2026-10-23)**
+  - **openMenu**
+    - Fixed mouse cursor movement slowdown over menu entries with artwork (see [Issue 222](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/222)).
+    - Flashrom fill detection added for clock sync features (see [Issue 224](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/224)).
+    - New option added to automatically extend forced clock set date by 30 days (see [Issue 225](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/225)).
+    - Warning now displayed when serial SD card cannot be read, rather than hanging (see [Issue 227](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/227)).
+    - New Folders mode themes added, and theming engine enhanced (see [Issue 233](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/233)).
+    - Fixed Serial VMU accepting a Jump Pack as a VMU (see [Issue 235](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/235)).
+    - Fixed games mounting the wrong disc when their details were too long (see [Issue 236](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/236)).
+    - Multi-Disc launcher now scrolls, and supports up to 99 discs (see [Issue 240](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/240)).
+  - **GD MENU Card Manager**
+    - Enhanced IP.BIN parsing for certain CDI disc images (see [Issue 217](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/217)).
+    - Dragging entry up or down on Batch Folder Move/Rename window now automatically scrolls (see [Issue 218](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/218)).
+    - Improved SD card auto-detection (see [Issue 220](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/220)).
+    - Prevent leftover temporary folders after SD card saves (see [Issue 221](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/221)).
+    - New option to convert CUE-based disc images to CDI format instead of CCD/IMG/SUB (see [Issue 223](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/223)).
+    - Folder column now features autocomplete and dropdown in Linux/macOS build (see [Issue 226](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/226)).
+    - Folder editing fixes in Games List, Assign Folder windows, and Folder Tools (see [Issue 228](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/228)).
+    - Consistent Enter and Escape behavior across all windows (see [Issue 229](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/229)).
+    - Fixed "About" window crash during update check, and windows closing during operations (see [Issue 230](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/230)).
+    - About window updated with Menu Options, conversion format, and FAT Sort (see [Issue 231](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/231)).
+    - Fixed failed PlayStation CDI disc image Serial parsing under certain conditions (see [Issue 232](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/232)).
+    - Fixed games disappearing from openMenu when a virtual folder path was too long (see [Issue 237](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/237)).
+    - Title, Region, Disc, Version, and Date now limited to what openMenu supports (see [Issue 238](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/238)).
+    - Serial now limited to 10 characters, and ProductIdMaxLength and CharLimit settings removed (see [Issue 239](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/239)).
 - **Version 1.7.0-ateam (2026-09-22)**
   - **openMenu**
     - Dreamcast Now! online functionality added (see [Issue 207](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/207)).
     - Cursor highlight color changed from light gray to teal in CodeBreaker for better visibility (see [Issue 208](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/208)).
     - Mouse supported added (see [Issue 209](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/209)).
     - Scrollbar added to the main disc image list in Folders mode (see [Issue 210](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/210)).
-    - VMU Time Sync warning message now appears if attached VMU device doesn't report valid RTC data (see [Issue 211](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/211)).
+    - VMU Clock Sync warning message now appears if attached VMU device doesn't report valid RTC data (see [Issue 211](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/211)).
     - Boot sequence optimized (see [Issue 212](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/212)).
     - Optional serial SD card reader detection warning added (see [Issue 213](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/213)).
     - Multiple controllers can now all navigate the menu (see [Issue 215](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/215)).
@@ -384,6 +413,7 @@ The latest version of **openMenu Virtual Folder Bundle** is [1.7.0-ateam](https:
   - Patrick Graham
   - onlycodered
   - Hass
+  - RetroEmulationNation
 - **Special Thanks**
   - mrneo240 for his original work on openMenu
   - megavolt85 for forking openMenu and adding new features
@@ -407,7 +437,7 @@ Below represents all the changes brought with the initial release of **openMenu 
   - Virtual folder support includes eight levels of nested subfolders.
   - Complete subfolder path maximum length is 256 characters, including backslashes (e.g., `Games\JP\RPG`).
   - Maximum number of virtual folders supported per SD card is 1024.
-- Long entry names now supported (256 characters), along with marquee scrolling over those exceeding 49 characters.
+- Long entry names now supported (127 characters), along with marquee scrolling over those exceeding 49 characters.
 - Scroll mode improvements:
   - Jumping cursor fixed
   - New setting to toggle index numbers in the game list (On/Off)
@@ -428,9 +458,9 @@ Below represents all the changes brought with the initial release of **openMenu 
 - Version check in About window removed (with possibility of returning in the future).
 - A new "Folder" column added when building menu in openMenu mode, allowing users to specify virtual folder path for a disc image (e.g., `Games\RPGs\NTSC-U`).
 - Non-game disc images now supported, with a new column named "Type" added where users can select from two dropdown options: `Game` and `Other`. Note that non-game disc images are automatically assigned the `Other` value, as openMenu will check this property to decide how to initialize the GDEMU.
-- Disc image names no longer limited to 39 characters, increased to 256 characters.
+- Disc image names no longer limited to 39 characters, increased to 127 characters.
 - Disc numbers can now be customized by the user (e.g., `1/3`, `2/4`).
-- Maximum length for Game IDs is now ten (instead of 9), but is customizable by changing the `ProductIdMaxLength` key inside `GDMENUCardManager.dll.config`.
+- Maximum length for Game IDs is now ten (instead of 9).
 - Latest version of [CodeBreaker cheats database](https://www.dreamcast-talk.com/forum/viewtopic.php?t=17078) included by default.
 
 ---
@@ -469,7 +499,7 @@ To assign artwork to a game:
    - The button is labeled **Assign** if no artwork is presently tied to the Serial ID, and **Manage** if there is.
 2. The Artwork window displays the game's Serial ID and current artwork (if any).
 3. Click **Browse for Image** to select an image file (supported formats: PNG, JPG, JPEG, GIF, WebP, BMP, TIFF, TGA).
-4. In the rare case that a disc image's baked in `0GDTEX.PVR` artwork is preferable to an external image file, click **Import From Disc**.
+4. In the rare case that a disc image's baked-in `0GDTEX.PVR` artwork is preferable to an external image file, click **Import From Disc**.
 5. The application automatically generates two PVR textures:
    - 256x256 pixels for `BOX.DAT` (full-size artwork shown in openMenu)
    - 128x128 pixels for `ICON.DAT` (thumbnail preview used in Grid mode)
@@ -586,9 +616,9 @@ The Games List table displays all disc images currently on the SD card. Each col
 | **Location** | Shows whether the game is on "SD Card" or "Other" (pending copy). |
 | **SD #** | The numbered folder on the SD card (`01`, `02`, `03`, etc.). |
 | **Size** | File size of the disc image. |
-| **Title** | Game display name (editable, max 256 characters). |
+| **Title** | Game display name (editable, max 127 characters). |
 | **Folder** | Virtual folder path for organization (openMenu only, e.g., `Games\RPGs`). |
-| **Serial** | Product ID from `IP.BIN` (editable, max 12 characters). |
+| **Serial** | Product ID from `IP.BIN` (editable, max 10 characters, letters and numbers only). |
 | **Art** | Click the **Assign** or **Manage** button to open the artwork editing window for that game. |
 | **Disc** | Disc number for multi-disc games (editable in openMenu mode only). |
 | **Region** | Region flag from `IP.BIN`: any combination of `J` (Japan), `U` (USA), and `E` (Europe) (e.g., `JUE` or `U`). Editing this value patches the disc image itself when saving changes to an SD card (see the [Editing Game Information](#editing-game-information) section). |
@@ -613,11 +643,11 @@ Note that GDI disc images in Redump's old, short-lived GDI format are automatica
 GD MENU Card Manager automatically detects and converts Redump-style CUE/BIN disc images:
 
 - **GD-ROM CUE/BIN**: Automatically converted to GDI format, and the built-in TOSEC DAT is leveraged to ensure the resulting GDI matches byte-for-byte perfectly to the original TOSEC dump. The converter detects GD-ROM images by the presence of a "HIGH-DENSITY AREA" comment in the CUE file and properly handles track indexing and LBA calculations.
-- **CD-ROM CUE/BIN**: Automatically converted to CDI format using Redump2CDI.
+- **Dreamcast CD-ROM CUE/BIN**: Automatically converted to CDI format using Redump2CDI.
 
 This feature allows users to add Redump-format disc images directly without manual conversion.
 
-Additionally, GD MENU Card Manager automatically detects and converts non-Dreamcast disc images in CUE format to CCD format. Such images include audio CDs, video CDs, and PlayStation discs.
+Non-Dreamcast CUE disc images, including audio CDs, video CDs, and PlayStation discs, are automatically converted to **CCD/IMG/SUB** (default) or **CDI**. The format is selected under [Disc Image Options](#disc-image-options).
 
 #### Removing Games
 
@@ -664,7 +694,7 @@ Note that those with European consoles who aren't using VGA may observe certain 
 When using openMenu mode, the **Folder** column allows organizing games into a hierarchical folder structure:
 
 - Use backslashes to create nested folders (e.g., `Games\Action\US`).
-- Maximum folder path length is 256 characters.
+- Maximum folder path length is 256 characters, including for each additional folder path.
 - Up to eight levels of nested subfolders are supported.
 - Maximum of 1024 virtual folders per SD card.
 
@@ -690,7 +720,7 @@ Edit the **Disc** column to specify disc numbering (e.g., `1/4` for disc one of 
 
 It's important to note that in order for openMenu to correctly identify that multiple discs are part of a single set, **they must share the same unique Serial value** when the SD card was authored.
 
-For arbitrary multi-disc collections, such as an MP3, Karaoke, or VCD player boot disc plus a collection of media discs, all associated discs must appear in sequential order so that the disc-swap button on the GDEMU PCB can cycle through them correctly (while also sharing the same Serial). Next, ensure they share a sequential disc number and count value, with 10 discs being the maximum. See the example below, where the first entry is the MP3 player boot disc itself and all subsequent entries are the discs containing MP3 files.
+For arbitrary multi-disc collections, such as an MP3, Karaoke, or VCD player boot disc plus a collection of media discs, all associated discs must appear in sequential order so that the disc-swap button on the GDEMU PCB can cycle through them correctly (while also sharing the same Serial). Next, ensure they share a sequential disc number and count value, with 99 discs being the maximum. See the example below, where the first entry is the MP3 player boot disc itself and all subsequent entries are the discs containing MP3 files.
 
 | Title | Folder | Serial | Disc | Type |
 |-------|--------|--------|------|------|
@@ -708,8 +738,8 @@ The **Type** column categorizes disc images:
 | Type | Description |
 |------|-------------|
 | **Game** | Standard Dreamcast software (default). |
-| **Other** | Non-game discs (audio CDs). These skip the full boot sequence and return directly to the BIOS. KatanaDrive has limited support for audio CDs, requiring user-converted CDI images rather than CCD/IMG/SUB, and audio playback contains a lot of static noise. |
-| **PSX** | PlayStation disc images for use with either the Bleemcast! or Bloom emulators (see the [PlayStation Emulator Feature](#playstation-emulator-feature) section). KatanaDrive users may have to manually convert PlayStation discs to CDI format, as CCD/IMG/SUB has limited support. |
+| **Other** | Non-game discs (audio CDs). These skip the full boot sequence and return directly to the BIOS. KatanaDrive has limited support for audio CDs, requiring CDI images rather than CCD/IMG/SUB, and audio playback contains a lot of static noise. When adding CUE images and using KatanaDrive, select **CDI** under [Disc Image Options](#disc-image-options). |
+| **PSX** | PlayStation disc images for use with either the Bleemcast! or Bloom emulators (see the [PlayStation Emulator Feature](#playstation-emulator-feature) section). It's recommended to select **CDI** under [Disc Image Options](#disc-image-options) when adding PlayStation CUE images, as CCD/IMG/SUB has limited support under certain conditions. Self-contained PlayStation discs with a baked-in Bleemcast! emulator should use **Type** "Game" rather than "PSX". |
 
 #### Searching and Filtering
 
@@ -814,6 +844,10 @@ The **Disc Image Options** window provides settings that affect how disc images 
   - **Apply to newly added games**: Patch games when they're first copied.
   - **Apply to existing games**: Patch games already on the SD card.
 - Games whose region was manually edited via the **Region** column keep their chosen region during the save that applies the edit. Note that on subsequent saves, this option will re-patch them to region-free like any other game (see [Editing Game Information](#editing-game-information)).
+
+**Conversion Format**
+
+Select **CCD/IMG/SUB** (default) or **CDI** for automatic conversion of audio CDs, video CDs, and PlayStation CUE disc images, including those in supported archives. The preference is remembered. Images already on the SD card are not reconverted.
 
 Click **Save** to apply changes, or simply close the window to discard them.
 
@@ -1088,19 +1122,31 @@ To use the feature:
 
 The online settings default to **Off**. Use [Save/Load](#saveload-manager) to retain them for future boots.
 
-### Online Time Sync
+### Online Clock Sync
 
 openMenu can set the console's date and time from `pool.ntp.org` after establishing a [Dreamcast Now!](#dreamcast-now) connection.
 
 1. Enable **DC Now!** in the Settings menu.
-2. Set **Online Time Sync** to the UTC offset for the user's local time. Options range from **On (UTC-12)** to **On (UTC+14)**, including supported half-hour and quarter-hour offsets.
+2. Set **Online Clock Sync** to the UTC offset for the user's local time. Options range from **On (UTC-12)** to **On (UTC+14)**, including supported half-hour and quarter-hour offsets.
 3. Select **Apply** for the current session, or use **Save/Load** to retain the settings, then establish the connection.
 
 Synchronization runs in the background once a connection is available. The Dreamcast Now! window does not need to remain open, and Auto-Refresh and VMU Updates can remain off. For automatic synchronization on future boots, save **DC Now!** as **On (Auto-Connect)**.
 
 The selected UTC offset is fixed. Adjust it when daylight saving time starts or ends.
 
-Online Time Sync sets the console clock, not the clocks on attached VMUs. **VMU Time Sync** remains a separate option that reads a compatible VMU's clock at startup. If both are enabled, the online time can update the console clock once the network connection is established.
+Online Clock Sync sets the console clock, not the clocks on attached VMUs. **VMU Clock Sync** remains a separate option that reads a compatible VMU's clock at startup. If both are enabled, the online time can update the console clock once the network connection is established.
+
+### Clock Checkpoint Extender
+
+The Dreamcast BIOS can require users to set the date and time again after 30 days, even when the console clock is still correct. Enabling **Clock Checkpoint Extender** refreshes this deadline using the current console time whenever openMenu boots, giving another 30 days before that prompt. Turning it on during a session also refreshes the deadline.
+
+The option defaults to **Off**, is available in every view mode, and works alongside **VMU Clock Sync** and **Online Clock Sync**. It requires no VMU clock or internet connection and leaves the current date and time unchanged.
+
+### Clock Sync Storage Warning
+
+**VMU Clock Sync**, **Online Clock Sync**, and **Clock Checkpoint Extender** use the console's flashrom to save clock checkpoints. If its system settings storage fills up, a **Clock Sync** warning appears and these features become unavailable.
+
+Choose **Exit to BIOS**, set the date and time once, then restart openMenu. This allows the BIOS to reclaim space while preserving existing settings. Choosing **Close** dismisses the warning, but the clock features remain unavailable until this step is completed.
 
 ### Exiting to BIOS
 
@@ -1152,7 +1198,7 @@ Each view mode has its own set of available settings. Below is a breakdown of ea
 | Setting | Options | Description |
 |---------|---------|-------------|
 | **Style** | LineDesc, Grid3, Scroll, Folders | Changes the visual layout/view mode of openMenu. |
-| **Theme** | NTSC-U, NTSC-J, PAL, Custom... | Selects the color scheme and background artwork. Custom themes appear if present. |
+| **Theme** | NTSC-U, NTSC-J, PAL, Custom... | Selects the color scheme and background artwork. Custom themes appear if `CUST_X` folders exist (`X` from 0 to 19, up to 20 themes). |
 | **Play BGM** | Off, On | Plays background music added with Card Manager's **Menu Options** window (see the [Menu Options](#menu-options) section). Only shown when a music track is present. |
 | **Honor Menu Defaults** | Off, On | When a default style and theme has been set in Card Manager's **Menu Options** window, "Off" makes openMenu use the console's saved style and theme instead. Only shown when a default style and theme has been applied. |
 | **Aspect** | 4:3, 16:9 | Adjusts background artwork for standard or widescreen displays. |
@@ -1165,11 +1211,12 @@ Each view mode has its own set of available settings. Below is a breakdown of ea
 | **DC Now!** | Off, On (Manual Connect), On (Auto-Connect) | Enables Dreamcast Now! and its button at the bottom of Settings. "Auto-Connect" starts a connection when openMenu boots (see [Dreamcast Now!](#dreamcast-now)). |
 | **DC Now! Auto-Refresh** | Off, 10 seconds, 20 seconds, 30 seconds, 45 seconds, 60 seconds | Refreshes the online player list at the selected interval. Only shown when DC Now! is enabled. |
 | **DC Now! VMU Updates** | Off, On | Displays games and player counts on attached VMU LCDs, with updates continuing after the Dreamcast Now! window is closed. Only shown when DC Now! and Auto-Refresh are enabled. |
-| **Online Time Sync** | Off, On (UTC-12) through On (UTC+14), including supported fractional-hour offsets | Sets the console clock from an online time server using the selected UTC offset. Only shown when DC Now! is enabled (see [Online Time Sync](#online-time-sync)). |
+| **Online Clock Sync** | Off, On (UTC-12) through On (UTC+14), including supported fractional-hour offsets | Sets the console clock from an online time server using the selected UTC offset. Only shown when DC Now! is enabled (see [Online Clock Sync](#online-clock-sync)). |
+| **VMU Clock Sync** | Off, On | Uses a compatible VMU's date and time to set the console clock when openMenu boots. Currently supported by OEM VMU and VM2. A warning appears if attached VMUs cannot provide a valid date and time. |
+| **Clock Checkpoint Extender** | Off, On (default: Off) | Refreshes the saved clock checkpoint once per boot without advancing the console clock (see [Clock Checkpoint Extender](#clock-checkpoint-extender)). |
 | **Serial VMU** | Off, On (A1), On (A2), On (B1), On (B2), On (C1), On (C2), On (D1), On (D2) | If serial SD card detected, use it to store per-game virtual VMUs in the specified Port and Socket. Only shown when a serial SD card is detected, and when either no virtual VMU device is connected or the VMU Game ID setting is turned off. |
 | **Serial VMU Multi-Slot** | Off, On | If Serial VMU is enabled, also enable up to five per-game slots, or leave off to default to one virtual VMU per game. Only shown when Serial VMU is turned on. |
 | **VMU Game ID** | Send to All, Send to First, Off | If virtual VMU device like VM2, VMUPro, USB4MAPLE, or Pico2Maple detected, send Game ID to the first one detected (starting at the first controller port and first VMU socket), all detected, or turn off ID transmission altogether (see the [Virtual VMU Device Support](#virtual-vmu-device-support) section). Only shown when such a device is connected and Serial VMU is turned off. |
-| **VMU Time Sync** | Off, On | Uses a compatible VMU's date and time to set the console clock when openMenu boots. Currently supported by OEM VMU and VM2. A warning appears if attached VMUs cannot provide a valid date and time. |
 | **VMU Beep on Save** | Off, On | Sounds the VMU's buzzer while openMenu writes its settings save file. |
 | **Save/Load**, **Apply**, **DC Now!**, **Credits** | N/A | Buttons at the bottom of Settings, chosen with D-Pad Left and Right. "Save/Load" opens the [Save/Load Manager](#saveload-manager), "Apply" applies settings for the current session, "DC Now!" opens the [Dreamcast Now! window](#dreamcast-now), and "Credits" opens the credits window. The "DC Now!" button appears only when DC Now! is enabled. |
 
@@ -1178,7 +1225,7 @@ Each view mode has its own set of available settings. Below is a breakdown of ea
 | Setting | Options | Description |
 |---------|---------|-------------|
 | **Style** | LineDesc, Grid3, Scroll, Folders | Changes the visual layout/view mode of openMenu. |
-| **Theme** | GDMENU, Custom... | Selects the theme. Custom themes appear if `SCROLL_X` folders exist. |
+| **Theme** | GDMENU, Custom... | Selects the theme. Custom themes appear if `SCROLL_X` folders exist (`X` from 0 to 19, up to 20 themes). |
 | **Play BGM** | Off, On | Plays background music added with Card Manager's **Menu Options** window (see the [Menu Options](#menu-options) section). Only shown when a music track is present. |
 | **Honor Menu Defaults** | Off, On | When a default style and theme has been set in Card Manager's **Menu Options** window, "Off" makes openMenu use the console's saved style and theme instead. Only shown when a default style and theme has been applied. |
 | **Exit to BIOS** | Standard, Alternate, Alternate + 3D | "Standard" uses a standard method when exiting to BIOS, whereas "Alternate" uses a custom method that removes save file copy protection in the BIOS save manager. "Alternate + 3D" does the same while also enabling the "hidden" 3D BIOS feature. If users experience a freeze when exiting to BIOS with either "Alternate" setting, it's advised they use the "Standard" setting instead. |
@@ -1194,11 +1241,12 @@ Each view mode has its own set of available settings. Below is a breakdown of ea
 | **DC Now!** | Off, On (Manual Connect), On (Auto-Connect) | Enables Dreamcast Now! and its button at the bottom of Settings. "Auto-Connect" starts a connection when openMenu boots (see [Dreamcast Now!](#dreamcast-now)). |
 | **DC Now! Auto-Refresh** | Off, 10 seconds, 20 seconds, 30 seconds, 45 seconds, 60 seconds | Refreshes the online player list at the selected interval. Only shown when DC Now! is enabled. |
 | **DC Now! VMU Updates** | Off, On | Displays games and player counts on attached VMU LCDs, with updates continuing after the Dreamcast Now! window is closed. Only shown when DC Now! and Auto-Refresh are enabled. |
-| **Online Time Sync** | Off, On (UTC-12) through On (UTC+14), including supported fractional-hour offsets | Sets the console clock from an online time server using the selected UTC offset. Only shown when DC Now! is enabled (see [Online Time Sync](#online-time-sync)). |
+| **Online Clock Sync** | Off, On (UTC-12) through On (UTC+14), including supported fractional-hour offsets | Sets the console clock from an online time server using the selected UTC offset. Only shown when DC Now! is enabled (see [Online Clock Sync](#online-clock-sync)). |
+| **VMU Clock Sync** | Off, On | Uses a compatible VMU's date and time to set the console clock when openMenu boots. Currently supported by OEM VMU and VM2. A warning appears if attached VMUs cannot provide a valid date and time. |
+| **Clock Checkpoint Extender** | Off, On (default: Off) | Refreshes the saved clock checkpoint once per boot without advancing the console clock (see [Clock Checkpoint Extender](#clock-checkpoint-extender)). |
 | **Serial VMU** | Off, On (A1), On (A2), On (B1), On (B2), On (C1), On (C2), On (D1), On (D2) | If serial SD card detected, use it to store per-game virtual VMUs in the specified Port and Socket. Only shown when a serial SD card is detected, and when either no virtual VMU device is connected or the VMU Game ID setting is turned off. |
 | **Serial VMU Multi-Slot** | Off, On | If Serial VMU is enabled, also enable up to five per-game slots, or leave off to default to one virtual VMU per game. Only shown when Serial VMU is turned on. |
 | **VMU Game ID** | Send to All, Send to First, Off | If virtual VMU device like VM2, VMUPro, USB4MAPLE, or Pico2Maple detected, send Game ID to the first one detected (starting at the first controller port and first VMU socket), all detected, or turn off ID transmission altogether (see the [Virtual VMU Device Support](#virtual-vmu-device-support) section). Only shown when such a device is connected and Serial VMU is turned off. |
-| **VMU Time Sync** | Off, On | Uses a compatible VMU's date and time to set the console clock when openMenu boots. Currently supported by OEM VMU and VM2. A warning appears if attached VMUs cannot provide a valid date and time. |
 | **VMU Beep on Save** | Off, On | Sounds the VMU's buzzer while openMenu writes its settings save file. |
 | **Save/Load**, **Apply**, **DC Now!**, **Credits** | N/A | Buttons at the bottom of Settings, chosen with D-Pad Left and Right. "Save/Load" opens the [Save/Load Manager](#saveload-manager), "Apply" applies settings for the current session, "DC Now!" opens the [Dreamcast Now! window](#dreamcast-now), and "Credits" opens the credits window. The "DC Now!" button appears only when DC Now! is enabled. |
 
@@ -1207,7 +1255,7 @@ Each view mode has its own set of available settings. Below is a breakdown of ea
 | Setting | Options | Description |
 |---------|---------|-------------|
 | **Style** | LineDesc, Grid3, Scroll, Folders | Changes the visual layout/view mode of openMenu. |
-| **Theme** | FoldersDefault, Custom... | Selects the theme. Custom themes appear if `FOLDERS_X` folders exist. |
+| **Theme** | FoldersDefault, Custom... | Selects the theme. Custom themes appear if `FOLDERS_X` folders exist (`X` from 0 to 19, up to 20 themes). |
 | **Play BGM** | Off, On | Plays background music added with Card Manager's **Menu Options** window (see the [Menu Options](#menu-options) section). Only shown when a music track is present. |
 | **Honor Menu Defaults** | Off, On | When a default style and theme has been set in Card Manager's **Menu Options** window, "Off" makes openMenu use the console's saved style and theme instead. Only shown when a default style and theme has been applied. |
 | **Exit to BIOS** | Standard, Alternate, Alternate + 3D | "Standard" uses a standard method when exiting to BIOS, whereas "Alternate" uses a custom method that removes save file copy protection in the BIOS save manager. "Alternate + 3D" does the same while also enabling the "hidden" 3D BIOS feature. If users experience a freeze when exiting to BIOS with either "Alternate" setting, it's advised they use the "Standard" setting instead. |
@@ -1227,11 +1275,12 @@ Each view mode has its own set of available settings. Below is a breakdown of ea
 | **DC Now!** | Off, On (Manual Connect), On (Auto-Connect) | Enables Dreamcast Now! and its button at the bottom of Settings. "Auto-Connect" starts a connection when openMenu boots (see [Dreamcast Now!](#dreamcast-now)). |
 | **DC Now! Auto-Refresh** | Off, 10 seconds, 20 seconds, 30 seconds, 45 seconds, 60 seconds | Refreshes the online player list at the selected interval. Only shown when DC Now! is enabled. |
 | **DC Now! VMU Updates** | Off, On | Displays games and player counts on attached VMU LCDs, with updates continuing after the Dreamcast Now! window is closed. Only shown when DC Now! and Auto-Refresh are enabled. |
-| **Online Time Sync** | Off, On (UTC-12) through On (UTC+14), including supported fractional-hour offsets | Sets the console clock from an online time server using the selected UTC offset. Only shown when DC Now! is enabled (see [Online Time Sync](#online-time-sync)). |
+| **Online Clock Sync** | Off, On (UTC-12) through On (UTC+14), including supported fractional-hour offsets | Sets the console clock from an online time server using the selected UTC offset. Only shown when DC Now! is enabled (see [Online Clock Sync](#online-clock-sync)). |
+| **VMU Clock Sync** | Off, On | Uses a compatible VMU's date and time to set the console clock when openMenu boots. Currently supported by OEM VMU and VM2. A warning appears if attached VMUs cannot provide a valid date and time. |
+| **Clock Checkpoint Extender** | Off, On (default: Off) | Refreshes the saved clock checkpoint once per boot without advancing the console clock (see [Clock Checkpoint Extender](#clock-checkpoint-extender)). |
 | **Serial VMU** | Off, On (A1), On (A2), On (B1), On (B2), On (C1), On (C2), On (D1), On (D2) | If serial SD card detected, use it to store per-game virtual VMUs in the specified Port and Socket. Only shown when a serial SD card is detected, and when either no virtual VMU device is connected or the VMU Game ID setting is turned off. |
 | **Serial VMU Multi-Slot** | Off, On | If Serial VMU is enabled, also enable up to five per-game slots, or leave off to default to one virtual VMU per game. Only shown when Serial VMU is turned on. |
 | **VMU Game ID** | Send to All, Send to First, Off | If virtual VMU device like VM2, VMUPro, USB4MAPLE, or Pico2Maple detected, send Game ID to the first one detected (starting at the first controller port and first VMU socket), all detected, or turn off ID transmission altogether (see the [Virtual VMU Device Support](#virtual-vmu-device-support) section). Only shown when such a device is connected and Serial VMU is turned off. |
-| **VMU Time Sync** | Off, On | Uses a compatible VMU's date and time to set the console clock when openMenu boots. Currently supported by OEM VMU and VM2. A warning appears if attached VMUs cannot provide a valid date and time. |
 | **VMU Beep on Save** | Off, On | Sounds the VMU's buzzer while openMenu writes its settings save file. |
 | **Save/Load**, **Apply**, **DC Now!**, **Credits** | N/A | Buttons at the bottom of Settings, chosen with D-Pad Left and Right. "Save/Load" opens the [Save/Load Manager](#saveload-manager), "Apply" applies settings for the current session, "DC Now!" opens the [Dreamcast Now! window](#dreamcast-now), and "Credits" opens the credits window. The "DC Now!" button appears only when DC Now! is enabled. |
 
@@ -1334,7 +1383,7 @@ Windows users interested in additional custom themes should see [GDMenu & OpenMe
 
 A separate openMenu theme format was designed for the new "Folders" Style mode.
 
-To add a new theme, navigate to the `tools\openMenu\menu_data\theme` folder (Windows and Linux only) and create a folder named `FOLDERS_X`, where `X` is a number between zero and nine. Inside that folder, create a new file named `THEME.INI`.
+To add a new theme, navigate to the `tools\openMenu\menu_data\theme` folder (Windows and Linux only) and create a folder named `FOLDERS_X`, where `X` is a number from 0 to 19 with no leading zero (e.g., `FOLDERS_16`, not `FOLDERS_016`). The bundled themes already use `FOLDERS_0` through `FOLDERS_15`. openMenu supports up to 20 Folders themes and lists them in the Settings menu in slot-number order. Folders with any other name after `FOLDERS_` are ignored. Inside the new folder, create a file named `THEME.INI`.
 
 See example and explanation of parameters below.
 
@@ -1467,9 +1516,19 @@ clock_text_color=255,255,255
 
   _Example_: `255,255,255` (white text)
 
+#### Optional Custom Font
+
+- **font**: Path to a custom font texture, used for the game list, clock, item details, and every popup
+
+  _Example_: `THEME/FOLDERS_16/FONT.PVR` (a `FONT.PVR` file inside the theme's own folder)
+
+  If omitted, the standard openMenu font (`FONT/GDMNUFNT.PVR`) is used. The path includes the theme's folder name, so update it whenever the folder is renamed.
+
+  The font texture must be a 128x128 twiddled PVR in ARGB1555 or ARGB4444 format. ARGB4444 allows anti-aliased glyph edges. Glyphs are 8x16 pixel cells, 16 per row, starting with ASCII 32 (space) in the top-left cell and continuing through ASCII 127. Draw glyphs in white on a transparent background, since openMenu tints them with the theme's text colors. Any outline or shadow baked into the glyphs stays dark whatever the text color is, so it suits light text on dark backgrounds only. The fonts used by the bundled BIOS, SegaSimple, and Noir themes are included with the [theme templates](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/raw/refs/heads/main/theme_template/) as working examples.
+
 **Note**: All position values are absolute pixel coordinates for 640x480 resolution. If a positioning key is set to `0` or omitted, Folders mode uses built-in fallback defaults. The cursor width is calculated automatically based on `list_marquee_threshold`.
 
-After making desired changes to `THEME.INI`, use a preferred image editor to create two PNGs: one with a resolution of 512x512px named `BG_L.PNG`, the other with a resolution of 128x512 pixels named `BG_R.PNG`. Templates for these can be found in the `tools\openMenu\menu_data\theme\FOLDERS` folder, and the [included templates](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/raw/refs/heads/main/theme_template/) for use with [The GIMP](https://www.gimp.org/) may prove useful to some users.
+After making desired changes to `THEME.INI`, use a preferred image editor to create two PNGs: one with a resolution of 512x512px named `BG_L.PNG`, the other with a resolution of 128x512 pixels named `BG_R.PNG`. Templates for these can be found in the `tools\openMenu\menu_data\theme\FOLDERS` folder, and the [included templates](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/raw/refs/heads/main/theme_template/) for use with [The GIMP](https://www.gimp.org/) may prove useful to some users. The same folder also includes the custom font PVRs from the bundled themes: `FONT_BIOS.PVR` (BIOS themes) and `FONT_Noir_and_SegaSimple.PVR` (SegaSimple and Noir themes), plus `FONT_Default.PVR`, openMenu's standard font. These can be copied into a new theme's folder and referenced with the `font` key (see [Optional Custom Font](#optional-custom-font)).
 
 Split a 640x480px background image across these two PNGs, noting that the bottom row of 32 pixels will be ignored.
 

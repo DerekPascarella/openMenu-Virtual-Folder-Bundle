@@ -22,6 +22,12 @@
         Chd
     }
 
+    public enum DiscConversionFormat
+    {
+        Ccd,
+        Cdi
+    }
+
     public enum SpecialDisc
     {
         None,

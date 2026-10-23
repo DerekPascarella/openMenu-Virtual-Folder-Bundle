@@ -164,7 +164,7 @@
                                 Click="UndoButton_Click" IsEnabled="{Binding CanUndo}"
                                 ToolTip="Revert the most recent rename or move"/>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                            <Button Content="Apply Changes" Padding="15,8" Margin="0,0,10,0" Click="ApplyButton_Click" IsDefault="True"
+                            <Button Content="Apply Changes" Padding="15,8" Margin="0,0,10,0" Click="ApplyButton_Click"
                                     ToolTip="Apply all folder renames and moves"/>
                             <Button Content="Cancel" Width="80" Padding="15,8" Click="CancelButton_Click"
                                     ToolTip="Discard all pending folder changes and close"/>

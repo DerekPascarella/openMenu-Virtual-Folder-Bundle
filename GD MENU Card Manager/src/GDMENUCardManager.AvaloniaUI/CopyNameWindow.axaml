@@ -9,7 +9,7 @@
   <StackPanel>
     <HeaderedContentControl Header="Rename all games located on" Margin="5">
       <StackPanel>
-        <CheckBox IsChecked="{Binding OnCard}" ToolTip.Tip="Include games located on the SD card">SD card</CheckBox>
+        <CheckBox x:Name="OnCardCheckBox" IsChecked="{Binding OnCard}" ToolTip.Tip="Include games located on the SD card">SD card</CheckBox>
         <CheckBox IsChecked="{Binding NotOnCard}" ToolTip.Tip="Include games not located on the SD card">Other</CheckBox>
       </StackPanel>
     </HeaderedContentControl>
@@ -24,7 +24,7 @@
       <CheckBox IsChecked="{Binding ParseTosec}" ToolTip.Tip="Strip TOSEC-style suffixes (e.g. region, version, dump flags) from the name">Read TOSEC naming</CheckBox>
     </HeaderedContentControl>
 
-    <Button Click="Button_Click" IsDefault="True" Margin="5" Padding="15,8"
+    <Button Click="Button_Click" Margin="5" Padding="15,8"
             ToolTip.Tip="Apply the batch rename to the matching games">Ok</Button>
 
   </StackPanel>

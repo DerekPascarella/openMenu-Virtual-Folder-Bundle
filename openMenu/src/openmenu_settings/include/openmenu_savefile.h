@@ -45,6 +45,7 @@ uint32_t savefile_get_device_free_blocks(int8_t device_id);
 bool savefile_was_loaded_from_sd(void);
 bool savefile_sd_available(void);
 SD_STATUS savefile_get_sd_status(void);
+bool savefile_sd_unreadable(void);
 uint32_t savefile_get_sd_version(void);
 int8_t savefile_save_to_sd(void);
 int8_t savefile_load_from_sd(void);
@@ -55,19 +56,20 @@ int8_t sync_rtc_from_vmu(void);
 bool vmu_time_sync_warning_pending(void);
 void vmu_time_sync_warning_dismiss(void);
 
-/* Sets the console clock to a local time and the flash ROM SYSCFG date with it. */
-int8_t set_rtc_and_syscfg(time_t local_time);
+/* Positive status means the RTC was set but its checkpoint failed. */
+typedef enum clock_sync_result {
+    CLOCK_SYNC_OK = 0,
+    CLOCK_SYNC_CHECKPOINT_FAILED = 1,
+    CLOCK_SYNC_RTC_FAILED = -1,
+    CLOCK_SYNC_STORAGE_FULL = -2,
+    CLOCK_SYNC_STORAGE_ERROR = -3,
+    CLOCK_SYNC_INVALID_TIME = -4
+} clock_sync_result_t;
 
-/* COMPACTION_TEST_START */
-/* Compaction test functions - DEBUG ONLY, remove before release */
-int8_t compaction_test_init(void);
-int8_t compaction_test_step(void);
-int8_t compaction_test_restore(void);
-void compaction_test_cleanup(void);
-int compaction_test_get_write_count(void);
-int compaction_test_get_total_blocks(void);
-int compaction_test_get_result(void);
-const char* compaction_test_get_status(void);
-/* COMPACTION_TEST_END */
+int8_t set_rtc_and_syscfg(time_t local_time);
+bool clock_sync_storage_full(void);
+bool clock_sync_warning_pending(void);
+void clock_sync_warning_dismiss(void);
+void clock_extender_tick(void);
 
 #endif // OPENMENU_SAVEFILE_H

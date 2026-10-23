@@ -1,7 +1,14 @@
 ﻿using System;
+using System.Linq;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Controls.Primitives;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using Avalonia.VisualTree;
+using MsBox.Avalonia.Windows;
 
 namespace GDMENUCardManager
 {
@@ -10,6 +17,23 @@ namespace GDMENUCardManager
         public override void Initialize()
         {
             AvaloniaXamlLoader.Load(this);
+
+            // Avalonia toggles a focused check box or radio button on Enter. Only Space should.
+            InputElement.KeyDownEvent.AddClassHandler<ToggleButton>((button, e) =>
+            {
+                if (e.Key == Key.Enter)
+                    e.Handled = true;
+            }, RoutingStrategies.Tunnel);
+
+            // MessageBox.Avalonia boxes with only an OK button ignore Escape. The others already map it to their cancel-type button.
+            InputElement.KeyDownEvent.AddClassHandler<MsBoxWindow>((window, e) =>
+            {
+                if (e.Key == Key.Escape && !window.GetVisualDescendants().OfType<Button>().Any(b => b.IsCancel && b.IsEffectivelyVisible))
+                {
+                    e.Handled = true;
+                    window.Close();
+                }
+            });
         }
 
         public override void OnFrameworkInitializationCompleted()

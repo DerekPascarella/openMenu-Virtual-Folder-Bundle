@@ -27,6 +27,15 @@ namespace GDMENUCardManager.Core
     {
         private static readonly char[] katanachar = "SEGA SEGAKATANA SEGA ENTERPRISES".ToCharArray();
 
+        internal static bool IsCardFolder(string folder, string root)
+        {
+            if (string.IsNullOrWhiteSpace(folder) || string.IsNullOrWhiteSpace(root))
+                return false;
+            string parent = Path.GetDirectoryName(Path.GetFullPath(folder).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+            string card = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            return string.Equals(parent?.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar), card, StringComparison.OrdinalIgnoreCase);
+        }
+
         public static async Task<GdItem> CreateGdItemAsync(
             string fileOrFolderPath,
             ArchiveAddMode archiveAddMode = ArchiveAddMode.ParseNow)
@@ -545,7 +554,11 @@ namespace GDMENUCardManager.Core
             if (!string.IsNullOrWhiteSpace(archiveSidecarName))
                 item.Name = archiveSidecarName;
             if (!string.IsNullOrWhiteSpace(archiveSidecarSerial))
+            {
                 item.ProductNumber = archiveSidecarSerial;
+                if (item.WasSerialTranslated && GdItem.NormalizeProductNumber(archiveSidecarSerial) == item.ProductNumber)
+                    item.AcknowledgeSerialTranslation();
+            }
             if (archiveAddMode != ArchiveAddMode.DeferToSave && item.FileFormat == FileFormat.SevenZip)
                 await ApplyArchiveSidecarTextFilesAsync(item, ip, compressedFile, archiveEntries);
 
@@ -553,7 +566,7 @@ namespace GDMENUCardManager.Core
 
             item.Name = item.Name.Trim();
 
-            if (item.FullFolderPath.StartsWith(Manager.sdPath, StringComparison.InvariantCultureIgnoreCase) && int.TryParse(Path.GetFileName(Path.GetDirectoryName(itemImageFile)), out int number))
+            if (IsCardFolder(item.FullFolderPath, Manager.sdPath) && int.TryParse(Path.GetFileName(Path.GetDirectoryName(itemImageFile)), out int number))
             {
                 item.SdNumber = number;
             }
@@ -692,7 +705,14 @@ namespace GDMENUCardManager.Core
             // ignored for the same reason a blank name.txt is.
             var serial = await readSidecar(Constants.SerialTextFile);
             if (!string.IsNullOrWhiteSpace(serial))
+            {
                 item.ProductNumber = serial;
+
+                // A serial.txt already holding the translated value was saved after
+                // the user accepted it, so the IP.BIN translation flag is stale.
+                if (item.WasSerialTranslated && GdItem.NormalizeProductNumber(serial) == item.ProductNumber)
+                    item.AcknowledgeSerialTranslation();
+            }
 
             if (await Helper.FileExistsAsync(Path.Combine(folder, Constants.ShrunkTextFile)))
                 item.WasShrunk = true;
@@ -904,10 +924,14 @@ namespace GDMENUCardManager.Core
                         return null;
                 }
 
+                // Aaru cannot open some CDI layouts (e.g., older DiscJuggler versions or
+                // raw subchannel data). Those get the same header scan the add path uses.
+                bool isCdi = Path.GetExtension(itemImageFile).Equals(".cdi", StringComparison.OrdinalIgnoreCase);
+
                 try
                 {
                     if (!await Task.Run(() => opticalImage.Open(inputFilter)))
-                        return null;
+                        return isCdi ? await Task.Run(() => GetIpData(itemImageFile)) : null;
 
                     Partition partition;
                     if (Path.GetExtension(itemImageFile).Equals(".gdi", StringComparison.InvariantCultureIgnoreCase))
@@ -928,6 +952,10 @@ namespace GDMENUCardManager.Core
                         }
                     }
                     return null;
+                }
+                catch when (isCdi)
+                {
+                    return await Task.Run(() => GetIpData(itemImageFile));
                 }
                 finally
                 {
@@ -1170,7 +1198,7 @@ namespace GDMENUCardManager.Core
 
             item.Name = item.Name.Trim();
 
-            if (item.FullFolderPath.StartsWith(Manager.sdPath, StringComparison.InvariantCultureIgnoreCase) && int.TryParse(new DirectoryInfo(item.FullFolderPath).Name, out int number))
+            if (IsCardFolder(item.FullFolderPath, Manager.sdPath) && int.TryParse(new DirectoryInfo(item.FullFolderPath).Name, out int number))
             {
                 item.SdNumber = number;
             }

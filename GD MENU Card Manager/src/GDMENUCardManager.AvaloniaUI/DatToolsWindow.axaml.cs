@@ -58,7 +58,8 @@ namespace GDMENUCardManager
 
             SetPlatformSpecificText();
 
-            this.KeyUp += (s, e) => { if (e.Key == Avalonia.Input.Key.Escape) Close(); };
+            // An owned progress window means an operation is still running.
+            this.KeyDown += (s, e) => { if (e.Key == Avalonia.Input.Key.Escape && OwnedWindows.Count == 0) { e.Handled = true; Close(); } };
         }
 
         private void InitializeComponent()
@@ -152,8 +153,8 @@ namespace GDMENUCardManager
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 ButtonDefinitions = new ButtonDefinition[]
                 {
-                    new ButtonDefinition { Name = "Continue" },
-                    new ButtonDefinition { Name = "Cancel" }
+                    new ButtonDefinition { Name = "Continue", IsDefault = true },
+                    new ButtonDefinition { Name = "Cancel", IsCancel = true }
                 }
             }).ShowWindowDialogAsync(this);
 
@@ -303,8 +304,8 @@ namespace GDMENUCardManager
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 ButtonDefinitions = new ButtonDefinition[]
                 {
-                    new ButtonDefinition { Name = "Clear All" },
-                    new ButtonDefinition { Name = "Cancel" }
+                    new ButtonDefinition { Name = "Clear All", IsDefault = true },
+                    new ButtonDefinition { Name = "Cancel", IsCancel = true }
                 }
             }).ShowWindowDialogAsync(this);
 
@@ -371,8 +372,8 @@ namespace GDMENUCardManager
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 ButtonDefinitions = new ButtonDefinition[]
                 {
-                    new ButtonDefinition { Name = "Continue" },
-                    new ButtonDefinition { Name = "Cancel" }
+                    new ButtonDefinition { Name = "Continue", IsDefault = true },
+                    new ButtonDefinition { Name = "Cancel", IsCancel = true }
                 }
             }).ShowWindowDialogAsync(this);
 

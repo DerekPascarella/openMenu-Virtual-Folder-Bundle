@@ -39,7 +39,7 @@
 
         <!-- Buttons -->
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
-            <Button Content="OK" Click="OkButton_Click" Width="90" Padding="15,8" IsDefault="True"
+            <Button Content="OK" Click="OkButton_Click" Width="90" Padding="15,8"
                     ToolTip.Tip="Create GDEMU.INI with timing values for the selected model"/>
         </StackPanel>
     </Grid>

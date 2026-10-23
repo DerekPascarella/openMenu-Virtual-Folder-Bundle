@@ -1,5 +1,6 @@
 using System;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using GDMENUCardManager.Core;
@@ -30,7 +31,7 @@ namespace GDMENUCardManager
         protected override void OnOpened(EventArgs e)
         {
             base.OnOpened(e);
-            this.FindControl<Button>("ParseNowButton")?.Focus();
+            this.FindControl<Button>("ParseNowButton")?.Focus(NavigationMethod.Tab);
         }
 
         private void ParseNowButton_Click(object sender, RoutedEventArgs e)

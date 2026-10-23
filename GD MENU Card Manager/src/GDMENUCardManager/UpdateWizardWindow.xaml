@@ -5,7 +5,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Update Wizard" SizeToContent="Height" Width="500"
-        WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        FocusManager.FocusedElement="{Binding ElementName=ChkPreserveDats}">
     <Grid Margin="20">
         <!-- Page 1: Preservation Options -->
         <StackPanel x:Name="Page1" Visibility="Visible">
@@ -33,7 +34,7 @@
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 20 0 0">
                 <Button Content="Cancel" Click="CancelButton_Click" MinWidth="90" Padding="15,8" Margin="0 0 10 0"
                         ToolTip="Close the wizard without updating"/>
-                <Button Content="Next" Click="NextButton_Click" MinWidth="90" Padding="15,8" IsDefault="True"
+                <Button Content="Next" Click="NextButton_Click" MinWidth="90" Padding="15,8"
                         ToolTip="Continue to the download step"/>
             </StackPanel>
         </StackPanel>

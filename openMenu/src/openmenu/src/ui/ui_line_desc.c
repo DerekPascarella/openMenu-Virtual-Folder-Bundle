@@ -890,11 +890,6 @@ FUNCTION_INPUT(UI_NAME, handle_input) {
         case DRAW_SAVELOAD: {
             handle_input_saveload(input_current);
         } break;
-        /* COMPACTION_TEST_START */
-        case DRAW_COMPACTION_TEST: {
-            handle_input_compaction_test(input_current);
-        } break;
-        /* COMPACTION_TEST_END */
         case DRAW_SERIAL_VMU: {
             handle_input_serial_vmu(input_current);
         } break;
@@ -942,11 +937,6 @@ FUNCTION(UI_NAME, drawOP) {
             /* Save/Load popup on top */
             draw_saveload_op();
         } break;
-        /* COMPACTION_TEST_START */
-        case DRAW_COMPACTION_TEST: {
-            draw_compaction_test_op();
-        } break;
-        /* COMPACTION_TEST_END */
         default:
         case DRAW_UI: {
             /* always drawn */
@@ -1010,11 +1000,6 @@ FUNCTION(UI_NAME, drawTR) {
             /* Save/Load popup on top */
             draw_saveload_tr();
         } break;
-        /* COMPACTION_TEST_START */
-        case DRAW_COMPACTION_TEST: {
-            draw_compaction_test_tr();
-        } break;
-        /* COMPACTION_TEST_END */
         case DRAW_SERIAL_VMU: {
             draw_serial_vmu_op();
             draw_serial_vmu_tr();

@@ -130,6 +130,21 @@ namespace GDMENUCardManager
 
             RefreshThemes(_config.ThemeId);
             DataContext = this;
+            KeyDown += (s, e) =>
+            {
+                if (e.Key == Avalonia.Input.Key.Escape && IsEnabled)
+                {
+                    e.Handled = true;
+                    Close();
+                }
+            };
+
+            // Nothing closes the window while an Apply is running.
+            Closing += (s, e) =>
+            {
+                if (!IsEnabled && e.CloseReason == WindowCloseReason.WindowClosing)
+                    e.Cancel = true;
+            };
         }
 
         private void InitializeComponent()

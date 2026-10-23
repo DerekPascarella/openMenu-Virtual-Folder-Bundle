@@ -17,7 +17,7 @@
       <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
 
-    <DataGrid ItemsSource="{Binding List, Mode=OneTime}" IsReadOnly="True" AutoGenerateColumns="False"
+    <DataGrid x:Name="ShrinkGrid" ItemsSource="{Binding List, Mode=OneTime}" IsReadOnly="True" AutoGenerateColumns="False"
               CanUserResizeColumns="False" CanUserSortColumns="False" CanUserReorderColumns="False"
               RowBackground="{DynamicResource ThemeBackgroundBrush}"
               GridLinesVisibility="All" BorderBrush="Black" BorderThickness="1"
@@ -48,7 +48,7 @@
               ToolTip.Tip="Mark every game in the list for shrinking"/>
       <Button Content="Select None" Width="120" Padding="15,8" Margin="0 0 10 0" Click="ButtonNone_Click"
               ToolTip.Tip="Unmark every game in the list"/>
-      <Button Content="Proceed" Width="120" Padding="15,8" IsDefault="True" Click="ButtonShrink_Click"
+      <Button Content="Proceed" Width="120" Padding="15,8" Click="ButtonShrink_Click"
               ToolTip.Tip="Shrink the checked games"/>
     </StackPanel>
 

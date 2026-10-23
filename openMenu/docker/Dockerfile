@@ -50,6 +50,8 @@ RUN cd /opt/toolchains/dc/kos/utils/dc-chain && \
 COPY kos_patch/fs_iso9660.patch /opt/toolchains/dc/kos/
 COPY kos_patch/libkosfat_directory.patch /opt/toolchains/dc/kos/
 COPY kos_patch/mouse_middle_button.patch /opt/toolchains/dc/kos/
+COPY kos_patch/sd_init_status.patch /opt/toolchains/dc/kos/
+COPY kos_patch/libkosfat_bounds.patch /opt/toolchains/dc/kos/
 
 # A plain "make clean" at the KOS root also deletes the addon archives that
 # openMenu links (libkosfat.a, libppp.a), so only the objects are removed.
@@ -57,6 +59,8 @@ RUN cd /opt/toolchains/dc/kos && \
   git apply fs_iso9660.patch && \
   git apply libkosfat_directory.patch && \
   git apply mouse_middle_button.patch && \
+  git apply sd_init_status.patch && \
+  git apply libkosfat_bounds.patch && \
   cp doc/environ.sh.sample environ.sh && \
   source /opt/toolchains/dc/kos/environ.sh && \
   make && \

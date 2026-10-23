@@ -83,12 +83,25 @@
                     </CheckBox>
                 </StackPanel>
             </HeaderedContentControl>
+            <HeaderedContentControl Margin="0 10 0 0">
+                <HeaderedContentControl.Header>
+                    <TextBlock Text="Conversion Format" FontWeight="Bold"/>
+                </HeaderedContentControl.Header>
+                <StackPanel Margin="8">
+                    <TextBlock Text="Format used when automatically converting audio CDs, video CDs, and PlayStation disc images to a GDEMU-compatible format." TextWrapping="Wrap"
+                               Foreground="Gray" FontSize="11" Margin="0 0 0 10"/>
+                    <RadioButton Content="CCD/IMG/SUB" GroupName="ConversionFormat"
+                                 IsChecked="{Binding UseCcdConversion, Mode=TwoWay}"/>
+                    <RadioButton Content="CDI" GroupName="ConversionFormat" Margin="0 5 0 0"
+                                 IsChecked="{Binding UseCdiConversion, Mode=TwoWay}"/>
+                </StackPanel>
+            </HeaderedContentControl>
         </StackPanel>
 
         <!-- Save Button -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 5 0 0">
-            <Button Content="Save" Width="80" Padding="15,8" Click="SaveButton_Click" IsDefault="True"
-                    ToolTip.Tip="Save GDI Shrink, VGA, and Region-Free patch preferences"/>
+            <Button Content="Save" Width="80" Padding="15,8" Click="SaveButton_Click"
+                    ToolTip.Tip="Save GDI Shrink, VGA, Region-Free patch, and conversion format preferences"/>
         </StackPanel>
     </Grid>
 </Window>

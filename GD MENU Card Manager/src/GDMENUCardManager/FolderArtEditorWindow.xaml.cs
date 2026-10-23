@@ -86,11 +86,15 @@ namespace GDMENUCardManager
                     else Navigate(step);
                     e.Handled = true;
                 }
+                else if (e.Key == System.Windows.Input.Key.Escape)
+                {
+                    e.Handled = true;
+                    Close();
+                }
             };
             this.KeyUp += (s, e) =>
             {
-                if (e.Key == System.Windows.Input.Key.Escape) Close();
-                else if (e.Key == System.Windows.Input.Key.Left || e.Key == System.Windows.Input.Key.Right)
+                if (e.Key == System.Windows.Input.Key.Left || e.Key == System.Windows.Input.Key.Right)
                     _keyHoldCount = 0;
             };
             DataContext = this;
@@ -107,10 +111,15 @@ namespace GDMENUCardManager
             if (pvrData != null)
                 DisplayPvrData(pvrData);
 
-            this.KeyUp += (s, e) =>
+            this.KeyDown += (s, e) =>
             {
-                if (e.Key == System.Windows.Input.Key.Escape) Close();
+                if (e.Key == System.Windows.Input.Key.Escape)
+                {
+                    e.Handled = true;
+                    Close();
+                }
             };
+            this.Loaded += (s, e) => CloseButton.Focus();
             DataContext = this;
         }
 

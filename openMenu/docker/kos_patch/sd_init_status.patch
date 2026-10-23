@@ -1,0 +1,144 @@
+diff --git a/kernel/arch/dreamcast/hardware/sd.c b/kernel/arch/dreamcast/hardware/sd.c
+index ca6b8af..c7c49f5 100644
+--- a/kernel/arch/dreamcast/hardware/sd.c
++++ b/kernel/arch/dreamcast/hardware/sd.c
+@@ -7,6 +7,7 @@
+ /* The code contained herein is basically directly implementing what is
+    documented here: http://elm-chan.org/docs/mmc/mmc_e.html */
+ 
++#include <arch/timer.h>
+ #include <arch/types.h>
+ #include <dc/scif.h>
+ #include <dc/sd.h>
+@@ -23,6 +24,7 @@
+ #define MAX_RETRIES     500000
+ #define READ_RETRIES    50000
+ #define WRITE_RETRIES   150000
++#define INIT_TIMEOUT_MS 3000
+ 
+ #define CMD(n) ((n) | 0x40)
+ 
+@@ -140,11 +142,12 @@ static int sd_send_cmd(uint8 cmd, uint32 arg, int slow) {
+ }
+ 
+ static int acmd41_loop(uint32 arg) {
+-    int i = 0, rv;
++    uint64_t deadline = timer_ms_gettime64() + INIT_TIMEOUT_MS;
++    int rv;
+ 
+     /* Try to send ACMD41 for a while. It could take up to 1 second to come
+        back to us, but will likely take much less. */
+-    while(i++ < MAX_RETRIES) {
++    for(;;) {
+         if(sd_send_cmd(CMD(55), 0, 1) > 1)
+             return -1;
+ 
+@@ -152,34 +155,31 @@ static int acmd41_loop(uint32 arg) {
+             return -1;
+ 
+         if(rv == 0)
+-            break;
+-    }
+-
+-    /* If we get this far, it isn't going to come back. */
+-    if(i == MAX_RETRIES)
+-        return -2;
++            return 0;
+ 
+-    return 0;
++        /* If we get this far, it isn't going to come back. */
++        if(timer_ms_gettime64() >= deadline)
++            return -2;
++    }
+ }
+ 
+ static int cmd1_loop(void) {
+-    int i = 0, rv;
++    uint64_t deadline = timer_ms_gettime64() + INIT_TIMEOUT_MS;
++    int rv;
+ 
+     /* Try to send CMD1 for a while. It could take up to 1 second to come
+        back to us, but will likely take much less. */
+-    while(i++ < MAX_RETRIES) {
++    for(;;) {
+         if((rv = sd_send_cmd(CMD(1), 0, 1)) > 1)
+             return -1;
+ 
+         if(rv == 0)
+-            break;
+-    }
+-
+-    /* If we get this far, it isn't going to come back. */
+-    if(i == MAX_RETRIES)
+-        return -2;
++            return 0;
+ 
+-    return 0;
++        /* If we get this far, it isn't going to come back. */
++        if(timer_ms_gettime64() >= deadline)
++            return -2;
++    }
+ }
+ 
+ int sd_init(void) {
+@@ -225,13 +225,13 @@ int sd_init(void) {
+         /* ACMD41 until we're ready */
+         if(acmd41_loop(0x40000000)) {
+             scif_spi_set_cs(1);
+-            return -1;
++            return -2;
+         }
+ 
+         /* Detect if we do byte addressing or block addressing with CMD58 */
+         if(sd_send_cmd(CMD(58), 0, 1)) {
+             scif_spi_set_cs(1);
+-            return -1;
++            return -2;
+         }
+ 
+         buf[0] = scif_spi_slow_rw_byte(0xFF);
+@@ -248,7 +248,7 @@ int sd_init(void) {
+             /* Try with CMD1 instead then... */
+             if(cmd1_loop()) {
+                 scif_spi_set_cs(1);
+-                return -1;
++                return -2;
+             }
+ 
+             /* If ACMD41 failed but CMD1 succeeded, we have a MMC card. */
+@@ -258,7 +258,7 @@ int sd_init(void) {
+         /* Set the block length to 512 with CMD16 */
+         if(sd_send_cmd(CMD(16), 512, 1)) {
+             scif_spi_set_cs(1);
+-            return -1;
++            return -2;
+         }
+ 
+         /* v1 cards always use byte addressing. */
+@@ -268,7 +268,7 @@ int sd_init(void) {
+     /* Re-enable CRC checking. */
+     if(sd_send_cmd(CMD(59), 1, 1)) {
+         scif_spi_set_cs(1);
+-        return -1;
++        return -2;
+     }
+ 
+     /* Make sure that the card releases the data line */
+diff --git a/kernel/arch/dreamcast/include/dc/sd.h b/kernel/arch/dreamcast/include/dc/sd.h
+index 882628f..25ea622 100644
+--- a/kernel/arch/dreamcast/include/dc/sd.h
++++ b/kernel/arch/dreamcast/include/dc/sd.h
+@@ -73,9 +73,10 @@ uint8 sd_crc7(const uint8 *data, int size, uint8 crc);
+     time.
+ 
+     \retval 0               On success.
+-    \retval -1              On failure. This could indicate any number of
+-                            problems, but probably means that no SD card was
+-                            detected.
++    \retval -1              No card answered the reset command, which usually
++                            means no card is inserted.
++    \retval -2              A card answered the reset command, but
++                            initialization failed.
+ */
+ int sd_init(void);
+ 

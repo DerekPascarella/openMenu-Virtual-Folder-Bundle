@@ -7,7 +7,8 @@
         xmlns:conv="clr-namespace:GDMENUCardManager.Converter"
         mc:Ignorable="d"
         Title="GDI Shrink Selector" Height="400" Width="600" MinHeight="308" MinWidth="600"
-        WindowStartupLocation="CenterOwner">
+        WindowStartupLocation="CenterOwner"
+        FocusManager.FocusedElement="{Binding ElementName=ShrinkGrid}">
     <Window.Resources>
         <conv:ByteSizeToStringConverter x:Key="ByteSizeToString"/>
     </Window.Resources>
@@ -16,7 +17,7 @@
             <RowDefinition Height="1*"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
-        <DataGrid ItemsSource="{Binding List, Mode=OneTime}" IsReadOnly="True" AutoGenerateColumns="False" CanUserResizeRows="False" CanUserResizeColumns="False" CanUserSortColumns="False" CanUserReorderColumns="False" CanUserAddRows="False" CanUserDeleteRows="False">
+        <DataGrid x:Name="ShrinkGrid" ItemsSource="{Binding List, Mode=OneTime}" IsReadOnly="True" AutoGenerateColumns="False" CanUserResizeRows="False" CanUserResizeColumns="False" CanUserSortColumns="False" CanUserReorderColumns="False" CanUserAddRows="False" CanUserDeleteRows="False">
             <DataGrid.Columns>
 
                 <DataGridTemplateColumn Width="Auto" Header="Shrink">
@@ -39,7 +40,7 @@
                     ToolTip="Mark every game in the list for shrinking"/>
             <Button Content="Select None" Width="120" Padding="15,8" Margin="0 0 10 0" Click="ButtonNone_Click"
                     ToolTip="Unmark every game in the list"/>
-            <Button Content="Proceed" Width="120" Padding="15,8" IsDefault="True" Click="ButtonShrink_Click"
+            <Button Content="Proceed" Width="120" Padding="15,8" Click="ButtonShrink_Click"
                     ToolTip="Shrink the checked games"/>
         </StackPanel>
 

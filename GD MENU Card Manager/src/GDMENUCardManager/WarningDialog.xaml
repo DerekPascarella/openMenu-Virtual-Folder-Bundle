@@ -5,7 +5,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Warning" Height="230" Width="500"
-        WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        FocusManager.FocusedElement="{Binding ElementName=ReturnButton}">
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>
@@ -17,7 +18,7 @@
 
         <!-- Buttons -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 20 0 0">
-            <Button Content="Return" Click="ReturnButton_Click" Width="90" Height="28" Margin="0 0 10 0"
+            <Button x:Name="ReturnButton" Content="Return" Click="ReturnButton_Click" Width="90" Height="28" Margin="0 0 10 0" IsCancel="True"
                     ToolTip="Go back without proceeding"/>
             <Button Content="Proceed" Click="ProceedButton_Click" Width="90" Height="28"
                     ToolTip="Continue despite the warning"/>

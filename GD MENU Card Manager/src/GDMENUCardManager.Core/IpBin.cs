@@ -7,7 +7,7 @@
     {
         private string _Disc;
         /// <summary>
-        /// Always "N/M". Anything unparseable is coerced to "1/1".
+        /// Always "N/M" with both from 1 to 99. Anything else is coerced to "1/1".
         /// </summary>
         public string Disc
         {
@@ -21,10 +21,12 @@
                 {
                     var parts = trimmed.Split('/');
                     if (parts.Length == 2 &&
-                        int.TryParse(parts[0], out _) &&
-                        int.TryParse(parts[1], out _))
+                        int.TryParse(parts[0], out int number) &&
+                        int.TryParse(parts[1], out int count) &&
+                        number >= 1 && number <= 99 &&
+                        count >= 1 && count <= 99)
                     {
-                        _Disc = trimmed;  // Valid format
+                        _Disc = $"{number}/{count}";
                     }
                     else
                     {

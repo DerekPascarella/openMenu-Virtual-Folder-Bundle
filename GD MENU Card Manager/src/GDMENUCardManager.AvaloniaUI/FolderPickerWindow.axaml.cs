@@ -1,6 +1,8 @@
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using System;
 using System.Collections.Generic;
 
 namespace GDMENUCardManager
@@ -26,6 +28,12 @@ namespace GDMENUCardManager
         private void InitializeComponent()
         {
             AvaloniaXamlLoader.Load(this);
+        }
+
+        protected override void OnOpened(EventArgs e)
+        {
+            base.OnOpened(e);
+            FolderList?.Focus(NavigationMethod.Tab);
         }
 
         private void OkButton_Click(object sender, RoutedEventArgs e)

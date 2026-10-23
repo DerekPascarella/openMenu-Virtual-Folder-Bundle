@@ -124,6 +124,28 @@
                     <TextBlock FontWeight="Bold" TextWrapping="Wrap">Folder Paths (openMenu mode)</TextBlock>
                     <TextBlock Margin="0,4,0,0" TextWrapping="Wrap">Context menu → Assign Folder Path to organize one or more games into a folder. Assign Additional Folder Paths to place a single game in up to five additional folders.</TextBlock>
 
+                    <Rectangle Fill="Gray" Height="1" Margin="0,12"/>
+
+                    <!-- Menu Options -->
+                    <TextBlock FontWeight="Bold" TextWrapping="Wrap">Menu Options (openMenu mode)</TextBlock>
+                    <Grid Margin="0,4,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="80"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Grid.Column="0" FontWeight="SemiBold">Style</TextBlock>
+                        <TextBlock Grid.Row="0" Grid.Column="1">Force a default boot style and theme</TextBlock>
+                        <TextBlock Grid.Row="1" Grid.Column="0" FontWeight="SemiBold">Music</TextBlock>
+                        <TextBlock Grid.Row="1" Grid.Column="1">Looping background music</TextBlock>
+                        <TextBlock Grid.Row="2" Grid.Column="0" FontWeight="SemiBold">Misc</TextBlock>
+                        <TextBlock Grid.Row="2" Grid.Column="1">Serial SD card adapter warning</TextBlock>
+                    </Grid>
+
                 </StackPanel>
 
                 <!-- Right Column -->
@@ -159,18 +181,37 @@
                         <Grid.RowDefinitions>
                             <RowDefinition/>
                             <RowDefinition/>
+                            <RowDefinition/>
+                            <RowDefinition/>
                         </Grid.RowDefinitions>
-                        <TextBlock Grid.Row="0" Grid.Column="0" FontWeight="SemiBold">VGA Patch</TextBlock>
-                        <TextBlock Grid.Row="0" Grid.Column="1">Force VGA output</TextBlock>
-                        <TextBlock Grid.Row="1" Grid.Column="0" FontWeight="SemiBold">Region-Free</TextBlock>
-                        <TextBlock Grid.Row="1" Grid.Column="1">Boot out-of-region games</TextBlock>
+                        <TextBlock Grid.Row="0" Grid.Column="0" FontWeight="SemiBold">GDI Shrink</TextBlock>
+                        <TextBlock Grid.Row="0" Grid.Column="1">Reduce image size</TextBlock>
+                        <TextBlock Grid.Row="1" Grid.Column="0" FontWeight="SemiBold">VGA Patch</TextBlock>
+                        <TextBlock Grid.Row="1" Grid.Column="1">Force VGA output</TextBlock>
+                        <TextBlock Grid.Row="2" Grid.Column="0" FontWeight="SemiBold">Region-Free</TextBlock>
+                        <TextBlock Grid.Row="2" Grid.Column="1">Boot out-of-region games</TextBlock>
+                        <TextBlock Grid.Row="3" Grid.Column="0" FontWeight="SemiBold">Conversion</TextBlock>
+                        <TextBlock Grid.Row="3" Grid.Column="1">CCD/IMG/SUB or CDI format</TextBlock>
                     </Grid>
 
                     <Rectangle Fill="Gray" Height="1" Margin="0,12"/>
 
-                    <!-- File/Folder Lock Check -->
-                    <TextBlock FontWeight="Bold" TextWrapping="Wrap">File/Folder Lock Check</TextBlock>
-                    <TextBlock Margin="0,4,0,0" TextWrapping="Wrap">When enabled, checks all files and folders before saving to ensure nothing is locked by another process (e.g., file browser, antivirus). Disable if experiencing slow save times on large SD cards.</TextBlock>
+                    <!-- Save Options -->
+                    <TextBlock FontWeight="Bold" TextWrapping="Wrap">Save Options</TextBlock>
+                    <Grid Margin="0,4,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="80"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Grid.Row="0" Grid.Column="0" FontWeight="SemiBold">Lock Check</TextBlock>
+                        <TextBlock Grid.Row="0" Grid.Column="1" TextWrapping="Wrap">Before saving, checks for files locked by another process (e.g., file browser, antivirus).</TextBlock>
+                        <TextBlock Grid.Row="1" Grid.Column="0" FontWeight="SemiBold" Margin="0,4,0,0">FAT Sort</TextBlock>
+                        <TextBlock Grid.Row="1" Grid.Column="1" TextWrapping="Wrap" Margin="0,4,0,0">After saving, sorts the root directory into numeric order. Not required by GDEMU.</TextBlock>
+                    </Grid>
                 </StackPanel>
             </Grid>
 
@@ -178,7 +219,7 @@
 
             <!-- Credits -->
             <TextBlock FontWeight="Bold" TextWrapping="Wrap">Credits</TextBlock>
-            <TextBlock Margin="0,4,0,0" TextWrapping="Wrap">GDEMU - Deunan; gdMenu - neuroacid; openMenu - mrneo240; GdiBuilder - Paul Kratt; Aaru - Natalia Portillo; PuyoTools - Nick Woronekin; Redump2CDI - darc; gdidrop - feyris-tan; libchdr - Romain Tisserand; ImageSharp - SixLabors; ClosedXML - Jan Havlíček; SharpCompress - Adam Hathcock</TextBlock>
+            <TextBlock Margin="0,4,0,0" TextWrapping="Wrap">GDEMU - Deunan; gdMenu - neuroacid; openMenu - mrneo240; GdiBuilder - Paul Kratt; GdiShrink - FamilyGuy; Aaru - Natalia Portillo; PuyoTools - Nick Woronekin; Redump2CDI - darc; gdidrop - feyris-tan; libchdr - Romain Tisserand; ImageSharp - SixLabors; ClosedXML - Jan Havlíček; SharpCompress - Adam Hathcock</TextBlock>
         </StackPanel>
 
         <!-- Check for Updates button (top-right, rendered after StackPanel so it's on top for clicks) -->

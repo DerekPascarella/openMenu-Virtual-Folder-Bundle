@@ -3,7 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Settings File Read-Only" Height="400" Width="600"
         ResizeMode="CanResize" WindowStartupLocation="CenterOwner"
-        MinHeight="250" MinWidth="400">
+        MinHeight="250" MinWidth="400"
+        FocusManager.FocusedElement="{Binding ElementName=RetryButton}">
     <Grid Margin="10">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -33,7 +34,7 @@
         </ListBox>
 
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button Content="Retry" Width="80" Padding="15,8" Margin="0,0,10,0" Click="RetryButton_Click" IsDefault="True"
+            <Button x:Name="RetryButton" Content="Retry" Width="80" Padding="15,8" Margin="0,0,10,0" Click="RetryButton_Click"
                     ToolTip="Re-check the settings file after fixing its permissions"/>
             <Button Content="Continue" Width="120" Padding="15,8" Click="ContinueButton_Click" IsCancel="True"
                     ToolTip="Proceed without saving settings this session"/>

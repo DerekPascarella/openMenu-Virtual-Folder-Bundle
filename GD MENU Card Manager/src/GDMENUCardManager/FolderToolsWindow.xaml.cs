@@ -8,6 +8,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using GDMENUCardManager.Core;
 
 namespace GDMENUCardManager
@@ -73,12 +74,16 @@ namespace GDMENUCardManager
                 BuildTree(folderCounts, totalItemCount);
 
             DataContext = this;
+            Closing += FolderToolsWindow_Closing;
         }
 
         private void Window_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.Key == Key.Escape)
+            {
+                e.Handled = true;
                 Close();
+            }
         }
 
         // Folder Artwork tab
@@ -314,9 +319,20 @@ namespace GDMENUCardManager
                 // Don't allow editing the root node
                 if (!node.IsRootNode)
                 {
+                    e.Handled = true;
+                    if (node.IsEditing)
+                        return;
+
                     _editingOriginalName = node.Name;
                     node.IsEditing = true;
-                    e.Handled = true;
+
+                    // The editor is always in the template, only hidden, so nothing else focuses it.
+                    var editor = FindVisualChild<TextBox>((DependencyObject)sender);
+                    Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        editor?.Focus();
+                        editor?.SelectAll();
+                    }), DispatcherPriority.Input);
                 }
             }
         }
@@ -346,6 +362,9 @@ namespace GDMENUCardManager
                     _editingOriginalName = null;
                     return;
                 }
+
+                // Same cleanup the folder path gets on Apply, so the tree shows the name that will be used.
+                node.Name = GdItem.CleanFolderPath(node.Name);
 
                 // Check if name was actually changed
                 if (_editingOriginalName != null && _editingOriginalName != node.Name)
@@ -385,8 +404,7 @@ namespace GDMENUCardManager
                 if (sender is TextBox textBox && textBox.DataContext is FolderTreeNode node)
                 {
                     // Revert changes
-                    var originalName = node.OriginalFullPath.Split('\\').Last();
-                    node.Name = originalName;
+                    node.Name = _editingOriginalName;
                     node.IsEditing = false;
                 }
                 e.Handled = true;
@@ -476,6 +494,8 @@ namespace GDMENUCardManager
                         _currentDropTarget.IsDropTarget = true;
                     }
                 }
+
+                ScrollTreeNearEdge(e);
             }
             else
             {
@@ -483,6 +503,35 @@ namespace GDMENUCardManager
                 ClearDropTarget();
             }
             e.Handled = true;
+        }
+
+        private void ScrollTreeNearEdge(DragEventArgs e)
+        {
+            var scrollViewer = FindVisualChild<ScrollViewer>(FolderTreeView);
+            if (scrollViewer == null)
+                return;
+
+            double y = e.GetPosition(scrollViewer).Y;
+            double margin = Math.Min(scrollViewer.FontSize * 2, scrollViewer.ActualHeight / 2);
+            if (y < margin)
+                scrollViewer.LineUp();
+            else if (y >= scrollViewer.ActualHeight - margin)
+                scrollViewer.LineDown();
+        }
+
+        private static T FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+        {
+            for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                if (child is T found)
+                    return found;
+
+                var result = FindVisualChild<T>(child);
+                if (result != null)
+                    return result;
+            }
+            return null;
         }
 
         private void ClearDropTarget()
@@ -502,7 +551,10 @@ namespace GDMENUCardManager
                 {
                     var droppedNode = e.Data.GetData(typeof(FolderTreeNode)) as FolderTreeNode;
                     var targetElement = e.OriginalSource as FrameworkElement;
-                    var targetNode = targetElement?.DataContext as FolderTreeNode;
+                    // An edge scroll can move the highlighted folder off the pointer, so it wins.
+                    // DragLeave clears the highlight each time the pointer crosses into another
+                    // element, and a drop before the next DragOver uses the element under the pointer.
+                    var targetNode = _currentDropTarget ?? targetElement?.DataContext as FolderTreeNode;
 
                     if (droppedNode != null && targetNode != null && droppedNode != targetNode)
                     {
@@ -643,6 +695,29 @@ namespace GDMENUCardManager
             {
                 CollectMappings(child, mappings);
             }
+        }
+
+        private bool HasPendingFolderChanges()
+        {
+            var mappings = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var root in RootNodes)
+                CollectMappings(root, mappings);
+            return mappings.Count > 0;
+        }
+
+        private void FolderToolsWindow_Closing(object sender, CancelEventArgs e)
+        {
+            if (FolderMappings != null || !HasPendingFolderChanges())
+                return;
+
+            var result = MessageBox.Show(this,
+                "You have unapplied folder changes. Discard them?",
+                "Confirmation",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.None);
+
+            if (result != MessageBoxResult.Yes)
+                e.Cancel = true;
         }
 
         private void ApplyButton_Click(object sender, RoutedEventArgs e)

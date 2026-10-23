@@ -4,6 +4,7 @@ using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using System;
 using System.ComponentModel;
+using GDMENUCardManager.Core;
 
 namespace GDMENUCardManager
 {
@@ -18,6 +19,7 @@ namespace GDMENUCardManager
         private bool _originalEnableVgaPatchExisting;
         private bool _originalEnableRegionPatch;
         private bool _originalEnableRegionPatchExisting;
+        private DiscConversionFormat _originalConversionFormat;
         private bool _saved;
         private readonly Action _saveConfigCallback;
 
@@ -29,6 +31,14 @@ namespace GDMENUCardManager
 #endif
             this.Opened += DiscImageOptionsWindow_Opened;
             this.Closing += DiscImageOptionsWindow_Closing;
+            this.KeyDown += (s, e) =>
+            {
+                if (e.Key == Avalonia.Input.Key.Escape)
+                {
+                    e.Handled = true;
+                    Close();
+                }
+            };
         }
 
         public DiscImageOptionsWindow(Action saveConfigCallback) : this()
@@ -54,7 +64,10 @@ namespace GDMENUCardManager
                 _originalEnableVgaPatchExisting = vm.EnableVgaPatchExisting;
                 _originalEnableRegionPatch = vm.EnableRegionPatch;
                 _originalEnableRegionPatchExisting = vm.EnableRegionPatchExisting;
+                _originalConversionFormat = vm.ConversionFormat;
             }
+
+            this.FindControl<CheckBox>("ChkEnableGDIShrink")?.Focus(Avalonia.Input.NavigationMethod.Tab);
         }
 
         private void DiscImageOptionsWindow_Closing(object sender, CancelEventArgs e)
@@ -78,6 +91,7 @@ namespace GDMENUCardManager
                 vm.EnableVgaPatchExisting = _originalEnableVgaPatchExisting;
                 vm.EnableRegionPatch = _originalEnableRegionPatch;
                 vm.EnableRegionPatchExisting = _originalEnableRegionPatchExisting;
+                vm.ConversionFormat = _originalConversionFormat;
             }
         }
 
@@ -101,5 +115,8 @@ namespace GDMENUCardManager
         bool EnableVgaPatchExisting { get; set; }
         bool EnableRegionPatch { get; set; }
         bool EnableRegionPatchExisting { get; set; }
+        DiscConversionFormat ConversionFormat { get; set; }
+        bool UseCcdConversion { get; set; }
+        bool UseCdiConversion { get; set; }
     }
 }

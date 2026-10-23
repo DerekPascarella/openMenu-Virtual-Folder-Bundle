@@ -22,3 +22,8 @@ int txr_load_DATs(void); /* Loads our DAT files full of images */
 int txr_get_small(const char* id, struct image* img);
 int txr_get_large(const char* id, struct image* img);
 int txr_get_folder(const char* id, struct image* img);
+
+#define TXR_DEFERRED (1)
+
+/* While set, a cache miss returns TXR_DEFERRED with the empty image instead of reading the DAT. */
+void txr_defer_loads(int defer);

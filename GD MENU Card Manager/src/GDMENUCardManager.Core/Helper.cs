@@ -118,6 +118,23 @@ namespace GDMENUCardManager.Core
             return Task.Run(() => File.Exists(path));
         }
 
+        // An unreadable folder counts as not found, the same as File.Exists.
+        public static bool FileExistsIgnoreCase(string path)
+        {
+            try
+            {
+                return File.Exists(ResolveActualPath(path));
+            }
+            catch (IOException)
+            {
+                return false;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return false;
+            }
+        }
+
         // Maps a referenced filename to its real spelling on disk. On a case-sensitive
         // filesystem a .gdi or .cue may name "TRACK04.RAW" while the file is "track04.raw".
         // The exact name always wins; the folder is only scanned when it is absent.
@@ -410,14 +427,6 @@ namespace GDMENUCardManager.Core
 
             if (!Directory.Exists(directoryPath))
                 return lockedFiles; // Directory doesn't exist, nothing is locked
-
-            // First check if the directory itself can be renamed (tests for open handles)
-            var dirError = CheckDirectoryCanBeRenamed(directoryPath);
-            if (dirError != null)
-            {
-                lockedFiles[directoryPath] = dirError;
-                return lockedFiles; // No need to check files if directory is locked
-            }
 
             try
             {

@@ -135,6 +135,21 @@ namespace GDMENUCardManager
 
             RefreshThemes(_config.ThemeId);
             DataContext = this;
+            KeyDown += (s, e) =>
+            {
+                if (e.Key == System.Windows.Input.Key.Escape && IsEnabled)
+                {
+                    e.Handled = true;
+                    Close();
+                }
+            };
+
+            // Nothing closes the window while an Apply is running.
+            Closing += (s, e) =>
+            {
+                if (!IsEnabled)
+                    e.Cancel = true;
+            };
         }
 
         private void SetStyle(MenuStyle style)

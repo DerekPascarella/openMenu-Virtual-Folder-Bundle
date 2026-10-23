@@ -1,6 +1,8 @@
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using System;
 
 namespace GDMENUCardManager
 {
@@ -23,6 +25,12 @@ namespace GDMENUCardManager
         private void InitializeComponent()
         {
             AvaloniaXamlLoader.Load(this);
+        }
+
+        protected override void OnOpened(EventArgs e)
+        {
+            base.OnOpened(e);
+            this.FindControl<Button>("StartScanButton")?.Focus(NavigationMethod.Tab);
         }
 
         private void QuitButton_Click(object sender, RoutedEventArgs e)

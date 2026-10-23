@@ -46,6 +46,9 @@ namespace GDMENUCardManager
         {
             Page1.Visibility = Visibility.Collapsed;
             Page2.Visibility = Visibility.Visible;
+
+            // Focus would otherwise stay on the hidden Next button.
+            CancelDownloadButton.Focus();
             StartDownload();
         }
 

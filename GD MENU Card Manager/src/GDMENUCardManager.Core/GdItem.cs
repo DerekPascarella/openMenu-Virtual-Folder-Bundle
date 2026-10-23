@@ -11,9 +11,12 @@ namespace GDMENUCardManager.Core
 
     public sealed class GdItem : INotifyPropertyChanged
     {
-        public static int namemaxlen = 256;
-        public static int serialmaxlen = 12;
-        public static int foldermaxlen = 512;
+        public const int namemaxlen = 127;
+        public const int serialmaxlen = 10;
+        public const int foldermaxlen = 256;
+
+        // openMenu's own disc. Its serial is never changed.
+        public const string OpenMenuSerial = "NEODC_1";
 
         public string Guid { get; set; }
 
@@ -92,7 +95,7 @@ namespace GDMENUCardManager.Core
             get { return _ProductNumber; }
             set
             {
-                var cleaned = Helper.StripNonPrintableAscii(CleanSerial(value));
+                var cleaned = NormalizeProductNumber(value);
 
                 // Re-assigning the same value would clear the translation tracking, so bail out.
                 // Before the first translation there is nothing to protect, and Ip may since
@@ -106,9 +109,6 @@ namespace GDMENUCardManager.Core
 
                 if (_ProductNumber != null)
                 {
-                    if (_ProductNumber.Length > serialmaxlen)
-                        _ProductNumber = _ProductNumber.Substring(0, serialmaxlen);
-
                     string beforeTranslation = _ProductNumber;
 
                     // Table 1 only. Table 2 is applied inside the DAT managers instead.
@@ -355,6 +355,25 @@ namespace GDMENUCardManager.Core
             RaisePropertyChanged(nameof(Length));
         }
 
+        internal void PublishPreparedReplacementState(GdItem prepared, string cardPath, int folderNumber)
+        {
+            ImageFiles.Clear();
+            ImageFiles.AddRange(prepared.ImageFiles);
+            _ImageRegion = prepared._ImageRegion;
+            _FileFormat = prepared._FileFormat;
+            _Length = prepared._Length;
+            CanApplyGDIShrink = prepared.CanApplyGDIShrink;
+            WasShrunk = prepared.WasShrunk;
+            _FullFolderPath = cardPath;
+            _SdNumber = folderNumber;
+            _Work = WorkMode.None;
+            RaisePropertyChanged(nameof(FullFolderPath));
+            RaisePropertyChanged(nameof(SdNumber));
+            RaisePropertyChanged(nameof(Work));
+            RaisePropertyChanged(nameof(FileFormat));
+            RaisePropertyChanged(nameof(Length));
+        }
+
         private static IpBin CopyIp(IpBin ip)
         {
             if (ip == null)
@@ -404,8 +423,7 @@ namespace GDMENUCardManager.Core
         }
 
         /// <summary>
-        /// No hyphens, first token only. serial.txt, OPENMENU.INI and the DAT lookups all key on
-        /// this form.
+        /// No hyphens, first token only.
         /// </summary>
         public static string CleanSerial(string serial)
         {
@@ -413,6 +431,22 @@ namespace GDMENUCardManager.Core
                 return serial;
 
             return serial.Trim().Replace("-", "").Split(' ')[0];
+        }
+
+        /// <summary>
+        /// Letters and digits only, uppercase, at most 10 characters, except for openMenu's own
+        /// serial, which is returned unchanged.
+        /// </summary>
+        public static string NormalizeProductNumber(string value)
+        {
+            var cleaned = Helper.StripNonPrintableAscii(CleanSerial(value));
+            if (cleaned == null || cleaned == OpenMenuSerial)
+                return cleaned;
+
+            cleaned = new string(cleaned.Where(char.IsLetterOrDigit).ToArray()).ToUpperInvariant();
+            if (cleaned.Length > serialmaxlen)
+                cleaned = cleaned.Substring(0, serialmaxlen);
+            return cleaned;
         }
 
         public static string CleanFolderPath(string path)
@@ -424,16 +458,16 @@ namespace GDMENUCardManager.Core
 
             for (int i = 0; i < segments.Length; i++)
             {
-                segments[i] = Helper.StripNonPrintableAscii(segments[i].Trim());
-                if (segments[i].Length > namemaxlen)
-                    segments[i] = segments[i].Substring(0, namemaxlen);
+                segments[i] = Helper.StripNonPrintableAscii(segments[i]).Trim();
+                if (segments[i].Length > foldermaxlen)
+                    segments[i] = segments[i].Substring(0, foldermaxlen);
             }
 
             segments = segments.Where(s => !string.IsNullOrEmpty(s)).ToArray();
             var result = string.Join("\\", segments);
 
             if (result.Length > foldermaxlen)
-                result = result.Substring(0, foldermaxlen);
+                result = result.Substring(0, foldermaxlen).TrimEnd('\\', ' ');
 
             return result;
         }

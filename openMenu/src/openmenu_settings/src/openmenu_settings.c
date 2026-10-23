@@ -41,6 +41,7 @@ uint8_t* sf_dcnow;
 uint8_t* sf_dcnow_refresh;
 uint8_t* sf_dcnow_vmu;
 uint8_t* sf_online_time_sync;
+uint8_t* sf_clock_extender;
 
 void
 settings_sanitize() {
@@ -184,6 +185,10 @@ settings_sanitize() {
 
     if ((sf_online_time_sync[0] < ONLINE_TIME_SYNC_START) || (sf_online_time_sync[0] > ONLINE_TIME_SYNC_END)) {
         sf_online_time_sync[0] = ONLINE_TIME_SYNC_OFF;
+    }
+
+    if ((sf_clock_extender[0] < CLOCK_EXTENDER_START) || (sf_clock_extender[0] > CLOCK_EXTENDER_END)) {
+        sf_clock_extender[0] = CLOCK_EXTENDER_OFF;
     }
 
     /* Off means nothing is remembered, so turning it back on later starts

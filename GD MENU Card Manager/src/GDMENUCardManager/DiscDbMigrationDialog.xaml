@@ -5,7 +5,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="Disc Database Migration" SizeToContent="Height" Width="500"
-        WindowStartupLocation="CenterOwner" ResizeMode="NoResize">
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        FocusManager.FocusedElement="{Binding ElementName=ProceedButton}">
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -39,9 +40,9 @@
 
         <!-- Buttons -->
         <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0 20 0 0">
-            <Button Content="Cancel" Click="CancelButton_Click" Width="110" Padding="15,8" Margin="0 0 10 0"
+            <Button Content="Cancel" Click="CancelButton_Click" Width="110" Padding="15,8" Margin="0 0 10 0" IsCancel="True"
                     ToolTip="Load the card without migrating"/>
-            <Button Content="Proceed" Click="ProceedButton_Click" Width="110" Padding="15,8" IsDefault="True"
+            <Button x:Name="ProceedButton" Content="Proceed" Click="ProceedButton_Click" Width="110" Padding="15,8"
                     ToolTip="Migrate this card to DISCDB.JSON"/>
         </StackPanel>
     </Grid>

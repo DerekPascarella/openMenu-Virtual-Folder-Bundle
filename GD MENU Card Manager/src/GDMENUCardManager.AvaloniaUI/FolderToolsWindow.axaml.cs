@@ -3,6 +3,8 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
+using Avalonia.VisualTree;
 using MsBox.Avalonia;
 using MsBox.Avalonia.Models;
 using System;
@@ -27,6 +29,7 @@ namespace GDMENUCardManager
             DataFormat.CreateBytesApplicationFormat("gdmcm-folder-tree-node-marker");
 
         private readonly Core.Manager _manager;
+        private bool _discardConfirmed;
 
         public new event PropertyChangedEventHandler PropertyChanged;
 
@@ -51,6 +54,16 @@ namespace GDMENUCardManager
         private FolderTreeNode _draggedNode;
         private FolderTreeNode _clickedNode;
         private FolderTreeNode _currentDropTarget;
+
+        // Scrolls the tree a line per tick while a folder drag hovers near its top or
+        // bottom edge. The tick and the drop reuse the last DragOver position because
+        // neither has a reliable pointer position of its own.
+        private readonly DispatcherTimer _dragScrollTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(75)
+        };
+        private Point _dragScrollPosition;
+
         private Stack<UndoOperation> _undoStack = new Stack<UndoOperation>();
         private const int MaxUndoOperations = 10;
         private string _editingOriginalName;
@@ -96,22 +109,27 @@ namespace GDMENUCardManager
             DataContext = this;
 
             var tree = this.FindControl<TreeView>("FolderTreeView");
+            tree.AddHandler(DragDrop.DragEnterEvent, Tree_DragOver);
             tree.AddHandler(DragDrop.DragOverEvent, Tree_DragOver);
             tree.AddHandler(DragDrop.DropEvent, Tree_Drop);
             tree.AddHandler(DragDrop.DragLeaveEvent, Tree_DragLeave);
+            _dragScrollTimer.Tick += DragScrollTimer_Tick;
+            this.Closed += (_, _) => _dragScrollTimer.Stop();
 
             // Tunnel strategy so these fire before TreeViewItem handles the pointer for selection
             tree.AddHandler(PointerPressedEvent, Tree_PointerPressed, RoutingStrategies.Tunnel);
             tree.AddHandler(PointerMovedEvent, Tree_PointerMoved, RoutingStrategies.Tunnel);
 
-            tree.DoubleTapped += Tree_DoubleTapped;
-
             // KeyDown instead of KeyUp so the rename editor's handled Escape doesn't also close the window
             this.KeyDown += (s, e) =>
             {
                 if (e.Key == Key.Escape)
+                {
+                    e.Handled = true;
                     Close();
+                }
             };
+            this.Closing += FolderToolsWindow_Closing;
         }
 
         private void InitializeComponent()
@@ -192,8 +210,8 @@ namespace GDMENUCardManager
                 WindowStartupLocation = WindowStartupLocation.CenterOwner,
                 ButtonDefinitions = new ButtonDefinition[]
                 {
-                    new ButtonDefinition { Name = "Delete" },
-                    new ButtonDefinition { Name = "Cancel" }
+                    new ButtonDefinition { Name = "Delete", IsDefault = true },
+                    new ButtonDefinition { Name = "Cancel", IsCancel = true }
                 }
             }).ShowWindowDialogAsync(this);
 
@@ -356,9 +374,20 @@ namespace GDMENUCardManager
             if (node == null || node.IsRootNode)
                 return;
 
+            e.Handled = true;
+            if (node.IsEditing)
+                return;
+
             _editingOriginalName = node.Name;
             node.IsEditing = true;
-            e.Handled = true;
+
+            // The editor is always in the template, only hidden, so nothing else focuses it.
+            var editor = ((Control)sender).GetVisualDescendants().OfType<TextBox>().FirstOrDefault();
+            Dispatcher.UIThread.Post(() =>
+            {
+                editor?.Focus();
+                editor?.SelectAll();
+            }, DispatcherPriority.Input);
         }
 
         private void EditTextBox_AttachedToVisualTree(object sender, VisualTreeAttachmentEventArgs e)
@@ -386,6 +415,9 @@ namespace GDMENUCardManager
                 return;
             }
 
+            // Same cleanup the folder path gets on Apply, so the tree shows the name that will be used.
+            node.Name = GdItem.CleanFolderPath(node.Name);
+
             // Check if name was actually changed
             if (_editingOriginalName != null && _editingOriginalName != node.Name)
             {
@@ -410,8 +442,7 @@ namespace GDMENUCardManager
             else if (e.Key == Key.Escape)
             {
                 // Revert changes
-                var originalName = node.OriginalFullPath.Split('\\').Last();
-                node.Name = originalName;
+                node.Name = _editingOriginalName;
                 CommitRename(node);
                 e.Handled = true;
             }
@@ -482,6 +513,7 @@ namespace GDMENUCardManager
                 // A failed platform drag just cancels the move
             }
 
+            _dragScrollTimer.Stop();
             _draggedNode = null;
             _clickedNode = null;
             _dragTriggerEvent = null;
@@ -492,8 +524,19 @@ namespace GDMENUCardManager
         {
             e.DragEffects = _draggedNode != null ? DragDropEffects.Move : DragDropEffects.None;
 
-            var targetNode = (e.Source as Control)?.DataContext as FolderTreeNode;
+            _dragScrollPosition = e.GetPosition(this);
+            SetDropTarget(NodeAt(_dragScrollPosition));
 
+            if (GetDragScrollDirection() != 0)
+                _dragScrollTimer.Start();
+            else
+                _dragScrollTimer.Stop();
+
+            e.Handled = true;
+        }
+
+        private void SetDropTarget(FolderTreeNode targetNode)
+        {
             if (targetNode != _currentDropTarget)
             {
                 // Clear previous highlight
@@ -505,21 +548,85 @@ namespace GDMENUCardManager
                 if (_currentDropTarget != null)
                     _currentDropTarget.IsDropTarget = true;
             }
-
-            e.Handled = true;
         }
 
         private void Tree_DragLeave(object sender, RoutedEventArgs e)
         {
+            _dragScrollTimer.Stop();
             ClearDropTarget();
+        }
+
+        private int GetDragScrollDirection()
+        {
+            var tree = this.FindControl<TreeView>("FolderTreeView");
+            if (_draggedNode == null || !IsVisible || tree == null || !tree.IsVisible)
+                return 0;
+
+            var scrollViewer = tree.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault();
+            if (scrollViewer == null)
+                return 0;
+
+            var point = this.TranslatePoint(_dragScrollPosition, scrollViewer);
+            if (point == null || !new Rect(scrollViewer.Bounds.Size).Contains(point.Value))
+                return 0;
+
+            double edgeHeight = Math.Min(32, scrollViewer.Bounds.Height / 2);
+            if (point.Value.Y < edgeHeight)
+                return -1;
+            if (point.Value.Y >= scrollViewer.Bounds.Height - edgeHeight)
+                return 1;
+            return 0;
+        }
+
+        private void DragScrollTimer_Tick(object sender, EventArgs e)
+        {
+            int direction = GetDragScrollDirection();
+            var tree = this.FindControl<TreeView>("FolderTreeView");
+            var scrollViewer = tree?.GetVisualDescendants().OfType<ScrollViewer>().FirstOrDefault();
+            if (direction == 0 || scrollViewer == null ||
+                (direction < 0 && scrollViewer.Offset.Y <= 0) ||
+                (direction > 0 && scrollViewer.Offset.Y >= scrollViewer.ScrollBarMaximum.Y))
+            {
+                _dragScrollTimer.Stop();
+                return;
+            }
+
+            if (direction < 0)
+                scrollViewer.LineUp();
+            else
+                scrollViewer.LineDown();
+
+            tree.UpdateLayout();
+            SetDropTarget(NodeAt(_dragScrollPosition));
+        }
+
+        // A drag event's Source and InputHitTest come from the last rendered frame, which
+        // can predate a timer scroll, so the node comes from layout. Nested items follow
+        // their parents, so the last match is the deepest.
+        private FolderTreeNode NodeAt(Point point)
+        {
+            var tree = this.FindControl<TreeView>("FolderTreeView");
+            if (tree == null)
+                return null;
+
+            FolderTreeNode target = null;
+            foreach (var item in tree.GetVisualDescendants().OfType<TreeViewItem>())
+            {
+                var origin = item.TranslatePoint(new Point(0, 0), this);
+                if (item.IsEffectivelyVisible && origin != null &&
+                    new Rect(origin.Value, item.Bounds.Size).Contains(point))
+                    target = item.DataContext as FolderTreeNode;
+            }
+            return target;
         }
 
         private async void Tree_Drop(object sender, DragEventArgs e)
         {
+            _dragScrollTimer.Stop();
             try
             {
                 var droppedNode = _draggedNode;
-                var targetNode = (e.Source as Control)?.DataContext as FolderTreeNode;
+                var targetNode = NodeAt(_dragScrollPosition);
 
                 if (droppedNode == null || targetNode == null || droppedNode == targetNode)
                     return;
@@ -664,6 +771,42 @@ namespace GDMENUCardManager
             foreach (var child in node.Children)
             {
                 CollectMappings(child, mappings);
+            }
+        }
+
+        private bool HasPendingFolderChanges()
+        {
+            var mappings = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var root in RootNodes)
+                CollectMappings(root, mappings);
+            return mappings.Count > 0;
+        }
+
+        private async void FolderToolsWindow_Closing(object sender, CancelEventArgs e)
+        {
+            if (_discardConfirmed || FolderMappings != null || !HasPendingFolderChanges())
+                return;
+
+            e.Cancel = true;
+
+            var result = await MessageBoxManager.GetMessageBoxCustom(new MsBox.Avalonia.Dto.MessageBoxCustomParams
+            {
+                ContentTitle = "Confirmation",
+                ContentMessage = "You have unapplied folder changes. Discard them?",
+                Icon = MsBox.Avalonia.Enums.Icon.None,
+                ShowInCenter = true,
+                WindowStartupLocation = WindowStartupLocation.CenterOwner,
+                ButtonDefinitions = new ButtonDefinition[]
+                {
+                    new ButtonDefinition { Name = "Discard", IsDefault = true },
+                    new ButtonDefinition { Name = "Cancel", IsCancel = true }
+                }
+            }).ShowWindowDialogAsync(this);
+
+            if (result == "Discard")
+            {
+                _discardConfirmed = true;
+                Close();
             }
         }
 

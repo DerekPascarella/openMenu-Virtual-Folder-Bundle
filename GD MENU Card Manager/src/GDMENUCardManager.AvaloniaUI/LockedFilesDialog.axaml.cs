@@ -1,6 +1,8 @@
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -37,6 +39,12 @@ namespace GDMENUCardManager
         private void InitializeComponent()
         {
             AvaloniaXamlLoader.Load(this);
+        }
+
+        protected override void OnOpened(EventArgs e)
+        {
+            base.OnOpened(e);
+            this.FindControl<Button>("RetryButton")?.Focus(NavigationMethod.Tab);
         }
 
         private void RetryButton_Click(object sender, RoutedEventArgs e)

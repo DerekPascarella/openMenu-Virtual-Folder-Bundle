@@ -1,5 +1,7 @@
+using System;
 using System.ComponentModel;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 
@@ -18,6 +20,12 @@ namespace GDMENUCardManager
         private void InitializeComponent()
         {
             AvaloniaXamlLoader.Load(this);
+        }
+
+        protected override void OnOpened(EventArgs e)
+        {
+            base.OnOpened(e);
+            this.FindControl<RadioButton>("CloneRadio")?.Focus(NavigationMethod.Tab);
         }
 
         protected override void OnClosing(WindowClosingEventArgs e)

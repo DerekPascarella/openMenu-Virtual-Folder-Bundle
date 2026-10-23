@@ -64,7 +64,7 @@ namespace GDMENUCardManager
                 IpInfo = "Compressed file";
             }
 
-            this.KeyUp += (ss, ee) => { if (ee.Key == Avalonia.Input.Key.Escape) Close(); };
+            this.KeyDown += (ss, ee) => { if (ee.Key == Avalonia.Input.Key.Escape) { ee.Handled = true; Close(); } };
             DataContext = this;
         }
 

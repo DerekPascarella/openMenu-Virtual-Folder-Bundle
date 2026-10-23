@@ -162,8 +162,8 @@
               <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             <Label VerticalAlignment="Center">Search/Filter</Label>
-            <TextBox Grid.Column="1" Name="tbFilter" Width="200" Margin="10 0 0 0" MaxLength="256" VerticalContentAlignment="Center" Text="{Binding Filter, Mode=TwoWay}" />
-            <Button Grid.Column="2" Width="30" ToolTip.Tip="Search by title or serial (navigate to next match)" IsDefault="{Binding Path=IsFocused, ElementName=tbFilter, Mode=OneWay}" Click="ButtonSearch_Click">
+            <TextBox Grid.Column="1" Name="tbFilter" Width="200" Margin="10 0 0 0" MaxLength="256" VerticalContentAlignment="Center" Text="{Binding Filter, Mode=TwoWay}" KeyDown="FilterTextBox_KeyDown" />
+            <Button Grid.Column="2" Width="30" ToolTip.Tip="Search by title or serial (navigate to next match)" Click="ButtonSearch_Click">
               <ContentControl Content="{StaticResource ViewMagnify}" />
             </Button>
             <Button Grid.Column="3" Width="30" ToolTip.Tip="Filter by title or serial" Click="ButtonFilter_Click">
@@ -280,7 +280,7 @@
               </DataGridTemplateColumn.CellTemplate>
               <DataGridTemplateColumn.CellEditingTemplate>
                 <DataTemplate>
-                  <TextBox Text="{Binding Folder, Mode=TwoWay}" IsEnabled="{Binding Path=., Converter={StaticResource IsNotMenuItem}}" Foreground="Black"/>
+                  <ComboBox ItemsSource="{Binding $parent[Window].DataContext.Manager.KnownFolders}" Text="{Binding Folder, Mode=TwoWay}" IsEditable="True" local:EditableComboBehavior.IsEnabled="True" KeyDown="FolderComboBox_KeyDown" IsEnabled="{Binding Path=., Converter={StaticResource IsNotMenuItem}}" HorizontalAlignment="Stretch" Foreground="Black" Background="White"/>
                 </DataTemplate>
               </DataGridTemplateColumn.CellEditingTemplate>
             </DataGridTemplateColumn>
