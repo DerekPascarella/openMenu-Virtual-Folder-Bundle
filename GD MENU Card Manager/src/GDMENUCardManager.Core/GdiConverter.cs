@@ -83,6 +83,36 @@ namespace GDMENUCardManager.Core
                 }
                 bool tosecUsable = tosecEntry != null;
 
+                // The original's format string "track0{0}.{1}" puts a literal 0 before the
+                // track number, so track 10 became track010.bin. D2 reproduces that.
+                string OutputFilename(GdiTrack t) => $"track{t.TrackNumber:D2}.{(t.IsAudio ? "raw" : "bin")}";
+
+                // Reconstruction is all-or-nothing. A track that fails means
+                // this is not the catalogued disc (e.g., a patched image whose
+                // track 1 is untouched). Rebuilding its other tracks against
+                // the DAT can swap a rebuilt track for the retail one it still
+                // contains, so every track takes the strip-path instead, which
+                // overwrites anything written here.
+                if (tosecUsable)
+                {
+                    foreach (var track in cueData.Tracks)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+
+                        var tosecTrack = tosecEntry.Tracks.FirstOrDefault(t => t.TrackNumber == track.TrackNumber);
+                        string sourceBinPath = Path.Combine(cueData.Directory, track.DataFilename);
+                        if (tosecTrack == null || !File.Exists(sourceBinPath)) continue;
+
+                        if (!RedumpReconstructor.TryReconstructToFile(
+                            sourceBinPath, !track.IsAudio, tosecTrack.Size, tosecTrack.Crc32, tosecTrack.Md5,
+                            Path.Combine(outputDirectory, OutputFilename(track))))
+                        {
+                            tosecUsable = false;
+                            break;
+                        }
+                    }
+                }
+
                 foreach (var track in cueData.Tracks)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
@@ -93,60 +123,43 @@ namespace GDMENUCardManager.Core
                         return (false, $"BIN file not found: {track.DataFilename}");
                     }
 
-                    // The original's format string "track0{0}.{1}" puts a literal 0 before the
-                    // track number, so track 10 became track010.bin. D2 reproduces that.
-                    string extension = track.IsAudio ? "raw" : "bin";
-                    string outputFilename = $"track{track.TrackNumber:D2}.{extension}";
+                    string outputFilename = OutputFilename(track);
                     string outputPath = Path.Combine(outputDirectory, outputFilename);
 
                     int sectorCount;  // num3 in original
 
-                    // Try byte-exact reconstruction against TOSEC's expected
-                    // per-track hashes. If reconstruction fails for this
-                    // track, fall through to the strip-path below.
-                    if (tosecUsable)
+                    // The reconstruction pass above already wrote this track.
+                    if (tosecUsable && tosecEntry.Tracks.Any(t => t.TrackNumber == track.TrackNumber))
                     {
-                        var tosecTrack = tosecEntry.Tracks.FirstOrDefault(t => t.TrackNumber == track.TrackNumber);
-                        if (tosecTrack != null)
+                        // Mirror the strip-path LBA arithmetic so the .gdi
+                        // matches the TOSEC reference layout. Source .bin
+                        // size drives the LBA advance, not the TOSEC output
+                        // size (they don't always agree for audio tracks).
+                        // Multi-index tracks still need the pregap bump.
+                        long sourceFileSize = new FileInfo(sourceBinPath).Length;
+                        if (track.Indices.Count == 1)
                         {
-                            byte[] redumpBytes = File.ReadAllBytes(sourceBinPath);
-                            byte[] reconstructed = RedumpReconstructor.TryReconstruct(
-                                redumpBytes, !track.IsAudio, tosecTrack.Size, tosecTrack.Crc32, tosecTrack.Md5);
-                            if (reconstructed != null)
-                            {
-                                await File.WriteAllBytesAsync(outputPath, reconstructed, cancellationToken);
-
-                                // Mirror the strip-path LBA arithmetic so the .gdi
-                                // matches the TOSEC reference layout. Source .bin
-                                // size drives the LBA advance, not the TOSEC output
-                                // size (they don't always agree for audio tracks).
-                                // Multi-index tracks still need the pregap bump.
-                                long sourceFileSize = new FileInfo(sourceBinPath).Length;
-                                if (track.Indices.Count == 1)
-                                {
-                                    sectorCount = (int)(sourceFileSize / SectorSize);
-                                }
-                                else
-                                {
-                                    var index01 = track.Indices.FirstOrDefault(i => i.Number == 1);
-                                    int framesToSkip = index01?.TotalFrames ?? 0;
-                                    sectorCount = (int)((sourceFileSize - (long)framesToSkip * SectorSize) / SectorSize);
-                                    currentLba += framesToSkip;
-                                }
-
-                                int tosecTrackType = track.IsAudio ? 0 : 4;
-                                gdiContent.AppendLine($"{track.TrackNumber} {currentLba} {tosecTrackType} 2352 {outputFilename} 0");
-                                currentLba += sectorCount;
-
-                                if (track.Comments.Contains("HIGH-DENSITY AREA") && currentLba < HighDensityAreaLba)
-                                {
-                                    currentLba = HighDensityAreaLba;
-                                }
-                                processedTracks++;
-                                progress?.Report((processedTracks * 100) / trackCount);
-                                continue;
-                            }
+                            sectorCount = (int)(sourceFileSize / SectorSize);
                         }
+                        else
+                        {
+                            var index01 = track.Indices.FirstOrDefault(i => i.Number == 1);
+                            int framesToSkip = index01?.TotalFrames ?? 0;
+                            sectorCount = (int)((sourceFileSize - (long)framesToSkip * SectorSize) / SectorSize);
+                            currentLba += framesToSkip;
+                        }
+
+                        int tosecTrackType = track.IsAudio ? 0 : 4;
+                        gdiContent.AppendLine($"{track.TrackNumber} {currentLba} {tosecTrackType} 2352 {outputFilename} 0");
+                        currentLba += sectorCount;
+
+                        if (track.Comments.Contains("HIGH-DENSITY AREA") && currentLba < HighDensityAreaLba)
+                        {
+                            currentLba = HighDensityAreaLba;
+                        }
+                        processedTracks++;
+                        progress?.Report((processedTracks * 100) / trackCount);
+                        continue;
                     }
 
                     // One index means copy the file whole. Two means skip to INDEX 01.

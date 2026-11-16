@@ -120,7 +120,7 @@
             <TextBlock FontWeight="Bold" TextWrapping="Wrap"
                        Text="Perform batch folder move and rename operations"/>
             <TextBlock Margin="0,8,0,0" TextWrapping="Wrap"
-                       Text="Double-click to rename folders. Drag folders to reparent them. Changes apply when you click Apply Changes."/>
+                       Text="Double-click to rename folders. Drag folders to reparent them. Right-click folder to sort its contents. Changes apply when you click Apply Changes."/>
           </StackPanel>
 
           <Border Grid.Row="1" BorderBrush="Gray" BorderThickness="1">
@@ -129,6 +129,14 @@
                 <TreeDataTemplate ItemsSource="{Binding Children}">
                   <Border Background="{Binding IsDropTarget, Converter={StaticResource DropTargetBrush}}"
                           Padding="2" CornerRadius="2" DoubleTapped="Tree_DoubleTapped">
+                    <Border.ContextMenu>
+                      <ContextMenu>
+                        <MenuItem Header="Sort contents by Title" Click="SortContents_Click"
+                                  IsEnabled="{Binding CanSortContents}" IsVisible="{Binding !IsSortPending}"/>
+                        <MenuItem Header="Cancel contents sort" Click="SortContents_Click"
+                                  IsVisible="{Binding IsSortPending}"/>
+                      </ContextMenu>
+                    </Border.ContextMenu>
                     <Grid>
                       <TextBlock Text="{Binding DisplayName}" IsVisible="{Binding !IsEditing}" VerticalAlignment="Center"/>
                       <TextBox Text="{Binding Name, Mode=TwoWay}" IsVisible="{Binding IsEditing}"
@@ -146,10 +154,10 @@
           <Grid Grid.Row="2" Margin="0,10,0,0">
             <Button HorizontalAlignment="Left" Content="Undo Last Change" Padding="15,8"
                     Click="UndoButton_Click" IsEnabled="{Binding CanUndo}"
-                    ToolTip.Tip="Revert the most recent rename or move"/>
+                    ToolTip.Tip="Revert the most recent rename, move, or sort mark"/>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
               <Button Content="Apply Changes" Padding="15,8" Margin="0,0,10,0" Click="ApplyButton_Click"
-                      ToolTip.Tip="Apply all folder renames and moves"/>
+                      ToolTip.Tip="Apply all folder renames, moves, and sorts"/>
               <Button Content="Cancel" Width="80" Padding="15,8" Click="CancelButton_Click"
                       ToolTip.Tip="Discard all pending folder changes and close"/>
             </StackPanel>

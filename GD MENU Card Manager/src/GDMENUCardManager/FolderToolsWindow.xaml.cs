@@ -62,6 +62,9 @@ namespace GDMENUCardManager
         // Set when the user clicks Apply Changes. The main window applies these mappings after the dialog closes.
         public Dictionary<string, string> FolderMappings { get; private set; }
 
+        // Final paths of the folders marked "Sort contents by Title", also set by Apply Changes.
+        public List<string> FolderSorts { get; private set; }
+
         public FolderToolsWindow(Core.Manager manager, Dictionary<string, int> folderCounts, int totalItemCount)
         {
             InitializeComponent();
@@ -230,6 +233,16 @@ namespace GDMENUCardManager
             }
         }
 
+        private class SortToggleOperation : UndoOperation
+        {
+            public FolderTreeNode Node { get; set; }
+
+            public override void Undo()
+            {
+                Node.IsSortPending = !Node.IsSortPending;
+            }
+        }
+
         private void BuildTree(Dictionary<string, int> folderCounts, int totalItemCount)
         {
             var allNodes = new Dictionary<string, FolderTreeNode>(StringComparer.Ordinal);
@@ -265,6 +278,7 @@ namespace GDMENUCardManager
                         if (currentPath == path && folderCounts.ContainsKey(path))
                         {
                             node.DirectGameCount = folderCounts[path];
+                            node.CanSortContents = true;
                         }
 
                         allNodes[currentPath] = node;
@@ -292,7 +306,8 @@ namespace GDMENUCardManager
                 FullPath = "",
                 OriginalFullPath = "",
                 DirectGameCount = totalItemCount,
-                TotalGameCount = totalItemCount
+                TotalGameCount = totalItemCount,
+                CanSortContents = _manager.GetFolderContents("").Count > 0
             };
 
             // Add all top-level nodes as children of root
@@ -641,7 +656,7 @@ namespace GDMENUCardManager
             if (_undoStack.Count >= MaxUndoOperations)
             {
                 // Remove oldest operation (at bottom of stack)
-                var temp = new Stack<UndoOperation>(_undoStack.Reverse().Skip(1).Reverse());
+                var temp = new Stack<UndoOperation>(_undoStack.Take(MaxUndoOperations - 1).Reverse());
                 _undoStack = temp;
             }
 
@@ -662,11 +677,33 @@ namespace GDMENUCardManager
             if (_undoStack.Count >= MaxUndoOperations)
             {
                 // Remove oldest operation (at bottom of stack)
-                var temp = new Stack<UndoOperation>(_undoStack.Reverse().Skip(1).Reverse());
+                var temp = new Stack<UndoOperation>(_undoStack.Take(MaxUndoOperations - 1).Reverse());
                 _undoStack = temp;
             }
 
             _undoStack.Push(operation);
+            CanUndo = true;
+        }
+
+        private void SortContents_Click(object sender, RoutedEventArgs e)
+        {
+            if ((sender as MenuItem)?.DataContext is FolderTreeNode node)
+            {
+                node.IsSortPending = !node.IsSortPending;
+                RecordSortToggle(node);
+            }
+        }
+
+        private void RecordSortToggle(FolderTreeNode node)
+        {
+            if (_undoStack.Count >= MaxUndoOperations)
+            {
+                // Remove oldest operation (at bottom of stack)
+                var temp = new Stack<UndoOperation>(_undoStack.Take(MaxUndoOperations - 1).Reverse());
+                _undoStack = temp;
+            }
+
+            _undoStack.Push(new SortToggleOperation { Node = node });
             CanUndo = true;
         }
 
@@ -697,12 +734,26 @@ namespace GDMENUCardManager
             }
         }
 
+        private void CollectSortPending(FolderTreeNode node, List<string> folders)
+        {
+            // Two folders renamed to the same path are one folder.
+            if (node.IsSortPending && !folders.Contains(node.FullPath))
+                folders.Add(node.FullPath);
+
+            foreach (var child in node.Children)
+                CollectSortPending(child, folders);
+        }
+
         private bool HasPendingFolderChanges()
         {
             var mappings = new Dictionary<string, string>(StringComparer.Ordinal);
+            var sorts = new List<string>();
             foreach (var root in RootNodes)
+            {
                 CollectMappings(root, mappings);
-            return mappings.Count > 0;
+                CollectSortPending(root, sorts);
+            }
+            return mappings.Count > 0 || sorts.Count > 0;
         }
 
         private void FolderToolsWindow_Closing(object sender, CancelEventArgs e)
@@ -723,10 +774,12 @@ namespace GDMENUCardManager
         private void ApplyButton_Click(object sender, RoutedEventArgs e)
         {
             FolderMappings = new Dictionary<string, string>(StringComparer.Ordinal);
+            FolderSorts = new List<string>();
 
             foreach (var root in RootNodes)
             {
                 CollectMappings(root, FolderMappings);
+                CollectSortPending(root, FolderSorts);
             }
 
             Close();

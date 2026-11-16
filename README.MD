@@ -107,7 +107,7 @@ To accommodate the new openMenu, a modified version of [GD MENU Card Manager](ht
 
 ## Current Version
 
-The latest version of **openMenu Virtual Folder Bundle** is [1.7.1-ateam](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/releases/tag/1.7.1-ateam).
+The latest version of **openMenu Virtual Folder Bundle** is [1.7.2-ateam](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/releases/tag/1.7.2-ateam).
 
 ---
 
@@ -124,6 +124,15 @@ The latest version of **openMenu Virtual Folder Bundle** is [1.7.1-ateam](https:
 ## Changelog
 
 ## Changelog
+- **Version 1.7.2-ateam (2026-11-16)**
+  - **openMenu**
+    - Fixed oversized top/bottom margins in Scroll/Folders mode's Multi-Disc launcher (see [Issue 241](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/241)).
+  - **GD MENU Card Manager**
+    - Two or more selected Games List entries can now be sorted, or the entire contents of an individual folder/subfolders (see [Issue 243](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/243)).
+    - Settings section now grows as window's width is increased (see [Issue 244](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/244)).
+    - Additional games added to GDI shrink blacklist (see [Issue 245](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/245)).
+    - Fixed excessive RAM consumption during disc image conversion that could lead to a crash under certain conditions (see [Issue 246](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/246)).
+    - Fixed broken conversion from CUE/BIN to GDI under certain conditions (see [Issue 247](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/247)).
 - **Version 1.7.1-ateam (2026-10-23)**
   - **openMenu**
     - Fixed mouse cursor movement slowdown over menu entries with artwork (see [Issue 222](https://github.com/DerekPascarella/openMenu-Virtual-Folder-Bundle/issues/222)).
@@ -702,6 +711,8 @@ When using openMenu mode, the **Folder** column allows organizing games into a h
 
 By clicking the **Folder Tools** button at the top right of the **Games List** table and opening the **Batch Folder Move/Rename** tab, users can perform bulk folder rename and move operations, affecting all associated disc images. Any folder artwork assigned to renamed or moved folders automatically follows them (see the [Folder Artwork Assignment](#folder-artwork-assignment) section).
 
+Right-click a folder and select **Sort contents by Title** to alphabetize the disc images shown in that folder, including those placed there with additional folder paths. The folder is marked "(sort pending)", and the sort is performed when **Apply Changes** is clicked. This matters when openMenu's **Sort** setting is "SD Card Order" (see the [Folders Mode Settings](#folders-mode-settings) section), since folder contents follow SD card order in that mode. Because each disc image has a single position on the SD card, sorting a folder can also change its order in the other folders it appears in.
+
 ##### Batch Folder Assignment
 
 By selecting two or more rows in the **Games List** table, users can right-click and execute **Assign Folder Path** to update the virtual folder path definition for multiple disc images at once.
@@ -754,6 +765,8 @@ The first matching game is highlighted and scrolled into view. Click **Search** 
 
 Click **Sort List** to alphabetically sort all disc images. When in openMenu mode, this is a combination of Folder path and Title. In gdMenu mode, sorting is done by Title alone. A confirmation dialog is shown before sorting is applied.
 
+To sort only part of the list, select two or more adjacent rows in the **Games List** table, then right-click and choose **Sort selection by Title** or **Sort selection by Folder and Title** (openMenu mode only). The selected rows are sorted among the positions they already occupy using the same rules as **Sort List**, and every other row stays where it is. These options only appear when the selected rows are next to each other, and are disabled while a search filter is active.
+
 #### FAT Sort
 
 The **FAT Sort** checkbox beside **File/Folder Lock Check** keeps the SD card's numbered folders stored in numeric order in the filesystem directory. It is off by default, and the setting is remembered between application sessions.
@@ -768,7 +781,7 @@ The **Undo** and **Redo** buttons at the bottom left of the main window allow us
 
 - Adding and removing games
 - Editing titles, serials, folders, disc numbers, regions, and types
-- Reordering games (drag-and-drop or move up/down)
+- Reordering games (drag-and-drop, move up/down, or sorting)
 - Batch operations (bulk rename, folder assignment)
 - Artwork changes (both game and folder artwork)
 

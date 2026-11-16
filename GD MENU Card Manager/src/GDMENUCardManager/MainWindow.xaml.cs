@@ -1417,7 +1417,7 @@ namespace GDMENUCardManager
             }
         }
 
-        private void ButtonFolderTools_Click(object sender, RoutedEventArgs e)
+        private async void ButtonFolderTools_Click(object sender, RoutedEventArgs e)
         {
             try
             {
@@ -1444,12 +1444,28 @@ namespace GDMENUCardManager
                         OldAltFolders = new List<string>(i.AlternativeFolders)
                     }).ToList();
 
+                    var oldOrder = new List<GdItem>(Manager.ItemList);
+
                     var (updatedCount, conflictsRemoved) = Manager.ApplyFolderMappings(window.FolderMappings);
 
                     // Move any folder artwork along with the renamed paths
                     var artRekeys = Manager.RekeyFolderArtForMappings(window.FolderMappings);
 
-                    if (updatedCount > 0 || conflictsRemoved > 0)
+                    // The renames are already applied, so a failed sort still falls through to record them.
+                    bool sorted = false;
+                    string sortError = null;
+                    IsBusy = true;
+                    try
+                    {
+                        sorted = await Manager.SortFolderContents(window.FolderSorts);
+                    }
+                    catch (Exception ex)
+                    {
+                        sortError = ex.Message;
+                    }
+                    IsBusy = false;
+
+                    if (updatedCount > 0 || conflictsRemoved > 0 || sorted)
                     {
                         // Fill in new values and filter to only changed items.
                         var undoOp = new BatchFolderRenameOperation();
@@ -1464,12 +1480,26 @@ namespace GDMENUCardManager
                         undoOp.FolderArtDat = Manager.FolderArtDat;
                         undoOp.ArtRekeys = artRekeys;
 
-                        if (undoOp.Snapshots.Count > 0 || artRekeys.Count > 0)
+                        if (sorted)
+                        {
+                            undoOp.Reorder = new ListReorderOperation
+                            {
+                                ItemList = Manager.ItemList,
+                                OldOrder = oldOrder,
+                                NewOrder = new List<GdItem>(Manager.ItemList)
+                            };
+                        }
+
+                        if (undoOp.Snapshots.Count > 0 || artRekeys.Count > 0 || sorted)
                             Manager.UndoManager.RecordChange(undoOp);
 
-                        var msg = $"{updatedCount} disc image(s) updated across {window.FolderMappings.Count} folder(s).";
+                        var msg = "";
+                        if (updatedCount > 0 || conflictsRemoved > 0)
+                            msg = $"{updatedCount} disc image(s) updated across {window.FolderMappings.Count} folder(s).";
                         if (conflictsRemoved > 0)
                             msg += $"\n\n{conflictsRemoved} additional folder path(s) were automatically removed because they became duplicates of their disc image's primary folder path after renaming.";
+                        if (sorted)
+                            msg += (msg.Length > 0 ? "\n\n" : "") + $"Contents of {window.FolderSorts.Count} folder(s) sorted by title.";
                         msg += "\n\nClick 'Save Changes' to write updates to SD card.";
 
                         MessageBox.Show(this, msg, "Information", MessageBoxButton.OK, MessageBoxImage.None);
@@ -1478,6 +1508,9 @@ namespace GDMENUCardManager
                     {
                         MessageBox.Show(this, "No changes were made.", "Information", MessageBoxButton.OK, MessageBoxImage.None);
                     }
+
+                    if (sortError != null)
+                        MessageBox.Show(this, sortError, "Error", MessageBoxButton.OK, MessageBoxImage.None);
                 }
             }
             catch (Exception ex)
@@ -1672,6 +1705,41 @@ namespace GDMENUCardManager
                 {
                     assignAltItem.Header = "Assign Additional Folder Paths";
                     assignAltItem.IsEnabled = !isMultiple;
+                }
+
+                // Selection sort needs two or more rows that sit next to each other in the grid
+                var selected = new HashSet<GdItem>(dg1.SelectedItems.Cast<GdItem>().Where(x => x.SdNumber != 1));
+                int first = -1, last = -1;
+                for (int i = 0; i < dg1.Items.Count; i++)
+                {
+                    if (dg1.Items[i] is GdItem row && selected.Contains(row))
+                    {
+                        if (first < 0)
+                            first = i;
+                        last = i;
+                    }
+                }
+                bool canSortSelection = selected.Count > 1 && last - first == selected.Count - 1;
+
+                var sortSeparator = menu.Items.OfType<Separator>()
+                    .FirstOrDefault(m => m.Name == "SeparatorSortSelection");
+                if (sortSeparator != null)
+                    sortSeparator.Visibility = canSortSelection ? Visibility.Visible : Visibility.Collapsed;
+
+                var sortTitleItem = menu.Items.OfType<MenuItem>()
+                    .FirstOrDefault(m => m.Name == "MenuItemSortSelectionTitle");
+                if (sortTitleItem != null)
+                {
+                    sortTitleItem.Visibility = canSortSelection ? Visibility.Visible : Visibility.Collapsed;
+                    sortTitleItem.IsEnabled = !IsFilterActive;
+                }
+
+                var sortFolderItem = menu.Items.OfType<MenuItem>()
+                    .FirstOrDefault(m => m.Name == "MenuItemSortSelectionFolder");
+                if (sortFolderItem != null)
+                {
+                    sortFolderItem.Visibility = canSortSelection && MenuKindSelected == MenuKind.openMenu ? Visibility.Visible : Visibility.Collapsed;
+                    sortFolderItem.IsEnabled = !IsFilterActive;
                 }
             }
         }
@@ -1905,6 +1973,51 @@ namespace GDMENUCardManager
                     Manager.UndoManager.RecordChange(undoOp);
                 }
             }
+        }
+
+        private void MenuItemSortSelectionTitle_Click(object sender, RoutedEventArgs e)
+        {
+            SortSelectedRows(false);
+        }
+
+        private void MenuItemSortSelectionFolder_Click(object sender, RoutedEventArgs e)
+        {
+            SortSelectedRows(true);
+        }
+
+        private async void SortSelectedRows(bool byFolder)
+        {
+            dg1.CommitEdit(DataGridEditingUnit.Cell, true);
+            dg1.CommitEdit(DataGridEditingUnit.Row, true);
+
+            var selectedItems = dg1.SelectedItems.Cast<GdItem>().Where(x => x.SdNumber != 1).ToList();
+
+            var sortDescription = byFolder
+                ? $"The {selectedItems.Count} selected disc images will be automatically sorted in alphanumeric order based on a combination of Folder and Title.\n\nDo you want to continue?"
+                : $"The {selectedItems.Count} selected disc images will be automatically sorted in alphanumeric order based on Title.\n\nDo you want to continue?";
+            var result = MessageBox.Show(this,
+                sortDescription,
+                "Confirmation",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.None);
+
+            if (result != MessageBoxResult.Yes)
+                return;
+
+            IsBusy = true;
+            try
+            {
+                await Manager.SortSelection(selectedItems, byFolder);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(this, ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.None);
+            }
+            IsBusy = false;
+
+            dg1.SelectedItems.Clear();
+            foreach (var item in selectedItems)
+                dg1.SelectedItems.Add(item);
         }
 
         private void MenuItemAssignAltFolders_Click(object sender, RoutedEventArgs e)

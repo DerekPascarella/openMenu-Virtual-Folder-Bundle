@@ -77,30 +77,28 @@
 
         <GroupBox Grid.Row="1" Header="Settings" Margin="10" IsEnabled="{Binding IsBusy, Mode=OneWay, Converter={StaticResource BoolToInverseBool}}">
             <Grid>
-                <!-- Star spacer columns keep the gaps between sections equal at any window width -->
+                <!-- Labels sit outside the two star columns so both path boxes stay the same width and absorb all extra space -->
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*" MinWidth="30"/>
+                    <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*" MinWidth="30"/>
+                    <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*" MinWidth="30"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
 
-                <Grid Grid.Column="0">
+                <Label Grid.Column="0" VerticalAlignment="Center">SD Drive</Label>
+                <Grid Grid.Column="1">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
 
-                    <Label Grid.Column="0" VerticalAlignment="Center">SD Drive</Label>
-                    <Button Grid.Column="1" Width="30" Margin="10 0 0 0" Click="ButtonBrowseSdPath_Click" ToolTip="Browse for custom SD card folder">
+                    <Button Grid.Column="0" Width="30" Margin="10 0 0 0" Click="ButtonBrowseSdPath_Click" ToolTip="Browse for custom SD card folder">
                         <ContentControl Content="{StaticResource ViewOpenFolder}" />
                     </Button>
-                    <ComboBox Grid.Column="2" Width="150" VerticalContentAlignment="Center" ItemsSource="{Binding DriveList, Mode=OneWay}" SelectedItem="{Binding SelectedDrive, Mode=TwoWay}" ToolTip="{Binding SelectedDrive.VolumeLabel, Mode=OneWay}"
+                    <ComboBox Grid.Column="1" VerticalContentAlignment="Center" ItemsSource="{Binding DriveList, Mode=OneWay}" SelectedItem="{Binding SelectedDrive, Mode=TwoWay}" ToolTip="{Binding SelectedDrive.VolumeLabel, Mode=OneWay}"
                               Visibility="{Binding IsUsingCustomPath, Converter={StaticResource BoolToVisibleOrCollapsed}, ConverterParameter=Inverse}">
                         <ComboBox.ItemTemplate>
                             <DataTemplate>
@@ -108,37 +106,36 @@
                             </DataTemplate>
                         </ComboBox.ItemTemplate>
                     </ComboBox>
-                    <TextBox Grid.Column="2" Width="150" VerticalContentAlignment="Center" Text="{Binding CustomSdPath, Mode=OneWay}" IsReadOnly="True"
+                    <TextBox Grid.Column="1" VerticalContentAlignment="Center" Text="{Binding CustomSdPath, Mode=OneWay}" IsReadOnly="True"
                              Visibility="{Binding IsUsingCustomPath, Converter={StaticResource BoolToVisibleOrCollapsed}}"/>
-                    <Button Grid.Column="3" Width="30" ToolTip="Refresh drive list and clear custom path" Click="ButtonRefreshDrive_Click">
+                    <Button Grid.Column="2" Width="30" ToolTip="Refresh drive list and clear custom path" Click="ButtonRefreshDrive_Click">
                         <ContentControl Content="{StaticResource ViewRefresh}" />
                     </Button>
                 </Grid>
 
-                <Grid Grid.Column="2">
+                <Label Grid.Column="2" Margin="50 0 0 0" VerticalAlignment="Center">Temp. Folder</Label>
+                <Grid Grid.Column="3">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <Label Grid.Column="0" VerticalAlignment="Center">Temp. Folder</Label>
-                    <Button Grid.Column="1" Width="30" Margin="10 0 0 0" Click="ButtonFolder_Click" ToolTip="Select temporary folder">
+                    <Button Grid.Column="0" Width="30" Margin="10 0 0 0" Click="ButtonFolder_Click" ToolTip="Select temporary folder">
                         <ContentControl Content="{StaticResource ViewOpenFolder}" />
                     </Button>
-                    <TextBox Grid.Column="2" Width="150" VerticalContentAlignment="Center" Text="{Binding TempFolder, Mode=TwoWay}" IsReadOnly="True"/>
-                    <Button Grid.Column="3" Width="30" Click="ButtonResetTempFolder_Click" ToolTip="Reset to system default">
+                    <TextBox Grid.Column="1" VerticalContentAlignment="Center" Text="{Binding TempFolder, Mode=TwoWay}" IsReadOnly="True"/>
+                    <Button Grid.Column="2" Width="30" Click="ButtonResetTempFolder_Click" ToolTip="Reset to system default">
                         <ContentControl Content="{StaticResource ViewRefresh}" />
                     </Button>
                 </Grid>
 
-                <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
+                <StackPanel Grid.Column="4" Margin="50 0 0 0" Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock VerticalAlignment="Center" Margin="0 1 0 0">Menu Type</TextBlock>
                     <RadioButton VerticalAlignment="Center" Margin="10 0 0 0" Padding="4 0 0 0" IsChecked="{Binding MenuKindSelected, Mode=TwoWay, Converter={StaticResource EnumToBool}, ConverterParameter={x:Static core:MenuKind.gdMenu}}" ToolTip="Use gdMenu">gdMenu</RadioButton>
                     <RadioButton VerticalAlignment="Center" Margin="10 0 0 0" Padding="4 0 0 0" IsChecked="{Binding MenuKindSelected, Mode=TwoWay, Converter={StaticResource EnumToBool}, ConverterParameter={x:Static core:MenuKind.openMenu}}" ToolTip="Use openMenu">openMenu</RadioButton>
                 </StackPanel>
 
-                <Button Grid.Column="6" Width="30" ToolTip="About" Click="ButtonAbout_Click">
+                <Button Grid.Column="5" Width="30" Margin="50 0 0 0" ToolTip="About" Click="ButtonAbout_Click">
                     <Viewbox Width="18" Height="18">
                         <Canvas Width="24" Height="24">
                             <Path Data="M11,9H13V7H11M12,20C7.59,20 4,16.41 4,12C4,7.59 7.59,4 12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M11,17H13V11H11V17Z" Fill="Black" />
@@ -220,6 +217,9 @@
                                 <Separator/>
                                 <MenuItem x:Name="MenuItemAssignFolder" Header="Assign Folder Path" Click="MenuItemAssignFolder_Click" CommandParameter="{Binding Path=., Mode=OneWay}"/>
                                 <MenuItem x:Name="MenuItemAssignAltFolders" Header="Assign Additional Folder Paths" Click="MenuItemAssignAltFolders_Click" CommandParameter="{Binding Path=., Mode=OneWay}"/>
+                                <Separator x:Name="SeparatorSortSelection"/>
+                                <MenuItem x:Name="MenuItemSortSelectionTitle" Header="Sort selection by Title" Click="MenuItemSortSelectionTitle_Click"/>
+                                <MenuItem x:Name="MenuItemSortSelectionFolder" Header="Sort selection by Folder and Title" Click="MenuItemSortSelectionFolder_Click"/>
                             </ContextMenu.Items>
                         </ContextMenu>
                     </DataGrid.Resources>

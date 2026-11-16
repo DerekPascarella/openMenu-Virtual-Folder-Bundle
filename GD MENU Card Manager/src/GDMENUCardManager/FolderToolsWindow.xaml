@@ -112,7 +112,7 @@
                     </Grid.RowDefinitions>
 
                     <TextBlock Grid.Row="0" Margin="0,0,0,10" TextWrapping="Wrap">
-                        <Run FontWeight="Bold" Text="Perform batch folder move and rename operations"/><LineBreak/><LineBreak/><Run Text="Double-click to rename folders. Drag folders to reparent them. Changes apply when you click "/><Run FontWeight="Bold" Text="Apply Changes"/><Run Text="."/>
+                        <Run FontWeight="Bold" Text="Perform batch folder move and rename operations"/><LineBreak/><LineBreak/><Run Text="Double-click to rename folders. Drag folders to reparent them. Right-click folder to sort its contents. Changes apply when you click "/><Run FontWeight="Bold" Text="Apply Changes"/><Run Text="."/>
                     </TextBlock>
 
                     <Border Grid.Row="1" BorderBrush="#CCCCCC" BorderThickness="1">
@@ -137,6 +137,15 @@
                                             Background="Transparent"
                                             Padding="2"
                                             CornerRadius="2">
+                                        <Border.ContextMenu>
+                                            <ContextMenu>
+                                                <MenuItem Header="Sort contents by Title" Click="SortContents_Click"
+                                                          IsEnabled="{Binding CanSortContents}"
+                                                          Visibility="{Binding IsSortPending, Converter={StaticResource BoolToVisibleOrCollapsed}, ConverterParameter=Inverse}"/>
+                                                <MenuItem Header="Cancel contents sort" Click="SortContents_Click"
+                                                          Visibility="{Binding IsSortPending, Converter={StaticResource BoolToVisibleOrCollapsed}}"/>
+                                            </ContextMenu>
+                                        </Border.ContextMenu>
                                         <Grid>
                                             <TextBlock Text="{Binding DisplayName}"
                                                        Visibility="{Binding IsEditing, Converter={StaticResource BoolToVisibleOrCollapsed}, ConverterParameter=Inverse}"/>
@@ -162,10 +171,10 @@
                     <Grid Grid.Row="2" Margin="0,10,0,0">
                         <Button HorizontalAlignment="Left" Content="Undo Last Change" Padding="15,8"
                                 Click="UndoButton_Click" IsEnabled="{Binding CanUndo}"
-                                ToolTip="Revert the most recent rename or move"/>
+                                ToolTip="Revert the most recent rename, move, or sort mark"/>
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                             <Button Content="Apply Changes" Padding="15,8" Margin="0,0,10,0" Click="ApplyButton_Click"
-                                    ToolTip="Apply all folder renames and moves"/>
+                                    ToolTip="Apply all folder renames, moves, and sorts"/>
                             <Button Content="Cancel" Width="80" Padding="15,8" Click="CancelButton_Click"
                                     ToolTip="Discard all pending folder changes and close"/>
                         </StackPanel>

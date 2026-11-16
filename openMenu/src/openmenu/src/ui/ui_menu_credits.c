@@ -2254,7 +2254,7 @@ draw_multidisc_tr(void) {
     if (sf_ui[0] == UI_SCROLL || sf_ui[0] == UI_FOLDERS) {
         /* Menu size and placement, width follows the longest disc label */
         const int line_height = 24;
-        const int title_gap = line_height / 2;
+        const int title_gap = 2;
         const int title_width = 10 * 8; /* "Multi-Disc" */
         const int padding = 16;         /* 8px margin on each side */
         char line_buf[48];
@@ -2275,7 +2275,7 @@ draw_multidisc_tr(void) {
 
         const int content_width = max_label * 8;
         const int width = (content_width > title_width ? content_width : title_width) + padding + gutter;
-        const int height = (window_rows + 2) * line_height + (line_height / 2) + title_gap + line_height;
+        const int height = (window_rows + 3) * line_height + 4; /* Discs, blank row, Close */
         const int x = (640 / 2) - (width / 2);
         const int y = menu_mouse_window_y((480 / 2) - (height / 2), height);
         const int x_item = x + (padding / 2);

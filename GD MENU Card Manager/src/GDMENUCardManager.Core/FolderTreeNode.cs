@@ -79,9 +79,28 @@ namespace GDMENUCardManager.Core
         {
             get
             {
-                return Name;
+                return IsSortPending ? $"{Name} (sort pending)" : Name;
             }
         }
+
+        // Set when "Sort contents by Title" is waiting for Apply Changes.
+        private bool _IsSortPending;
+        public bool IsSortPending
+        {
+            get => _IsSortPending;
+            set
+            {
+                if (_IsSortPending != value)
+                {
+                    _IsSortPending = value;
+                    OnPropertyChanged();
+                    OnPropertyChanged(nameof(DisplayName));
+                }
+            }
+        }
+
+        // False for folders that only exist as part of a longer path and hold no games themselves.
+        public bool CanSortContents { get; set; }
 
         public FolderTreeNode Parent { get; set; }
 

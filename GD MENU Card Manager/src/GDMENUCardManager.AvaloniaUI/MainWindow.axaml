@@ -68,34 +68,32 @@
 
     <HeaderedContentControl Grid.Row="1" Header="Settings" Margin="10" IsEnabled="{Binding !IsBusy, Mode=OneWay}">
       <Grid>
-        <!-- Star spacer columns keep the gaps between sections equal at any window width -->
+        <!-- Labels sit outside the two star columns so both path boxes stay the same width and absorb all extra space -->
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="Auto"/>
-          <ColumnDefinition Width="*" MinWidth="30"/>
+          <ColumnDefinition Width="*"/>
           <ColumnDefinition Width="Auto"/>
-          <ColumnDefinition Width="*" MinWidth="30"/>
+          <ColumnDefinition Width="*"/>
           <ColumnDefinition Width="Auto"/>
-          <ColumnDefinition Width="*" MinWidth="30"/>
           <ColumnDefinition Width="Auto"/>
         </Grid.ColumnDefinitions>
 
-        <Grid Grid.Column="0">
+        <TextBlock Grid.Column="0" VerticalAlignment="Center">SD Drive</TextBlock>
+        <Grid Grid.Column="1">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto"/>
-            <ColumnDefinition Width="Auto"/>
-            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="Auto"/>
           </Grid.ColumnDefinitions>
 
-          <TextBlock Grid.Column="0" VerticalAlignment="Center">SD Drive</TextBlock>
-          <Button Grid.Column="1" Width="30" Margin="10 0 0 0" Click="ButtonBrowseSdPath_Click" ToolTip.Tip="Browse for custom SD card folder">
+          <Button Grid.Column="0" Width="30" Margin="10 0 0 0" Click="ButtonBrowseSdPath_Click" ToolTip.Tip="Browse for custom SD card folder">
             <Viewbox Width="18" Height="18">
               <Canvas Width="24" Height="24">
                 <Path Data="M19,20H4C2.89,20 2,19.1 2,18V6C2,4.89 2.89,4 4,4H10L12,6H19A2,2 0 0,1 21,8H21L4,8V18L6.14,10H23.21L20.93,18.5C20.7,19.37 19.92,20 19,20Z" Fill="{DynamicResource ThemeForegroundBrush}" />
               </Canvas>
             </Viewbox>
           </Button>
-          <ComboBox Grid.Column="2" Width="150" ItemsSource="{Binding DriveList, Mode=OneWay}" SelectedItem="{Binding SelectedDrive}" ToolTip.Tip="{Binding Path=SelectedDrive.VolumeLabel, Mode=OneWay}"
+          <ComboBox Grid.Column="1" ItemsSource="{Binding DriveList, Mode=OneWay}" SelectedItem="{Binding SelectedDrive}" ToolTip.Tip="{Binding Path=SelectedDrive.VolumeLabel, Mode=OneWay}"
                     IsVisible="{Binding !IsUsingCustomPath}">
             <ComboBox.ItemTemplate>
               <DataTemplate>
@@ -103,31 +101,30 @@
               </DataTemplate>
             </ComboBox.ItemTemplate>
           </ComboBox>
-          <TextBox Grid.Column="2" Width="150" VerticalContentAlignment="Center" Text="{Binding CustomSdPath, Mode=OneWay}" IsReadOnly="True"
+          <TextBox Grid.Column="1" VerticalContentAlignment="Center" Text="{Binding CustomSdPath, Mode=OneWay}" IsReadOnly="True"
                    IsVisible="{Binding IsUsingCustomPath}"/>
-          <Button Grid.Column="3" Width="30" ToolTip.Tip="Refresh drive list and clear custom path" Click="ButtonRefreshDrive_Click">
+          <Button Grid.Column="2" Width="30" ToolTip.Tip="Refresh drive list and clear custom path" Click="ButtonRefreshDrive_Click">
             <Viewbox Width="18" Height="18"><Canvas Width="24" Height="24"><Path Data="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z" Fill="{DynamicResource ThemeForegroundBrush}" /></Canvas></Viewbox>
           </Button>
         </Grid>
 
-        <Grid Grid.Column="2">
+        <TextBlock Grid.Column="2" Margin="50 0 0 0" VerticalAlignment="Center">Temp. Folder</TextBlock>
+        <Grid Grid.Column="3">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto"/>
-            <ColumnDefinition Width="Auto"/>
-            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
             <ColumnDefinition Width="Auto"/>
           </Grid.ColumnDefinitions>
-          <TextBlock Grid.Column="0" VerticalAlignment="Center">Temp. Folder</TextBlock>
-          <Button Grid.Column="1" Width="30" Margin="10 0 0 0" Click="ButtonFolder_Click" ToolTip.Tip="Select temporary folder">
+          <Button Grid.Column="0" Width="30" Margin="10 0 0 0" Click="ButtonFolder_Click" ToolTip.Tip="Select temporary folder">
             <ContentControl Content="{StaticResource ViewOpenFolder}"/>
           </Button>
-          <TextBox Grid.Column="2" Width="150" VerticalContentAlignment="Center" Text="{Binding TempFolder}" IsReadOnly="True"/>
-          <Button Grid.Column="3" Width="30" Click="ButtonResetTempFolder_Click" ToolTip.Tip="Reset to system default">
+          <TextBox Grid.Column="1" VerticalContentAlignment="Center" Text="{Binding TempFolder}" IsReadOnly="True"/>
+          <Button Grid.Column="2" Width="30" Click="ButtonResetTempFolder_Click" ToolTip.Tip="Reset to system default">
             <Viewbox Width="18" Height="18"><Canvas Width="24" Height="24"><Path Data="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z" Fill="{DynamicResource ThemeForegroundBrush}" /></Canvas></Viewbox>
           </Button>
         </Grid>
 
-        <Grid Grid.Column="4">
+        <Grid Grid.Column="4" Margin="50 0 0 0">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto"/>
             <ColumnDefinition Width="Auto"/>
@@ -139,7 +136,7 @@
           </StackPanel>
         </Grid>
 
-        <Button Grid.Column="6" Width="30" ToolTip.Tip="About" Click="ButtonAbout_Click">
+        <Button Grid.Column="5" Width="30" Margin="50 0 0 0" ToolTip.Tip="About" Click="ButtonAbout_Click">
           <Viewbox Width="18" Height="18">
             <Canvas Width="24" Height="24">
               <Path Data="M11,9H13V7H11M12,20C7.59,20 4,16.41 4,12C4,7.59 7.59,4 12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M11,17H13V11H11V17Z" Fill="{DynamicResource ThemeForegroundBrush}" />
@@ -226,6 +223,9 @@
                 <Separator/>
                 <MenuItem x:Name="MenuItemAssignFolder" Header="Assign Folder Path" Click="MenuItemAssignFolder_Click" CommandParameter="{Binding}"/>
                 <MenuItem x:Name="MenuItemAssignAltFolders" Header="Assign Additional Folder Paths" Click="MenuItemAssignAltFolders_Click" CommandParameter="{Binding}"/>
+                <Separator x:Name="SeparatorSortSelection"/>
+                <MenuItem x:Name="MenuItemSortSelectionTitle" Header="Sort selection by Title" Click="MenuItemSortSelectionTitle_Click"/>
+                <MenuItem x:Name="MenuItemSortSelectionFolder" Header="Sort selection by Folder and Title" Click="MenuItemSortSelectionFolder_Click"/>
               </ContextMenu.Items>
             </ContextMenu>
           </DataGrid.Resources>

@@ -158,7 +158,7 @@
 
                     <!-- Batch Folder Move/Rename -->
                     <TextBlock FontWeight="Bold" TextWrapping="Wrap">Batch Folder Move/Rename (openMenu mode)</TextBlock>
-                    <TextBlock Margin="0,4,0,0" TextWrapping="Wrap">Click Folder Tools button and open the Batch Folder Move/Rename tab to reorganize folder hierarchy via tree view. Double-click to rename, drag to reparent.</TextBlock>
+                    <TextBlock Margin="0,4,0,0" TextWrapping="Wrap">Click Folder Tools button and open the Batch Folder Move/Rename tab to reorganize folder hierarchy via tree view. Double-click to rename, drag to reparent, right-click to sort a folder's contents.</TextBlock>
 
                     <Separator Margin="0,12"/>
 

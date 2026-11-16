@@ -571,6 +571,49 @@ namespace GDMENUCardManager
                     assignAltItem.Header = "Assign Additional Folder Paths";
                     assignAltItem.IsEnabled = !isMultiple;
                 }
+
+                UpdateSortSelectionMenuItems(menu, dg1.SelectedItems.Contains(clickedItem)
+                    ? dg1.SelectedItems.Cast<GdItem>()
+                    : Enumerable.Empty<GdItem>());
+            }
+        }
+
+        // Selection sort needs two or more rows that sit next to each other in the grid
+        private void UpdateSortSelectionMenuItems(ContextMenu menu, IEnumerable<GdItem> selectedItems)
+        {
+            var shownItems = (System.Collections.IList)dg1.ItemsSource;
+            var selected = new HashSet<GdItem>(selectedItems.Where(x => x.SdNumber != 1));
+            int first = -1, last = -1;
+            for (int i = 0; i < shownItems.Count; i++)
+            {
+                if (shownItems[i] is GdItem row && selected.Contains(row))
+                {
+                    if (first < 0)
+                        first = i;
+                    last = i;
+                }
+            }
+            bool canSortSelection = selected.Count > 1 && last - first == selected.Count - 1;
+
+            var sortSeparator = menu.Items.OfType<Separator>()
+                .FirstOrDefault(m => m.Name == "SeparatorSortSelection");
+            if (sortSeparator != null)
+                sortSeparator.IsVisible = canSortSelection;
+
+            var sortTitleItem = menu.Items.OfType<MenuItem>()
+                .FirstOrDefault(m => m.Name == "MenuItemSortSelectionTitle");
+            if (sortTitleItem != null)
+            {
+                sortTitleItem.IsVisible = canSortSelection;
+                sortTitleItem.IsEnabled = !IsFilterActive;
+            }
+
+            var sortFolderItem = menu.Items.OfType<MenuItem>()
+                .FirstOrDefault(m => m.Name == "MenuItemSortSelectionFolder");
+            if (sortFolderItem != null)
+            {
+                sortFolderItem.IsVisible = canSortSelection && MenuKindSelected == MenuKind.openMenu;
+                sortFolderItem.IsEnabled = !IsFilterActive;
             }
         }
 
@@ -2566,12 +2609,28 @@ namespace GDMENUCardManager
                         OldAltFolders = new List<string>(i.AlternativeFolders)
                     }).ToList();
 
+                    var oldOrder = new List<GdItem>(Manager.ItemList);
+
                     var (updatedCount, conflictsRemoved) = Manager.ApplyFolderMappings(window.FolderMappings);
 
                     // Move any folder artwork along with the renamed paths
                     var artRekeys = Manager.RekeyFolderArtForMappings(window.FolderMappings);
 
-                    if (updatedCount > 0 || conflictsRemoved > 0)
+                    // The renames are already applied, so a failed sort still falls through to record them.
+                    bool sorted = false;
+                    string sortError = null;
+                    IsBusy = true;
+                    try
+                    {
+                        sorted = await Manager.SortFolderContents(window.FolderSorts);
+                    }
+                    catch (Exception ex)
+                    {
+                        sortError = ex.Message;
+                    }
+                    IsBusy = false;
+
+                    if (updatedCount > 0 || conflictsRemoved > 0 || sorted)
                     {
                         // Fill in new values and filter to only changed items.
                         var undoOp = new BatchFolderRenameOperation();
@@ -2586,12 +2645,26 @@ namespace GDMENUCardManager
                         undoOp.FolderArtDat = Manager.FolderArtDat;
                         undoOp.ArtRekeys = artRekeys;
 
-                        if (undoOp.Snapshots.Count > 0 || artRekeys.Count > 0)
+                        if (sorted)
+                        {
+                            undoOp.Reorder = new ListReorderOperation
+                            {
+                                ItemList = Manager.ItemList,
+                                OldOrder = oldOrder,
+                                NewOrder = new List<GdItem>(Manager.ItemList)
+                            };
+                        }
+
+                        if (undoOp.Snapshots.Count > 0 || artRekeys.Count > 0 || sorted)
                             Manager.UndoManager.RecordChange(undoOp);
 
-                        var msg = $"{updatedCount} disc image(s) updated across {window.FolderMappings.Count} folder(s).";
+                        var msg = "";
+                        if (updatedCount > 0 || conflictsRemoved > 0)
+                            msg = $"{updatedCount} disc image(s) updated across {window.FolderMappings.Count} folder(s).";
                         if (conflictsRemoved > 0)
                             msg += $"\n\n{conflictsRemoved} additional folder path(s) were automatically removed because they became duplicates of their disc image's primary folder path after renaming.";
+                        if (sorted)
+                            msg += (msg.Length > 0 ? "\n\n" : "") + $"Contents of {window.FolderSorts.Count} folder(s) sorted by title.";
                         msg += "\n\nClick 'Save Changes' to write updates to SD card.";
 
                         await MessageBoxManager.GetMessageBoxStandard("Information", msg, windowStartupLocation: WindowStartupLocation.CenterOwner).ShowWindowDialogAsync(this);
@@ -2600,6 +2673,9 @@ namespace GDMENUCardManager
                     {
                         await MessageBoxManager.GetMessageBoxStandard("Information", "No changes were made.", windowStartupLocation: WindowStartupLocation.CenterOwner).ShowWindowDialogAsync(this);
                     }
+
+                    if (sortError != null)
+                        await MessageBoxManager.GetMessageBoxStandard("Error", sortError, icon: MsBox.Avalonia.Enums.Icon.None, windowStartupLocation: WindowStartupLocation.CenterOwner).ShowWindowDialogAsync(this);
                 }
             }
             catch (Exception ex)
@@ -2830,6 +2906,8 @@ namespace GDMENUCardManager
                     assignAltItem.Header = "Assign Additional Folder Paths";
                     assignAltItem.IsEnabled = !isMultiple;
                 }
+
+                UpdateSortSelectionMenuItems(menu, dg1.SelectedItems.Cast<GdItem>());
 
                 // Disable context menu for menu entry (folder 01) by setting all items disabled
                 // we can't easily stop the menu from showing, but the handlers already skip SdNumber == 1
@@ -3066,6 +3144,50 @@ namespace GDMENUCardManager
                     Manager.UndoManager.RecordChange(undoOp);
                 }
             }
+        }
+
+        private void MenuItemSortSelectionTitle_Click(object sender, RoutedEventArgs e)
+        {
+            SortSelectedRows(false);
+        }
+
+        private void MenuItemSortSelectionFolder_Click(object sender, RoutedEventArgs e)
+        {
+            SortSelectedRows(true);
+        }
+
+        private async void SortSelectedRows(bool byFolder)
+        {
+            dg1.CommitEdit();
+
+            var selectedItems = dg1.SelectedItems.Cast<GdItem>().Where(x => x.SdNumber != 1).ToList();
+
+            var sortDescription = byFolder
+                ? $"The {selectedItems.Count} selected disc images will be automatically sorted in alphanumeric order based on a combination of Folder and Title.\n\nDo you want to continue?"
+                : $"The {selectedItems.Count} selected disc images will be automatically sorted in alphanumeric order based on Title.\n\nDo you want to continue?";
+            var result = await MessageBoxManager.GetMessageBoxStandard(
+                "Confirmation",
+                sortDescription,
+                MsBox.Avalonia.Enums.ButtonEnum.YesNo,
+                MsBox.Avalonia.Enums.Icon.None, windowStartupLocation: WindowStartupLocation.CenterOwner).ShowWindowDialogAsync(this);
+
+            if (result != MsBox.Avalonia.Enums.ButtonResult.Yes)
+                return;
+
+            IsBusy = true;
+            try
+            {
+                await Manager.SortSelection(selectedItems, byFolder);
+            }
+            catch (Exception ex)
+            {
+                await MessageBoxManager.GetMessageBoxStandard("Error", ex.Message, icon: MsBox.Avalonia.Enums.Icon.None, windowStartupLocation: WindowStartupLocation.CenterOwner).ShowWindowDialogAsync(this);
+            }
+            IsBusy = false;
+
+            dg1.SelectedItems.Clear();
+            foreach (var item in selectedItems)
+                dg1.SelectedItems.Add(item);
         }
 
         private async void MenuItemAssignAltFolders_Click(object sender, RoutedEventArgs e)

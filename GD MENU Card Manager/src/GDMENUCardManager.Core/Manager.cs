@@ -4167,18 +4167,14 @@ namespace GDMENUCardManager.Core
             var oldOrder = new List<GdItem>(ItemList);
 
             var sortedlist = new List<GdItem>(ItemList.Count);
-            var menuItem = ItemList.FirstOrDefault(x => x.IsMenuItem);
+            var menuItem = ItemList.FirstOrDefault(x => x.IsMenuItem || x.SdNumber == 1);
             if (menuItem != null)
             {
                 sortedlist.Add(menuItem);
                 ItemList.Remove(menuItem);
             }
 
-            foreach (var item in ItemList
-                .OrderByDescending(x => !string.IsNullOrEmpty(x.Folder))
-                .ThenBy(x => x.Folder ?? "")
-                .ThenBy(x => x.Name)
-                .ThenBy(x => x.Ip?.Disc ?? "1/1"))
+            foreach (var item in OrderByFolderAndTitle(ItemList))
                 sortedlist.Add(item);
 
             ItemList.Clear();
@@ -4192,6 +4188,124 @@ namespace GDMENUCardManager.Core
                 OldOrder = oldOrder,
                 NewOrder = new List<GdItem>(ItemList)
             });
+        }
+
+        // Sorts the given items among the list positions they already hold.
+        public async ValueTask SortSelection(IList<GdItem> items, bool byFolder)
+        {
+            using var operation = EnterOperation();
+
+            try
+            {
+                await loadIP(items);
+            }
+            catch (ProgressWindowClosedException)
+            {
+                return;
+            }
+
+            var oldOrder = new List<GdItem>(ItemList);
+
+            // Selected items arrive in click order, and ties keep their input order.
+            var selected = new HashSet<GdItem>(items);
+            var inListOrder = ItemList.Where(selected.Contains);
+
+            if (!ReorderInPlace(byFolder ? OrderByFolderAndTitle(inListOrder) : OrderByTitle(inListOrder)))
+                return;
+
+            UndoManager.RecordChange(new ListReorderOperation("Sort Selection")
+            {
+                ItemList = ItemList,
+                OldOrder = oldOrder,
+                NewOrder = new List<GdItem>(ItemList)
+            });
+        }
+
+        // Every game shown in a folder, through its primary or an additional folder path.
+        // An empty path means the root, which holds the games with no folder.
+        public List<GdItem> GetFolderContents(string folder)
+        {
+            // The menu disc can load from cached metadata with no IP.BIN name, so IsMenuItem alone misses it.
+            if (string.IsNullOrEmpty(folder))
+                return ItemList.Where(x => !x.IsMenuItem && x.SdNumber != 1 && string.IsNullOrWhiteSpace(x.Folder)).ToList();
+
+            return ItemList.Where(x => x.Folder == folder || x.AlternativeFolders.Contains(folder)).ToList();
+        }
+
+        // Sorts each folder's games by title among the list positions they already hold.
+        // Returns false when the list order didn't change.
+        public async ValueTask<bool> SortFolderContents(IList<string> folders)
+        {
+            if (folders == null || folders.Count == 0)
+                return false;
+
+            using var operation = EnterOperation();
+
+            // Folders that share a game are sorted as one group, or sorting the second
+            // folder could put the first back out of order.
+            var groups = new List<HashSet<GdItem>>();
+            foreach (var folder in folders)
+            {
+                var group = new HashSet<GdItem>(GetFolderContents(folder));
+                foreach (var other in groups.Where(g => g.Overlaps(group)).ToList())
+                {
+                    group.UnionWith(other);
+                    groups.Remove(other);
+                }
+                groups.Add(group);
+            }
+
+            try
+            {
+                await loadIP(groups.SelectMany(g => g));
+            }
+            catch (ProgressWindowClosedException)
+            {
+                return false;
+            }
+
+            bool changed = false;
+            foreach (var group in groups)
+                changed |= ReorderInPlace(OrderByTitle(ItemList.Where(group.Contains)));
+
+            return changed;
+        }
+
+        // The ordered items fill the positions those same items held before, so every other item
+        // stays put. Returns false when the order didn't change.
+        private bool ReorderInPlace(IEnumerable<GdItem> ordered)
+        {
+            var orderedItems = ordered.ToList();
+            var slots = orderedItems.Select(x => ItemList.IndexOf(x)).OrderBy(i => i).ToList();
+
+            var newOrder = new List<GdItem>(ItemList);
+            for (int i = 0; i < slots.Count; i++)
+                newOrder[slots[i]] = orderedItems[i];
+
+            if (newOrder.SequenceEqual(ItemList))
+                return false;
+
+            ItemList.Clear();
+            foreach (var item in newOrder)
+                ItemList.Add(item);
+
+            return true;
+        }
+
+        private static IOrderedEnumerable<GdItem> OrderByTitle(IEnumerable<GdItem> items)
+        {
+            return items
+                .OrderBy(x => x.Name)
+                .ThenBy(x => x.Ip?.Disc ?? "1/1");
+        }
+
+        private static IOrderedEnumerable<GdItem> OrderByFolderAndTitle(IEnumerable<GdItem> items)
+        {
+            return items
+                .OrderByDescending(x => !string.IsNullOrEmpty(x.Folder))
+                .ThenBy(x => x.Folder ?? "")
+                .ThenBy(x => x.Name)
+                .ThenBy(x => x.Ip?.Disc ?? "1/1");
         }
 
         public void InitializeKnownFolders()

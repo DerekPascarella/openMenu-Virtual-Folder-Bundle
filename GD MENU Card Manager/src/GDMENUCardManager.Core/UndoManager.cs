@@ -670,6 +670,9 @@ namespace GDMENUCardManager.Core
         public FolderArtDatManager FolderArtDat { get; set; }
         public List<(string OldPath, string NewPath)> ArtRekeys { get; set; } = new List<(string, string)>();
 
+        // Set when folder contents were sorted in the same apply
+        public ListReorderOperation Reorder { get; set; }
+
         public override string Description => "Batch Folder Rename";
 
         public override void Undo()
@@ -682,6 +685,8 @@ namespace GDMENUCardManager.Core
 
             if (FolderArtDat != null && ArtRekeys.Count > 0)
                 FolderArtDat.ApplyRekeys(ArtRekeys.Select(r => (r.NewPath, r.OldPath)).ToList());
+
+            Reorder?.Undo();
         }
 
         public override void Redo()
@@ -694,6 +699,8 @@ namespace GDMENUCardManager.Core
 
             if (FolderArtDat != null && ArtRekeys.Count > 0)
                 FolderArtDat.ApplyRekeys(ArtRekeys);
+
+            Reorder?.Redo();
         }
     }
 }
